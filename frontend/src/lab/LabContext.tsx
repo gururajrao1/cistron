@@ -96,7 +96,11 @@ export type LabContextValue = {
   topRegulator: string | null
   pathNodes: string[]
   activeOmicsProfile: OmicsProfile | null
+  /** Library of uploaded / example profiles for on-the-fly switching. */
+  omicsProfiles: OmicsProfile[]
   omicsClamps: Record<string, number>
+  /** Last Omics Fit Score (%) from /omics/simulate. */
+  omicsAlignmentScore: number | null
   runSimulation: (
     override?: Partial<LabControls> & {
       query?: string
@@ -106,6 +110,8 @@ export type LabContextValue = {
   runQuery: (query: string) => void
   /** Upload/example → simulate omics profile and hydrate Studio canvas. */
   runOmicsProfile: (profile: OmicsProfile, params?: OmicsSimulateParams) => void
+  /** Switch active library profile and re-simulate. */
+  selectOmicsProfile: (profileId: string) => void
 }
 
 const LabContext = createContext<LabContextValue | null>(null)
@@ -128,7 +134,9 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const [profileId, setProfileId] = useState('hypoxia')
   const [statusStage, setStatusStage] = useState<string | null>(null)
   const [activeOmicsProfile, setActiveOmicsProfile] = useState<OmicsProfile | null>(null)
+  const [omicsProfiles, setOmicsProfiles] = useState<OmicsProfile[]>([])
   const [omicsClamps, setOmicsClamps] = useState<Record<string, number>>({})
+  const [omicsAlignmentScore, setOmicsAlignmentScore] = useState<number | null>(null)
 
   const stageTimer = useRef<number | null>(null)
   const controlsRef = useRef(controls)
@@ -312,6 +320,17 @@ export function LabProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (body, vars) => {
       setActiveOmicsProfile(vars.profile)
+      setOmicsProfiles((prev) => {
+        const without = prev.filter((p) => p.profile_id !== vars.profile.profile_id)
+        return [...without, vars.profile]
+      })
+      const score =
+        typeof body.alignment_score === 'number'
+          ? body.alignment_score
+          : typeof body.metadata?.alignment_score === 'number'
+            ? (body.metadata.alignment_score as number)
+            : null
+      setOmicsAlignmentScore(score)
       applySearchResult(body)
     },
     onError: () => {
@@ -367,10 +386,35 @@ export function LabProvider({ children }: { children: ReactNode }) {
 
   const runOmicsProfile = useCallback(
     (profile: OmicsProfile, params?: OmicsSimulateParams) => {
-      if (simBusyRef.current || runMutation.isPending || omicsMutation.isPending) return
+      // Prefer omics over a stale boot lock — clear search busy so upload always runs.
+      if (omicsMutation.isPending) return
+      if (runMutation.isPending) {
+        runMutation.reset()
+      }
+      simBusyRef.current = false
+      // Upsert into library immediately so the selector updates before simulate returns.
+      setOmicsProfiles((prev) => {
+        const without = prev.filter((p) => p.profile_id !== profile.profile_id)
+        return [...without, profile]
+      })
+      setActiveOmicsProfile(profile)
       omicsMutation.mutate({ profile, params })
     },
-    [runMutation.isPending, omicsMutation],
+    [runMutation, omicsMutation],
+  )
+
+  const selectOmicsProfile = useCallback(
+    (profileId: string) => {
+      const profile = omicsProfiles.find((p) => p.profile_id === profileId)
+      if (!profile) return
+      if (activeOmicsProfile?.profile_id === profileId && !omicsMutation.isPending) {
+        // Already active — still allow forced re-sim if needed.
+        runOmicsProfile(profile)
+        return
+      }
+      runOmicsProfile(profile)
+    },
+    [omicsProfiles, activeOmicsProfile, omicsMutation.isPending, runOmicsProfile],
   )
 
   const engineLive = healthQ.isSuccess && healthQ.data?.status === 'ok'
@@ -415,10 +459,13 @@ export function LabProvider({ children }: { children: ReactNode }) {
       topRegulator,
       pathNodes,
       activeOmicsProfile,
+      omicsProfiles,
       omicsClamps,
+      omicsAlignmentScore,
       runSimulation,
       runQuery,
       runOmicsProfile,
+      selectOmicsProfile,
     }),
     [
       controls,
@@ -447,10 +494,13 @@ export function LabProvider({ children }: { children: ReactNode }) {
       topRegulator,
       pathNodes,
       activeOmicsProfile,
+      omicsProfiles,
       omicsClamps,
+      omicsAlignmentScore,
       runSimulation,
       runQuery,
       runOmicsProfile,
+      selectOmicsProfile,
     ],
   )
 

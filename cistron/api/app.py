@@ -14,7 +14,7 @@ import logging
 import time
 import traceback
 
-from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -34,7 +34,7 @@ from cistron.data.resolver import list_condition_suggestions
 from cistron.engine import DrugDose, HillCubeConfig, HillCubeEngine
 from cistron.integrations.offline_data import OFFLINE_UNIPROT
 from cistron.models.graph import CausalActivityGraph
-from cistron.models.omics import OmicsProfile
+from cistron.models.omics import OmicsProfile, calculate_alignment_score
 from cistron.reasoner import (
     build_causal_context,
     generate_discovery_brief_prompt,
@@ -334,6 +334,18 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
         sl_time_budget_ms=0.0,
     )
 
+    stages.append("Scoring omics alignment (y₆₀ vs y₀)")
+    steady = {
+        sym: float(series[-1]) if series else 0.0
+        for sym, series in (payload.nodes or {}).items()
+    }
+    align = calculate_alignment_score(
+        steady,
+        profile,
+        baseline_y0=float(req.baseline_y0),
+        scaling_factor=float(req.scaling_factor),
+    )
+
     return SearchAndSimulateResponse(
         query=f"omics:{profile.condition}:{profile.sample_name}",
         profile_id=profile.profile_id,
@@ -351,6 +363,7 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
         resolve_ms=(time.perf_counter() - t0) * 1000.0,
         elapsed_ms=(time.perf_counter() - t0) * 1000.0,
         stages=stages,
+        alignment_score=float(align["alignment_score"]),
         metadata={
             "graph_id": graph_id,
             "provenance": {"source": "omics_profile", "condition": profile.condition},
@@ -360,6 +373,9 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
             "xai_ms": xai.elapsed_ms,
             "scientist_ms": scientist.elapsed_ms,
             "topology_ms": topo.elapsed_ms,
+            "alignment_mse": align["mse"],
+            "alignment_r2": align["r2"],
+            "alignment_n": align["n_compared"],
         },
     )
 
@@ -515,6 +531,24 @@ def _register_routes(router: APIRouter) -> None:
     )
     def condition_suggestions() -> List[ConditionSuggestion]:
         return [ConditionSuggestion(**row) for row in list_condition_suggestions()]
+
+    @router.get("/sources", tags=["search"])
+    def knowledge_sources() -> List[Dict[str, str]]:
+        """Explorer catalogue — local, OmniPath, SIGNOR, KEGG, Reactome, STRING, BioGRID, UniProt."""
+        return list_available_sources()
+
+    @router.get("/situations", tags=["search"])
+    def source_situations(
+        sources: Optional[str] = Query(
+            default=None,
+            description="Comma-separated source ids (e.g. local,omnipath,kegg)",
+        ),
+    ) -> List[Dict[str, str]]:
+        """Curated situations for the Explorer dropdown, filtered by enabled sources."""
+        selected = (
+            [s.strip() for s in sources.split(",") if s.strip()] if sources else None
+        )
+        return list_source_situations(selected)
 
     @router.post(
         "/search-and-simulate",

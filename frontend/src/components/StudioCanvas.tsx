@@ -16,6 +16,7 @@ import { GlassCard } from './GlassCard'
 import type { PresetDetail, ScrubberPayload } from '../api/types'
 import { FOCUS_SERIES } from '../api/types'
 import { lerpAtTime } from '../api/client'
+import { useLab } from '../lab/LabContext'
 
 /**
  * Hard cap — never hand Cytoscape a huge graph.
@@ -81,6 +82,51 @@ function activityHue(base: string, y: number): string {
   const hot = '#FF5252'
   if (y < 0.4) return mixHex(quiescent, base, y / 0.4)
   return mixHex(base, hot, (y - 0.4) / 0.6)
+}
+
+/** Diverging DE scale for omics overlay (−3 … +3 log2FC). */
+const OMICS_UP = '#ef4444'
+const OMICS_DOWN = '#3b82f6'
+const OMICS_NEUTRAL = '#64748b'
+const OMICS_LFC_ABS_MAX = 3
+
+/** Map log2 fold-change → red (up) / blue (down) / slate (unmapped). */
+function omicsHeatColor(log2Fc: number | null | undefined): string {
+  if (log2Fc == null || !Number.isFinite(log2Fc)) return OMICS_NEUTRAL
+  const t = Math.max(-1, Math.min(1, log2Fc / OMICS_LFC_ABS_MAX))
+  if (Math.abs(t) < 1e-6) return OMICS_NEUTRAL
+  if (t > 0) return mixHex(OMICS_NEUTRAL, OMICS_UP, t)
+  return mixHex(OMICS_NEUTRAL, OMICS_DOWN, -t)
+}
+
+/** Floating top-left legend for the omics heatmap overlay (avoids bottom-edge clip). */
+function OmicsHeatmapLegend({ profileName }: { profileName: string }) {
+  return (
+    <div className="pointer-events-none absolute left-2 top-2 z-20 w-[176px] rounded-lg border border-orange-500/35 bg-obsidian/95 px-2.5 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.45)] backdrop-blur-md">
+      <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-md border border-orange-500/40 bg-orange-950/55 px-1.5 py-0.5">
+        <span className="shrink-0 text-[8px] font-bold uppercase tracking-[0.12em] text-orange-300">
+          Active
+        </span>
+        <span className="lab-mono truncate text-[10px] font-semibold text-orange-50">
+          {profileName}
+        </span>
+      </div>
+      <div className="mb-1 text-[8px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        log2FC
+      </div>
+      <div
+        className="h-2 w-full rounded-full"
+        style={{
+          background: `linear-gradient(90deg, ${OMICS_DOWN} 0%, ${OMICS_NEUTRAL} 50%, ${OMICS_UP} 100%)`,
+        }}
+      />
+      <div className="mt-1 flex justify-between font-mono text-[9px] leading-none text-slate-400">
+        <span>−3</span>
+        <span>0</span>
+        <span>+3</span>
+      </div>
+    </div>
+  )
 }
 
 function semanticLayer(id: string): number | null {
@@ -237,6 +283,7 @@ export function StudioCanvas({
   onToggleKnockout?: (nodeId: string) => void
   loading?: boolean
 }) {
+  const { activeOmicsProfile } = useLab()
   const cyRef = useRef<HTMLDivElement>(null)
   const cyInstance = useRef<Core | null>(null)
   const styleRafRef = useRef<number | null>(null)
@@ -248,6 +295,18 @@ export function StudioCanvas({
   onNodeSelectRef.current = onNodeSelect
   onToggleKnockoutRef.current = onToggleKnockout
   knockoutRef.current = new Set(knockouts)
+
+  const omicsLfcByNode = useMemo(() => {
+    const map: Record<string, number> = {}
+    if (!activeOmicsProfile?.features) return map
+    for (const [sym, feat] of Object.entries(activeOmicsProfile.features)) {
+      map[sym.toUpperCase()] = feat.log2_fc
+      map[sym] = feat.log2_fc
+    }
+    return map
+  }, [activeOmicsProfile])
+
+  const omicsActive = Boolean(activeOmicsProfile && Object.keys(omicsLfcByNode).length)
 
   const displayGraph = useMemo(
     () => (graph ? sliceGraphForCanvas(graph, MAX_CANVAS_NODES) : null),
@@ -528,13 +587,23 @@ export function StudioCanvas({
           const y = koSet.has(id) ? 0 : (nodeY[id] ?? 0)
           const onPath = pathSet.has(id)
           const selected = selectedNode === id
-          const base = NODE_COLORS[id] ?? '#94A3B8'
-          const glow = 2 + y * 14
+          const lfc = omicsLfcByNode[id] ?? omicsLfcByNode[id.toUpperCase()]
+          const mapped = omicsActive && lfc != null
+          const paletteBase = NODE_COLORS[id] ?? '#94A3B8'
+          // Omics overlay: red ↑ / blue ↓ scaled by |log2FC|; unmapped → slate.
+          const heat = mapped ? omicsHeatColor(lfc) : OMICS_NEUTRAL
+          const fill = omicsActive
+            ? mapped
+              ? mixHex(heat, activityHue(heat, y), 0.2)
+              : OMICS_NEUTRAL
+            : activityHue(paletteBase, y)
+          const glow = mapped ? 6 + Math.min(10, Math.abs(lfc ?? 0) * 2) : 2 + y * 14
           const inHover = !hoveredNode || focusIds.has(id)
           const fade = inHover ? 1 : 0.15
           n.toggleClass('knocked-out', koSet.has(id))
+          n.toggleClass('omics-mapped', Boolean(mapped))
           n.style({
-            'background-color': activityHue(base, y),
+            'background-color': fill,
             width: 18 + 30 * Math.max(y, koSet.has(id) ? 0.15 : 0),
             height: 18 + 30 * Math.max(y, koSet.has(id) ? 0.15 : 0),
             opacity: (0.35 + 0.65 * Math.max(y, 0.2)) * fade,
@@ -544,14 +613,32 @@ export function StudioCanvas({
                 ? '#FF5252'
                 : onPath
                   ? '#10B981'
-                  : mixHex('#1E293B', base, y * 0.5),
-            'border-width': selected ? 4 : koSet.has(id) ? 3 : onPath ? 3.5 : 1.5 + y,
+                  : mapped
+                    ? heat
+                    : omicsActive
+                      ? '#475569'
+                      : mixHex('#1E293B', paletteBase, y * 0.5),
+            'border-width': selected
+              ? 4
+              : koSet.has(id)
+                ? 3
+                : onPath
+                  ? 3.5
+                  : mapped
+                    ? 3
+                    : 1.5 + y,
             'border-style': koSet.has(id) ? 'dashed' : 'solid',
-            'underlay-color': base,
+            'underlay-color': mapped ? heat : omicsActive ? OMICS_NEUTRAL : paletteBase,
             'underlay-padding': glow,
-            'underlay-opacity': inHover ? 0.12 + 0.55 * y : 0.04,
-            'font-size': onPath || selected ? 12 : 10,
-            label: koSet.has(id) ? `${id} ⊖` : id,
+            'underlay-opacity': mapped
+              ? inHover
+                ? 0.35 + 0.25 * Math.min(1, Math.abs(lfc ?? 0) / OMICS_LFC_ABS_MAX)
+                : 0.12
+              : inHover
+                ? 0.12 + 0.55 * y
+                : 0.04,
+            'font-size': onPath || selected || mapped ? 12 : 10,
+            label: koSet.has(id) ? `${id} ⊖` : mapped ? `${id} ●` : id,
           })
         })
         cy.edges().forEach((e) => {
@@ -587,7 +674,7 @@ export function StudioCanvas({
         styleRafRef.current = null
       }
     }
-  }, [nodeY, edgeF, pathKey, pathSet, selectedNode, koSet, hoveredNode, layoutReady])
+  }, [nodeY, edgeF, pathKey, pathSet, selectedNode, koSet, hoveredNode, layoutReady, omicsActive, omicsLfcByNode])
 
   useEffect(() => {
     const cy = cyInstance.current
@@ -658,7 +745,11 @@ export function StudioCanvas({
 
       <GlassCard
         title="Signaling topology"
-        hint="Hierarchical TB · hover path · flux glow ∝ Fⱼ→ᵢ(t) · → stim · ⊣ inhib"
+        hint={
+          omicsActive
+            ? 'Omics heat · red ↑log2FC · blue ↓log2FC · slate unmapped'
+            : 'Hierarchical TB · hover path · flux glow ∝ Fⱼ→ᵢ(t) · → stim · ⊣ inhib'
+        }
         className="flex min-h-0 flex-1 flex-col overflow-hidden !pb-3"
       >
         <div className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-xl border border-slate-800/80 lab-grid-panel">
@@ -678,15 +769,24 @@ export function StudioCanvas({
               Laying out cascade…
             </div>
           ) : null}
-          <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider text-slate-500">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/80 px-1.5 py-0.5">
+          {omicsActive && activeOmicsProfile ? (
+            <OmicsHeatmapLegend
+              profileName={
+                activeOmicsProfile.condition ||
+                activeOmicsProfile.sample_name ||
+                activeOmicsProfile.profile_id
+              }
+            />
+          ) : null}
+          <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-slate-500">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
               <span className="h-0.5 w-3.5 bg-cyan-flux" /> Stim →
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/80 px-1.5 py-0.5">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
               <span className="h-0.5 w-3.5 border-t border-dashed border-coral-action" /> Inhib ⊣
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/80 px-1.5 py-0.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-hub" /> Hub / cascade
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-violet-hub" /> Hub
             </span>
           </div>
         </div>

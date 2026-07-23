@@ -190,6 +190,12 @@ class SearchAndSimulateResponse(BaseModel):
     elapsed_ms: float = 0.0
     stages: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    alignment_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Omics Fit Score (%) — agreement of y(t₆₀) vs mapped y₀",
+    )
 
 
 class NodeInspectorResponse(BaseModel):

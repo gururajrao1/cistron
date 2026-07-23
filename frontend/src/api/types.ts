@@ -268,6 +268,8 @@ export interface SearchAndSimulateResponse {
   elapsed_ms: number
   stages: string[]
   metadata: Record<string, unknown>
+  /** Omics Fit Score (%) when response came from /omics/simulate. */
+  alignment_score?: number | null
 }
 
 /** Differential-omics feature (matches cistron.models.omics.OmicsFeature). */
@@ -326,6 +328,17 @@ AKT1,0.40,0.082,P31749
 O2,-3.20,0.0001,
 `
 
+/** Mild / control-like DE table for multi-profile switching demos. */
+export const EXAMPLE_CONTROL_RNASEQ_CSV = `Gene,Log2FC,padj,UniProt
+HIF1A,0.15,0.42,Q16665
+EGLN1,0.05,0.61,Q9GZT9
+VEGFA,-0.10,0.55,P15692
+GLUT1,0.08,0.48,P11166
+MTOR,-0.12,0.39,P42345
+AKT1,0.02,0.71,P31749
+O2,0.20,0.33,
+`
+
 export interface ProteinMeta {
   gene_symbol: string
   uniprot_id?: string | null
@@ -357,6 +370,18 @@ export interface KnowledgeSource {
   id: string
   label: string
 }
+
+/** Full Explorer catalogue fallback when GET /sources is unreachable. */
+export const ALL_KNOWLEDGE_SOURCES: KnowledgeSource[] = [
+  { id: 'local', label: 'Local curated bank' },
+  { id: 'omnipath', label: 'OmniPath' },
+  { id: 'signor', label: 'SIGNOR' },
+  { id: 'kegg', label: 'KEGG' },
+  { id: 'reactome', label: 'Reactome' },
+  { id: 'string', label: 'STRING' },
+  { id: 'biogrid', label: 'BioGRID' },
+  { id: 'uniprot', label: 'UniProt' },
+]
 
 export interface SourceSituation {
   id: string

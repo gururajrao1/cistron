@@ -10,148 +10,115 @@ from __future__ import annotations
 import csv
 import io
 import logging
-import re
 import uuid
-from typing import Dict, Iterable, Mapping, Optional, Union
+from typing import Dict, List, Mapping, Optional, Union
 
 from cistron.models.omics import OmicsFeature, OmicsProfile
 
 logger = logging.getLogger(__name__)
 
-# Canonical field → accepted header aliases (already normalized: lower, no spaces/_/-).
-_SYMBOL_ALIASES = frozenset(
-    {
-        "symbol",
-        "gene",
-        "genesymbol",
-        "gene_symbol",
-        "genename",
-        "gene_name",
-        "protein",
-        "proteinname",
-        "protein_name",
-        "hgnc",
-        "hgncsymbol",
-        "name",
-    }
+# Accepted identity columns after ``k.strip().lower()``.
+_SYMBOL_KEYS = (
+    "symbol",
+    "gene",
+    "protein",
+    "gene_symbol",
+    "gene_name",
+    "target",
+    "id",
 )
-_LOG2FC_ALIASES = frozenset(
-    {
-        "log2fc",
-        "log2_fc",
-        "logfc",
-        "log_fc",
-        "foldchange",
-        "fold_change",
-        "log2foldchange",
-        "log2_fold_change",
-        "lfc",
-        "fc",
-    }
+
+# Accepted effect-size columns after ``k.strip().lower()`` (also matched
+# with underscores / spaces removed, e.g. log2FoldChange → log2foldchange).
+_LOG2FC_KEYS = (
+    "log2foldchange",
+    "log2fc",
+    "logfc",
+    "fold_change",
+    "log2_fc",
 )
-_PVALUE_ALIASES = frozenset(
-    {
-        "pvalue",
-        "p_value",
-        "pval",
-        "p",
-        "padj",
-        "p_adj",
-        "p.adj",
-        "fdr",
-        "qvalue",
-        "q_value",
-        "adjpvalue",
-        "adj_p_value",
-        "adjustedpvalue",
-    }
+
+_PVALUE_KEYS = (
+    "pvalue",
+    "p_value",
+    "pval",
+    "padj",
+    "p_adj",
+    "fdr",
+    "qvalue",
+    "q_value",
 )
-_UNIPROT_ALIASES = frozenset(
-    {
-        "uniprot",
-        "uniprot_id",
-        "uniprotid",
-        "accession",
-        "protein_id",
-        "proteinid",
-    }
-)
-_ENSEMBL_ALIASES = frozenset(
-    {
-        "ensembl",
-        "ensembl_id",
-        "ensemblid",
-        "ensemblgene",
-        "ensembl_gene_id",
-        "gene_id",
-        "geneid",
-    }
-)
-_EXPRESSION_ALIASES = frozenset(
-    {
-        "expression",
-        "expression_level",
-        "expressionlevel",
-        "tpm",
-        "fpkm",
-        "rpkm",
-        "counts",
-        "basemean",
-        "base_mean",
-        "abundance",
-    }
+
+_UNIPROT_KEYS = ("uniprot", "uniprot_id", "accession", "protein_id")
+_ENSEMBL_KEYS = ("ensembl", "ensembl_id", "ensembl_gene_id", "gene_id")
+_EXPRESSION_KEYS = (
+    "expression",
+    "expression_level",
+    "tpm",
+    "fpkm",
+    "rpkm",
+    "counts",
+    "basemean",
+    "base_mean",
 )
 
 
-def _normalize_header(name: str) -> str:
-    """Lowercase and strip separators so ``Log2_FC`` ≡ ``log2fc``."""
-    s = str(name).strip().lower()
-    s = s.replace(".", "_")
-    s = re.sub(r"[\s\-]+", "_", s)
-    # Keep underscores for alias sets that include them; also provide compact form.
-    return s
+def _strip_bom(value: str) -> str:
+    """Remove a leading UTF-8 BOM (``\\ufeff``) and surrounding whitespace."""
+    return str(value).lstrip("\ufeff").strip()
 
 
-def _header_keys(fieldnames: Iterable[str]) -> Dict[str, str]:
+def _norm_key(name: object) -> str:
+    """Lowercase + strip BOM/whitespace for header / row key matching."""
+    return _strip_bom(str(name) if name is not None else "").lower()
+
+
+def _compact_key(name: str) -> str:
+    """Drop separators so ``log2_fc`` / ``log2FoldChange`` / ``Log2 FC`` collide."""
+    return (
+        _norm_key(name)
+        .replace(" ", "")
+        .replace("_", "")
+        .replace("-", "")
+        .replace(".", "")
+    )
+
+
+def _normalize_row(row: Mapping[str, object]) -> Dict[str, str]:
     """
-    Map normalized header → original CSV column name.
+    Rebuild a DictReader row with lowercase stripped keys.
 
-    Also indexes the compact (underscore-stripped) form so ``log2_fc`` and
-    ``log2fc`` both resolve.
+    Values are coerced to stripped strings. Duplicate normalized keys keep
+    the first non-empty value.
     """
-    mapping: Dict[str, str] = {}
-    for raw in fieldnames:
-        if raw is None:
+    out: Dict[str, str] = {}
+    for raw_key, raw_val in row.items():
+        if raw_key is None:
             continue
-        norm = _normalize_header(raw)
-        compact = norm.replace("_", "")
-        mapping.setdefault(norm, raw)
-        mapping.setdefault(compact, raw)
-    return mapping
+        key = _norm_key(raw_key)
+        if not key:
+            continue
+        val = "" if raw_val is None else str(raw_val).strip()
+        if key not in out or (not out[key] and val):
+            out[key] = val
+        # Also index the compact form for alias lookup.
+        compact = _compact_key(raw_key)
+        if compact and (compact not in out or (not out[compact] and val)):
+            out[compact] = val
+    return out
 
 
-def _resolve_column(
-    header_map: Mapping[str, str],
-    aliases: frozenset[str],
-) -> Optional[str]:
-    """Return the original CSV column name for the first matching alias."""
-    for alias in aliases:
-        norm = _normalize_header(alias)
-        compact = norm.replace("_", "")
-        if norm in header_map:
-            return header_map[norm]
-        if compact in header_map:
-            return header_map[compact]
-    return None
-
-
-def _cell(row: Mapping[str, str], column: Optional[str]) -> str:
-    if not column:
-        return ""
-    val = row.get(column, "")
-    if val is None:
-        return ""
-    return str(val).strip()
+def _pick(row: Mapping[str, str], candidates: tuple[str, ...]) -> str:
+    """Return the first non-empty cell matching any candidate key."""
+    for cand in candidates:
+        # Exact normalized match.
+        if cand in row and row[cand]:
+            return row[cand]
+        # Compact match (log2foldchange ↔ log2_fold_change).
+        compact = _compact_key(cand)
+        if compact in row and row[compact]:
+            return row[compact]
+    return ""
 
 
 def _parse_float(raw: str) -> Optional[float]:
@@ -174,7 +141,8 @@ def _decode_content(file_content: Union[str, bytes]) -> str:
             except UnicodeDecodeError:
                 continue
         return file_content.decode("utf-8", errors="replace")
-    return str(file_content)
+    # String payloads may still carry a BOM from some editors.
+    return _strip_bom(str(file_content))
 
 
 def parse_omics_csv(
@@ -185,13 +153,10 @@ def parse_omics_csv(
     """
     Parse a differential-omics CSV/TSV blob into an :class:`OmicsProfile`.
 
-    Header names are normalized for case and punctuation. Accepted aliases
-    include ``gene`` / ``symbol`` / ``protein`` for identifiers and
-    ``log2fc`` / ``logfc`` / ``fold_change`` for effect size, plus
-    ``pvalue`` / ``padj`` / ``fdr`` for significance.
-
-    Invalid or empty rows are skipped (logged at DEBUG); at least one
-    valid feature with a finite ``log2_fc`` is required.
+    Headers are BOM-stripped and lowercased (``Symbol`` → ``symbol``,
+    ``log2FoldChange`` → ``log2foldchange``). Rows are rebuilt the same way
+    before alias lookup. Gene symbols are uppercased before insertion into
+    ``features``.
 
     Parameters
     ----------
@@ -223,60 +188,69 @@ def parse_omics_csv(
     if not reader.fieldnames:
         raise ValueError("omics CSV has no header row")
 
-    header_map = _header_keys(reader.fieldnames)
-    col_symbol = _resolve_column(header_map, _SYMBOL_ALIASES)
-    col_lfc = _resolve_column(header_map, _LOG2FC_ALIASES)
-    col_pval = _resolve_column(header_map, _PVALUE_ALIASES)
-    col_uniprot = _resolve_column(header_map, _UNIPROT_ALIASES)
-    col_ensembl = _resolve_column(header_map, _ENSEMBL_ALIASES)
-    col_expr = _resolve_column(header_map, _EXPRESSION_ALIASES)
+    # Normalize headers up-front (BOM + case + whitespace).
+    normalized_fields: List[str] = [_norm_key(h) for h in reader.fieldnames if h is not None]
+    if not any(f for f in normalized_fields):
+        raise ValueError("omics CSV has no usable header columns")
 
-    if not col_symbol:
+    # Probe first data rows via normalized keys to confirm required columns exist.
+    peek_ok_symbol = any(
+        f in _SYMBOL_KEYS or _compact_key(f) in {_compact_key(k) for k in _SYMBOL_KEYS}
+        for f in normalized_fields
+    )
+    peek_ok_lfc = any(
+        f in _LOG2FC_KEYS or _compact_key(f) in {_compact_key(k) for k in _LOG2FC_KEYS}
+        for f in normalized_fields
+    )
+    if not peek_ok_symbol:
         raise ValueError(
             "omics CSV missing gene symbol column "
-            "(expected one of: gene, symbol, protein, …)"
+            f"(expected one of: {', '.join(_SYMBOL_KEYS)})"
         )
-    if not col_lfc:
+    if not peek_ok_lfc:
         raise ValueError(
             "omics CSV missing log2 fold-change column "
-            "(expected one of: log2fc, logfc, fold_change, …)"
+            f"(expected one of: {', '.join(_LOG2FC_KEYS)})"
         )
 
     features: Dict[str, OmicsFeature] = {}
     skipped = 0
 
-    for row in reader:
-        if not row:
+    for raw_row in reader:
+        if not raw_row:
             continue
-        symbol_raw = _cell(row, col_symbol)
-        if not symbol_raw:
+        row = _normalize_row(raw_row)
+
+        symbol_raw = _pick(row, _SYMBOL_KEYS)
+        lfc_raw = _pick(row, _LOG2FC_KEYS)
+        if not symbol_raw or not lfc_raw:
             skipped += 1
             continue
+
         symbol = symbol_raw.strip().upper()
-        # Drop multi-gene aggregates / placeholders.
         if not symbol or symbol in {"NA", "N/A", "NONE", ".", "-"}:
             skipped += 1
             continue
+        # Collapse multi-gene aggregates to the first token.
         if ";" in symbol or "," in symbol:
             symbol = symbol.split(";")[0].split(",")[0].strip().upper()
             if not symbol:
                 skipped += 1
                 continue
 
-        lfc = _parse_float(_cell(row, col_lfc))
+        lfc = _parse_float(lfc_raw)
         if lfc is None:
             skipped += 1
             continue
 
-        p_raw = _parse_float(_cell(row, col_pval)) if col_pval else None
-        # Soft-clamp out-of-range p-values rather than rejecting the row.
+        p_raw = _parse_float(_pick(row, _PVALUE_KEYS))
         p_value: Optional[float] = None
         if p_raw is not None:
             p_value = min(1.0, max(0.0, p_raw))
 
-        uniprot = _cell(row, col_uniprot) or None
-        ensembl = _cell(row, col_ensembl) or None
-        expr = _parse_float(_cell(row, col_expr)) if col_expr else None
+        uniprot = _pick(row, _UNIPROT_KEYS) or None
+        ensembl = _pick(row, _ENSEMBL_KEYS) or None
+        expr = _parse_float(_pick(row, _EXPRESSION_KEYS))
 
         try:
             features[symbol] = OmicsFeature(

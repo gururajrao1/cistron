@@ -5,7 +5,7 @@ import { GlassCard } from '../components/GlassCard'
 import { ProvenanceBadge, SOURCE_COLORS } from '../components/ProvenanceBadge'
 import { fetchKnowledgeSources, fetchSourceSituations } from '../api/client'
 import { useLab } from '../lab/LabContext'
-import { DEFAULT_SELECTED_SOURCES } from '../api/types'
+import { ALL_KNOWLEDGE_SOURCES } from '../api/types'
 
 export function ExplorerView() {
   const lab = useLab()
@@ -30,7 +30,7 @@ export function ExplorerView() {
   const catalogue =
     sourcesQ.data?.length
       ? sourcesQ.data
-      : DEFAULT_SELECTED_SOURCES.map((id) => ({ id, label: id }))
+      : ALL_KNOWLEDGE_SOURCES
 
   const situations = situationsQ.data ?? []
 
@@ -65,6 +65,14 @@ export function ExplorerView() {
       selectedSources: sources.includes('local') ? sources : ['local', ...sources],
     })
   }
+
+  const situationPlaceholder = situationsQ.isLoading
+    ? 'Loading situations…'
+    : situationsQ.isError
+      ? 'Could not load situations (check API)'
+      : situations.length
+        ? 'Select a situation…'
+        : 'Enable a source to see situations'
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
@@ -129,11 +137,7 @@ export function ExplorerView() {
             onChange={(e) => applySituation(e.target.value)}
           >
             <option value="">
-              {situationsQ.isLoading
-                ? 'Loading situations…'
-                : situations.length
-                  ? 'Select a situation…'
-                  : 'Enable a source to see situations'}
+              {situationPlaceholder}
             </option>
             {Object.entries(situationsBySource).map(([source, items]) => (
               <optgroup key={source} label={source.toUpperCase()}>

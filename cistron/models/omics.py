@@ -129,6 +129,70 @@ class OmicsProfile(BaseModel):
         return out
 
 
+def calculate_alignment_score(
+    simulated_steady_states: Dict[str, float],
+    omics_profile: "OmicsProfile",
+    *,
+    baseline_y0: float = 0.5,
+    scaling_factor: float = 1.0,
+) -> Dict[str, float]:
+    """
+    Score how well simulated terminal activities ``y(t₆₀)`` match omics-mapped ``y₀``.
+
+    Compares only genes present in ``omics_profile.features`` (measured DE targets).
+    Returns::
+
+        {
+          "mse": float,
+          "r2": float,                 # coefficient of determination (may be < 0)
+          "alignment_score": float,    # Omics Fit Score in [0, 100] (%)
+          "n_compared": float,
+        }
+    """
+    if not omics_profile.features:
+        return {"mse": 0.0, "r2": 0.0, "alignment_score": 0.0, "n_compared": 0.0}
+
+    nodes = list(omics_profile.features.keys())
+    y0_map = omics_profile.map_to_initial_states(
+        nodes,
+        baseline_y0=baseline_y0,
+        scaling_factor=scaling_factor,
+    )
+
+    preds: List[float] = []
+    targets: List[float] = []
+    for sym in nodes:
+        if sym not in simulated_steady_states:
+            continue
+        preds.append(float(simulated_steady_states[sym]))
+        targets.append(float(y0_map.get(sym, baseline_y0)))
+
+    n = len(preds)
+    if n == 0:
+        return {"mse": 0.0, "r2": 0.0, "alignment_score": 0.0, "n_compared": 0.0}
+
+    mse = sum((p - t) ** 2 for p, t in zip(preds, targets)) / n
+    mean_t = sum(targets) / n
+    ss_tot = sum((t - mean_t) ** 2 for t in targets)
+    ss_res = sum((p - t) ** 2 for p, t in zip(preds, targets))
+    if ss_tot < 1e-12:
+        r2 = 1.0 if ss_res < 1e-12 else 0.0
+    else:
+        r2 = 1.0 - (ss_res / ss_tot)
+
+    # Fit %: prefer R² when informative; blend with MSE softness for small n.
+    r2_fit = max(0.0, min(1.0, r2)) * 100.0
+    mse_fit = max(0.0, min(100.0, 100.0 * math.exp(-mse / 0.08)))
+    alignment = 0.7 * r2_fit + 0.3 * mse_fit if n >= 3 else mse_fit
+
+    return {
+        "mse": float(mse),
+        "r2": float(r2),
+        "alignment_score": float(max(0.0, min(100.0, alignment))),
+        "n_compared": float(n),
+    }
+
+
 def _clip_y0(y: float) -> float:
     if not math.isfinite(y):
         return 0.5
@@ -140,4 +204,5 @@ __all__ = [
     "Y0_MAX",
     "OmicsFeature",
     "OmicsProfile",
+    "calculate_alignment_score",
 ]

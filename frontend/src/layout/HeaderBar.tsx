@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity, Loader2, Search, WifiOff } from 'lucide-react'
+import { Activity, Dna, Loader2, Search, WifiOff } from 'lucide-react'
 import { useLab } from '../lab/LabContext'
 import { GeneBadge, MetaLabel, MetricChip, StatusPill } from '../components/ui'
 
@@ -17,6 +17,8 @@ export function HeaderBar() {
     offlineMessage,
     profileId,
     scientist,
+    activeOmicsProfile,
+    omicsAlignmentScore,
   } = useLab()
 
   const [draft, setDraft] = useState(controls.conditionQuery)
@@ -104,6 +106,20 @@ export function HeaderBar() {
             </strong>
           </MetricChip>
           {profileId ? <GeneBadge name={profileId} tone="violet" /> : null}
+          {activeOmicsProfile ? (
+            <MetricChip className="border-orange-500/40 bg-orange-950/40 text-orange-100 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
+              <Dna className="h-3 w-3 text-orange-300" />
+              <span className="uppercase tracking-wider">Omics-Conditioned</span>
+              <strong className="lab-mono max-w-[7rem] truncate text-orange-50">
+                {activeOmicsProfile.condition || activeOmicsProfile.sample_name}
+              </strong>
+              {omicsAlignmentScore != null ? (
+                <strong className="lab-mono text-amber-200">
+                  fit {omicsAlignmentScore.toFixed(0)}%
+                </strong>
+              ) : null}
+            </MetricChip>
+          ) : null}
           <MetricChip className="max-w-[9rem]">
             sim
             <strong className="lab-mono truncate text-slate-200">

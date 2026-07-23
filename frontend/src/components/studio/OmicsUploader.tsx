@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Dna,
@@ -13,6 +13,7 @@ import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
 import { uploadOmicsCsv } from '../../api/client'
 import {
+  EXAMPLE_CONTROL_RNASEQ_CSV,
   EXAMPLE_HYPOXIA_RNASEQ_CSV,
   mapLog2FcToY0,
   type OmicsFeature,
@@ -53,81 +54,108 @@ function featureRows(
     .sort((a, b) => Number(b.mapped) - Number(a.mapped) || a.symbol.localeCompare(b.symbol))
 }
 
+function profileLabel(p: OmicsProfile): string {
+  return `${p.condition || 'Untitled'} · ${p.sample_name || p.profile_id}`
+}
+
 export function OmicsUploader() {
   const lab = useLab()
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [sampleName, setSampleName] = useState('Tumor Sample 01')
-  const [condition, setCondition] = useState('Core Hypoxia')
+  const [condition, setCondition] = useState('Hypoxia Core')
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
-  const [previewProfile, setPreviewProfile] = useState<OmicsProfile | null>(
-    lab.activeOmicsProfile,
-  )
 
   const busy = uploading || lab.busy
-  const active = previewProfile ?? lab.activeOmicsProfile
+  const active = lab.activeOmicsProfile
+
+  // Keep local form fields aligned with the selected library profile.
+  useEffect(() => {
+    if (!active) return
+    if (active.sample_name) setSampleName(active.sample_name)
+    if (active.condition) setCondition(active.condition)
+  }, [active?.profile_id])
 
   const rows = useMemo(
-    () =>
-      active
-        ? featureRows(active, lab.nodes, lab.omicsClamps)
-        : [],
+    () => (active ? featureRows(active, lab.nodes, lab.omicsClamps) : []),
     [active, lab.nodes, lab.omicsClamps],
   )
 
   const mappedCount = rows.filter((r) => r.mapped).length
-
-  const ingestProfile = useCallback(
-    (profile: OmicsProfile) => {
-      setPreviewProfile(profile)
-      setLocalError(null)
-      lab.runOmicsProfile(profile)
-    },
-    [lab.runOmicsProfile],
-  )
+  const fitScore = lab.omicsAlignmentScore
 
   const handleFile = useCallback(
     async (file: File | null) => {
-      if (!file || busy) return
+      if (!file || uploading) return
+      if (!lab.engineLive) {
+        setLocalError(
+          'Cistron API is offline. Start it with: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001',
+        )
+        return
+      }
       setUploading(true)
       setLocalError(null)
       try {
-        const profile = await uploadOmicsCsv(file, sampleName.trim() || 'Tumor Sample 01', condition.trim() || 'Core Hypoxia')
-        ingestProfile(profile)
+        const profile = await uploadOmicsCsv(
+          file,
+          sampleName.trim() || 'Tumor Sample 01',
+          condition.trim() || 'Hypoxia Core',
+        )
+        lab.runOmicsProfile(profile)
       } catch (err) {
-        setLocalError(err instanceof Error ? err.message : 'Upload failed')
+        const msg = err instanceof Error ? err.message : 'Upload failed'
+        setLocalError(
+          msg.includes('404') || msg.toLowerCase().includes('not found')
+            ? `${msg} — is an old VoidSignal process still on :8000? Use Cistron on :8001 (python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001)`
+            : msg,
+        )
       } finally {
         setUploading(false)
       }
     },
-    [busy, sampleName, condition, ingestProfile],
+    [uploading, lab.engineLive, lab.runOmicsProfile, sampleName, condition],
   )
 
-  const loadExample = useCallback(async () => {
-    if (busy) return
-    setUploading(true)
-    setLocalError(null)
-    try {
-      const blob = new File(
-        [EXAMPLE_HYPOXIA_RNASEQ_CSV],
-        'hypoxia_rnaseq_example.csv',
-        { type: 'text/csv' },
-      )
-      const profile = await uploadOmicsCsv(
-        blob,
-        sampleName.trim() || 'Tumor Sample 01',
-        condition.trim() || 'Core Hypoxia',
-      )
-      ingestProfile(profile)
-    } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Example load failed')
-    } finally {
-      setUploading(false)
-    }
-  }, [busy, sampleName, condition, ingestProfile])
+  const loadExample = useCallback(
+    async (kind: 'hypoxia' | 'control') => {
+      if (uploading) return
+      if (!lab.engineLive) {
+        setLocalError(
+          'Cistron API is offline. Start it with: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001',
+        )
+        return
+      }
+      setUploading(true)
+      setLocalError(null)
+      const isHypoxia = kind === 'hypoxia'
+      const nextSample = isHypoxia ? 'Tumor Sample 01' : 'Control Sample 01'
+      const nextCondition = isHypoxia ? 'Hypoxia Core' : 'Control'
+      setSampleName(nextSample)
+      setCondition(nextCondition)
+      try {
+        const blob = new File(
+          [isHypoxia ? EXAMPLE_HYPOXIA_RNASEQ_CSV : EXAMPLE_CONTROL_RNASEQ_CSV],
+          isHypoxia ? 'hypoxia_rnaseq_example.csv' : 'control_rnaseq_example.csv',
+          { type: 'text/csv' },
+        )
+        const profile = await uploadOmicsCsv(blob, nextSample, nextCondition)
+        lab.runOmicsProfile(profile)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Example load failed'
+        setLocalError(
+          msg.includes('404') || msg.toLowerCase().includes('not found')
+            ? `${msg} — restart Cistron API on :8001 (not the old VoidSignal process on :8000)`
+            : msg,
+        )
+      } finally {
+        setUploading(false)
+      }
+    },
+    [uploading, lab.engineLive, lab.runOmicsProfile],
+  )
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 lg:p-6">
@@ -142,6 +170,11 @@ export function OmicsUploader() {
                 <Sparkles className="h-3 w-3" /> Profile live
               </span>
             ) : null}
+            {fitScore != null ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+                Fit {fitScore.toFixed(0)}%
+              </span>
+            ) : null}
           </div>
           <h1 className="text-xl font-extrabold tracking-tight text-slate-50">
             Multi-Omics Profile Mapper
@@ -149,7 +182,7 @@ export function OmicsUploader() {
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
             Upload differential RNA-seq / proteomics CSV. Fold-changes map to Hill-cube
             baselines <span className="lab-mono text-slate-400">y₀</span> and re-run the
-            hypoxia cascade on the Studio canvas.
+            hypoxia cascade on the Studio canvas. Switch conditions to compare fit.
           </p>
         </div>
         <button
@@ -241,11 +274,20 @@ export function OmicsUploader() {
             <button
               type="button"
               disabled={busy || !lab.engineLive}
-              onClick={() => void loadExample()}
+              onClick={() => void loadExample('hypoxia')}
               className="inline-flex items-center gap-1.5 rounded-xl border border-violet-hub/40 bg-violet-950/40 px-3 py-2 text-[11px] font-semibold text-violet-200 shadow-[0_0_14px_rgba(139,92,246,0.15)] hover:bg-violet-900/40 disabled:opacity-40"
             >
               <FileSpreadsheet className="h-3.5 w-3.5" />
-              Load Example RNA-seq (Hypoxia log2FC)
+              Load Hypoxia Core
+            </button>
+            <button
+              type="button"
+              disabled={busy || !lab.engineLive}
+              onClick={() => void loadExample('control')}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-600/50 bg-slate-900/50 px-3 py-2 text-[11px] font-semibold text-slate-200 hover:bg-slate-800/60 disabled:opacity-40"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Load Control
             </button>
           </div>
 
@@ -264,9 +306,38 @@ export function OmicsUploader() {
               : 'No profile loaded yet'
           }
         >
+          <div className="mb-3 space-y-2">
+            <label className="block text-[11px]">
+              <MetaLabel className="mb-1">Condition library</MetaLabel>
+              <select
+                value={active?.profile_id ?? ''}
+                disabled={busy || lab.omicsProfiles.length === 0}
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (id) lab.selectOmicsProfile(id)
+                }}
+                className="w-full rounded-lg border border-slate-800 bg-obsidian/80 px-2.5 py-2 text-[12px] text-slate-100 outline-none focus:border-emerald-500/40 disabled:opacity-40"
+              >
+                {lab.omicsProfiles.length === 0 ? (
+                  <option value="">No profiles yet</option>
+                ) : (
+                  lab.omicsProfiles.map((p) => (
+                    <option key={p.profile_id} value={p.profile_id}>
+                      {profileLabel(p)}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+            <p className="text-[10px] leading-relaxed text-slate-500">
+              Switching re-runs <span className="lab-mono text-slate-400">POST /omics/simulate</span>{' '}
+              with the selected profile.
+            </p>
+          </div>
+
           {active ? (
             <div className="space-y-3">
-              <dl className="grid grid-cols-[6rem_1fr] gap-x-2 gap-y-1.5 text-[12px]">
+              <dl className="grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-1.5 text-[12px]">
                 <dt className="text-slate-500">Profile ID</dt>
                 <dd className="lab-mono truncate text-emerald-300">{active.profile_id}</dd>
                 <dt className="text-slate-500">Mapped</dt>
@@ -274,6 +345,25 @@ export function OmicsUploader() {
                   <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-200">
                     {mappedCount}/{rows.length} network hits
                   </span>
+                </dd>
+                <dt className="text-slate-500">Omics Fit</dt>
+                <dd>
+                  {fitScore != null ? (
+                    <span
+                      className={clsx(
+                        'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold',
+                        fitScore >= 70
+                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                          : fitScore >= 40
+                            ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                            : 'border-coral-action/40 bg-coral-action/10 text-red-200',
+                      )}
+                    >
+                      {fitScore.toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">—</span>
+                  )}
                 </dd>
                 <dt className="text-slate-500">Latency</dt>
                 <dd className="lab-mono text-slate-300">
@@ -297,7 +387,7 @@ export function OmicsUploader() {
             </div>
           ) : (
             <p className="text-[12px] leading-relaxed text-slate-500">
-              Load the hypoxia example or upload a DE table to condition the cascade.
+              Load Control + Hypoxia Core examples, then switch conditions in the dropdown.
             </p>
           )}
         </GlassCard>
