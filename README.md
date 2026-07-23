@@ -1,5 +1,6 @@
 # VOIDSIGNAL
 
+
 Research-grade computational biology platform — **Phase 1: Core Simulation & Network Engine**.
 
 Pure-Python, zero hard dependencies. Dual-paradigm signalling on one shared graph:
