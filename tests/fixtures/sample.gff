@@ -1,0 +1,4 @@
+##gff-version 3
+chr7	test	gene	55019017	55211628	.	+	.	ID=gene:EGFR;Name=EGFR;gene_name=EGFR
+chr7	test	gene	140719327	140924764	.	-	.	ID=gene:BRAF;Name=BRAF;gene_name=BRAF
+chr12	test	gene	25205246	25250929	.	-	.	ID=gene:KRAS;Name=KRAS;gene_name=KRAS

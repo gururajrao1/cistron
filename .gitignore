@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.voidsignal_cache/
+.cache/
+*.sqlite3
+
+.ruff_cache/
+.venv/
+venv/
+.env
+*.log
+.DS_Store
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# IDE / OS
+.idea/
+.vscode/
+Thumbs.db

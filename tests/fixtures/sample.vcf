@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##INFO=<ID=GENE,Number=1,Type=String,Description="Gene symbol">
+##INFO=<ID=Consequence,Number=1,Type=String,Description="Variant consequence">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr7	55249071	rs121913444	G	A	90	PASS	GENE=EGFR;Consequence=missense_variant
+chr7	140453136	rs113488022	A	T	99	PASS	GENE=BRAF;Consequence=missense_variant
+chr12	25398284	.	C	T	80	PASS	GENE=KRAS;Consequence=stop_gained
+chr17	7578406	.	C	T	70	PASS	GENE=TP53;Consequence=frameshift_variant
+chr1	100	.	A	G	40	LowQual	GENE=EGFR;Consequence=synonymous_variant

@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<!DOCTYPE pathway SYSTEM "https://www.kegg.jp/kegg/xml/KGML_v0.7.2_.dtd">
+<!--
+  VOIDSIGNAL vendored high-fidelity subset of KEGG MAPK signalling (hsa04010).
+  Air-gapped fallback asset: not a full KEGG dump; core cascade + feedback
+  plus representative stoichiometric phosphorylation reactions.
+-->
+<pathway name="path:hsa04010" org="hsa" number="04010"
+         title="MAPK signaling pathway (VOIDSIGNAL vendored)">
+  <entry id="1" name="hsa:1950" type="gene">
+    <graphics name="EGF" type="rectangle" x="80" y="120" width="46" height="17"/>
+  </entry>
+  <entry id="2" name="hsa:1956" type="gene">
+    <graphics name="EGFR" type="rectangle" x="180" y="120" width="46" height="17"/>
+  </entry>
+  <entry id="3" name="hsa:3265" type="gene">
+    <graphics name="HRAS" type="rectangle" x="280" y="80" width="46" height="17"/>
+  </entry>
+  <entry id="4" name="hsa:3845" type="gene">
+    <graphics name="KRAS" type="rectangle" x="280" y="160" width="46" height="17"/>
+  </entry>
+  <entry id="5" name="hsa:5894" type="gene">
+    <graphics name="RAF1" type="rectangle" x="400" y="120" width="46" height="17"/>
+  </entry>
+  <entry id="6" name="hsa:673" type="gene">
+    <graphics name="BRAF" type="rectangle" x="400" y="200" width="46" height="17"/>
+  </entry>
+  <entry id="7" name="hsa:5604" type="gene">
+    <graphics name="MAP2K1" type="rectangle" x="520" y="120" width="46" height="17"/>
+  </entry>
+  <entry id="8" name="hsa:5605" type="gene">
+    <graphics name="MAP2K2" type="rectangle" x="520" y="200" width="46" height="17"/>
+  </entry>
+  <entry id="9" name="hsa:5594" type="gene">
+    <graphics name="MAPK1" type="rectangle" x="640" y="120" width="46" height="17"/>
+  </entry>
+  <entry id="10" name="hsa:5595" type="gene">
+    <graphics name="MAPK3" type="rectangle" x="640" y="200" width="46" height="17"/>
+  </entry>
+  <!-- Phospho-forms treated as distinct species for stoichiometry -->
+  <entry id="11" name="vs:MAP2K1_P" type="gene">
+    <graphics name="MAP2K1_P" type="rectangle" x="520" y="40" width="54" height="17"/>
+  </entry>
+  <entry id="12" name="vs:MAPK1_P" type="gene">
+    <graphics name="MAPK1_P" type="rectangle" x="640" y="40" width="54" height="17"/>
+  </entry>
+  <entry id="13" name="hsa:1432" type="gene">
+    <graphics name="MAPK14" type="rectangle" x="640" y="280" width="46" height="17"/>
+  </entry>
+  <entry id="14" name="hsa:5599" type="gene">
+    <graphics name="MAPK8" type="rectangle" x="640" y="340" width="46" height="17"/>
+  </entry>
+
+  <!-- Classic directed signalling (PPrel) -->
+  <relation entry1="1" entry2="2" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="2" entry2="3" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="2" entry2="4" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="3" entry2="5" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="4" entry2="6" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="5" entry2="7" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="6" entry2="7" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="6" entry2="8" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="12" entry2="5" type="PPrel"><subtype name="inhibition"/></relation>
+  <relation entry1="12" entry2="6" type="PPrel"><subtype name="inhibition"/></relation>
+  <relation entry1="9" entry2="13" type="PPrel"><subtype name="activation"/></relation>
+  <relation entry1="9" entry2="14" type="PPrel"><subtype name="activation"/></relation>
+
+  <!-- Stoichiometric MAP2K1 phosphorylation by RAF1 to MAP2K1_P -->
+  <entry id="20" name="hsa:5894" type="gene" reaction="rn:VS_MAP2K1_PHOS">
+    <graphics name="RAF1" type="rectangle" x="400" y="40" width="46" height="17"/>
+  </entry>
+  <reaction id="100" name="rn:VS_MAP2K1_PHOS" type="irreversible">
+    <substrate id="7" name="hsa:5604" stoichiometry="1"/>
+    <product id="11" name="vs:MAP2K1_P" stoichiometry="1"/>
+  </reaction>
+
+  <!-- Stoichiometric MAPK1 phosphorylation by MAP2K1_P to MAPK1_P -->
+  <entry id="21" name="vs:MAP2K1_P" type="gene" reaction="rn:VS_MAPK1_PHOS">
+    <graphics name="MAP2K1_P" type="rectangle" x="560" y="40" width="54" height="17"/>
+  </entry>
+  <reaction id="101" name="rn:VS_MAPK1_PHOS" type="irreversible">
+    <substrate id="9" name="hsa:5594" stoichiometry="1"/>
+    <product id="12" name="vs:MAPK1_P" stoichiometry="1"/>
+  </reaction>
+
+  <!-- Burst reaction: 1 MAPK1 + 1 MAP2K1_P yields 2 MAPK1_P -->
+  <entry id="22" name="vs:MAP2K1_P" type="gene" reaction="rn:VS_ERK_BURST">
+    <graphics name="MAP2K1_P" type="rectangle" x="580" y="80" width="54" height="17"/>
+  </entry>
+  <reaction id="102" name="rn:VS_ERK_BURST" type="irreversible">
+    <substrate id="9" name="hsa:5594" stoichiometry="1"/>
+    <substrate id="11" name="vs:MAP2K1_P" stoichiometry="1"/>
+    <product id="12" name="vs:MAPK1_P" stoichiometry="2"/>
+  </reaction>
+</pathway>

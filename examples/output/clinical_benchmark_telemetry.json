@@ -1,0 +1,1619 @@
+{
+  "version": "0.11.0",
+  "patient": {
+    "patient": {
+      "patient_id": "CLIN_MULTIHIT_01",
+      "n_nodes": 7,
+      "n_edges": 7,
+      "n_mutations": 3,
+      "n_expression_scales": 6,
+      "unresolved_genes": [],
+      "baseline_fingerprint": {
+        "name": "clinical_baseline:demo_mapk",
+        "n_nodes": 7,
+        "n_edges": 7,
+        "node_names": [
+          "EGF",
+          "EGFR",
+          "ERK",
+          "MEK",
+          "RAF",
+          "RAS",
+          "TP53"
+        ]
+      }
+    },
+    "ingestion": {
+      "patient_id": "CLIN_MULTIHIT_01",
+      "n_variants_input": 3,
+      "n_variants_parsed": 3,
+      "n_mutations_applied": 3,
+      "n_expression_applied": 6,
+      "unresolved_genes": [],
+      "structural_hits": [
+        {
+          "gene": "EGFR",
+          "entity_id": "protein_118cc6440881",
+          "hgvs_p": "p.L858R",
+          "consequence": "missense_variant",
+          "residue": 858,
+          "disruption": 1.0,
+          "scales": {
+            "kcat_scale": 0.15000000000000002,
+            "km_scale": 2.5,
+            "binding_scale": 0.09999999999999998,
+            "production_scale": 0.5
+          },
+          "applied": true,
+          "notes": [
+            "synthetic_alphafold_map",
+            "oncogene_gof_kinetic_boost"
+          ]
+        },
+        {
+          "gene": "KRAS",
+          "entity_id": "protein_5059d8dffa95",
+          "hgvs_p": "p.G12D",
+          "consequence": "missense_variant",
+          "residue": 12,
+          "disruption": 1.0,
+          "scales": {
+            "kcat_scale": 0.15000000000000002,
+            "km_scale": 2.5,
+            "binding_scale": 0.09999999999999998,
+            "production_scale": 0.5
+          },
+          "applied": true,
+          "notes": [
+            "synthetic_alphafold_map",
+            "oncogene_gof_kinetic_boost"
+          ]
+        },
+        {
+          "gene": "TP53",
+          "entity_id": "protein_f41e40f2da68",
+          "hgvs_p": "p.R213*",
+          "consequence": "stop_gained",
+          "residue": 213,
+          "disruption": 1.0,
+          "scales": {
+            "kcat_scale": 0.15000000000000002,
+            "km_scale": 2.5,
+            "binding_scale": 0.09999999999999998,
+            "production_scale": 0.5
+          },
+          "applied": true,
+          "notes": [
+            "synthetic_alphafold_map",
+            "lof_or_hypomorph_scales_applied"
+          ]
+        }
+      ],
+      "warnings": [
+        "Using demo MAPK cascade baseline"
+      ],
+      "metadata": {
+        "gene_map_size": 17,
+        "patient_summary": {
+          "patient_id": "CLIN_MULTIHIT_01",
+          "n_nodes": 7,
+          "n_edges": 7,
+          "n_mutations": 3,
+          "n_expression_scales": 6,
+          "unresolved_genes": [],
+          "baseline_fingerprint": {
+            "name": "clinical_baseline:demo_mapk",
+            "n_nodes": 7,
+            "n_edges": 7,
+            "node_names": [
+              "EGF",
+              "EGFR",
+              "ERK",
+              "MEK",
+              "RAF",
+              "RAS",
+              "TP53"
+            ]
+          }
+        },
+        "vendored_nodes": 15,
+        "simulation_baseline": "clinical_baseline:demo_mapk"
+      }
+    },
+    "n_baseline_nodes": 7,
+    "symbols": [
+      "BRAF",
+      "EGF",
+      "EGFR",
+      "ERK",
+      "HRAS",
+      "KRAS",
+      "MAP2K1",
+      "MAP2K2",
+      "MAPK1",
+      "MAPK3",
+      "MEK",
+      "NRAS",
+      "P53",
+      "RAF",
+      "RAF1",
+      "RAS",
+      "TP53"
+    ],
+    "vcf_path": "C:\\Users\\Gururaja\\Projects\\voidsignal\\examples\\output\\multihit_clinical.vcf",
+    "expression_path": "C:\\Users\\Gururaja\\Projects\\voidsignal\\examples\\output\\clinical_expression.tsv"
+  },
+  "pre_hsi": {
+    "hsi": 0.7301984580510269,
+    "weighted_hsi": 0.7301984580510269,
+    "threshold": 0.75,
+    "collapse_flag": false,
+    "n_nodes": 7,
+    "top_shifts": [
+      {
+        "entity_id": "protein_f3b9be9638da",
+        "name": "ERK",
+        "relative_delta": 1.19673083475062,
+        "contribution": 1.19673083475062
+      },
+      {
+        "entity_id": "protein_5059d8dffa95",
+        "name": "RAS",
+        "relative_delta": 1.1648695156034923,
+        "contribution": 1.1648695156034923
+      },
+      {
+        "entity_id": "protein_f41e40f2da68",
+        "name": "TP53",
+        "relative_delta": -1.0,
+        "contribution": 1.0
+      },
+      {
+        "entity_id": "protein_662cad47c5a5",
+        "name": "RAF",
+        "relative_delta": 0.913174143625474,
+        "contribution": 0.913174143625474
+      },
+      {
+        "entity_id": "protein_118cc6440881",
+        "name": "EGFR",
+        "relative_delta": 0.3538915623537935,
+        "contribution": 0.3538915623537935
+      },
+      {
+        "entity_id": "protein_3d73ff3931da",
+        "name": "MEK",
+        "relative_delta": 0.3151075969997896,
+        "contribution": 0.3151075969997896
+      },
+      {
+        "entity_id": "protein_dc99d7681e16",
+        "name": "EGF",
+        "relative_delta": 0.1676155530240188,
+        "contribution": 0.1676155530240188
+      }
+    ],
+    "metadata": {
+      "ss_frac": 0.25,
+      "relative_l2": 0.8345742888288348,
+      "max_abs_rel": 1.19673083475062
+    }
+  },
+  "agent": {
+    "success": true,
+    "objective_met": true,
+    "hypothesis": "In a EGFR-driven cancer signalling background, a dual EGFR/MEK inhibition regimen can suppress ERK over-activation below pathogenic levels while respecting toxicity threshold 8.",
+    "goal": {
+      "text": "Find a two-drug combination that halts ERK over-activation in a mutated EGFR background without exceeding the toxicity threshold",
+      "readout": "ERK",
+      "oncogenes": [
+        "EGFR"
+      ],
+      "disease": "cancer",
+      "n_drugs": 2,
+      "drug_candidates": [
+        "EGFR",
+        "MEK",
+        "RAF"
+      ],
+      "dose": 2.5,
+      "t_start": 2.0,
+      "t_end": 15.0,
+      "t_sim": 20.0,
+      "tox_threshold": 8.0,
+      "halt_overactivation": true,
+      "require_tox_safe": true,
+      "ensemble_members": 4,
+      "patient_id": "CLIN_MULTIHIT_01",
+      "metadata": {}
+    },
+    "steps": [
+      {
+        "kind": "parse_goal",
+        "description": "Parse research objective into structured goal",
+        "params": {
+          "confidence": 0.98
+        },
+        "status": "done",
+        "result_summary": "confidence=0.98",
+        "artifacts": {}
+      },
+      {
+        "kind": "build_network",
+        "description": "Instantiate baseline signalling network",
+        "params": {},
+        "status": "done",
+        "result_summary": "nodes=17",
+        "artifacts": {}
+      },
+      {
+        "kind": "disease_preset",
+        "description": "Apply disease preset 'cancer' with oncogenes ('EGFR',)",
+        "params": {
+          "disease": "cancer",
+          "oncogenes": [
+            "EGFR"
+          ]
+        },
+        "status": "done",
+        "result_summary": "cancer_signaling",
+        "artifacts": {}
+      },
+      {
+        "kind": "target_prioritize",
+        "description": "Rank therapeutic targets via GAT / AIScientistReasoner",
+        "params": {},
+        "status": "done",
+        "result_summary": "top=protein_f41e40f2da68",
+        "artifacts": {
+          "top": [
+            "protein_f41e40f2da68",
+            "protein_118cc6440881",
+            "protein_5059d8dffa95",
+            "protein_dc99d7681e16",
+            "protein_3d73ff3931da"
+          ]
+        }
+      },
+      {
+        "kind": "drug_combination",
+        "description": "Screen two-drug combinations (Bliss/Loewe) under disease background",
+        "params": {
+          "candidates": [
+            "EGFR",
+            "MEK",
+            "RAF"
+          ],
+          "dose": 2.5
+        },
+        "status": "done",
+        "result_summary": "MEK+RAF effect_ab=0.498 bliss=-0.017 (additive)",
+        "artifacts": {
+          "pair": [
+            "MEK",
+            "RAF"
+          ]
+        }
+      },
+      {
+        "kind": "ensemble_sensitivity",
+        "description": "Monte Carlo ensemble (n=4) for uncertainty bands",
+        "params": {
+          "n_members": 4
+        },
+        "status": "done",
+        "result_summary": "success=4/4",
+        "artifacts": {}
+      },
+      {
+        "kind": "toxicology_audit",
+        "description": "Audit trajectories against toxicity threshold 8",
+        "params": {
+          "threshold": 8.0
+        },
+        "status": "done",
+        "result_summary": "events=0 safe=True",
+        "artifacts": {}
+      },
+      {
+        "kind": "statistical_audit",
+        "description": "Welch t-tests on baseline vs treated readout windows",
+        "params": {},
+        "status": "done",
+        "result_summary": "p=5.12e-09 d=-4.4 \u0394rel=-0.466",
+        "artifacts": {}
+      },
+      {
+        "kind": "literature_align",
+        "description": "Compute Literature Alignment Score against curated + KEGG evidence",
+        "params": {},
+        "status": "done",
+        "result_summary": "LAS=0.521 (moderate literature concordance). Top simulated targets [TP53, EGFR, RAS] matched 25 curated evidence records (pathway coverage=0.86, synergy=0.15).",
+        "artifacts": {
+          "las": 0.5206437522807501
+        }
+      },
+      {
+        "kind": "synthesize_report",
+        "description": "Generate Markdown scientific research brief",
+        "params": {},
+        "status": "done",
+        "result_summary": "chars=8568",
+        "artifacts": {}
+      }
+    ],
+    "best_agents": [
+      {
+        "name": "agent:MEK",
+        "target_id": "protein_3d73ff3931da",
+        "dose": 2.5,
+        "mechanism": "competitive",
+        "t_start": 2.0,
+        "t_end": 15.0
+      },
+      {
+        "name": "agent:RAF",
+        "target_id": "protein_662cad47c5a5",
+        "dose": 2.125,
+        "mechanism": "competitive",
+        "t_start": 2.0,
+        "t_end": 15.0
+      }
+    ],
+    "synergy": {
+      "effect_a": 0.4510763947439643,
+      "effect_b": 0.11647875315369535,
+      "effect_ab": 0.4979369436089225,
+      "bliss_expected": 0.5150143318608187,
+      "bliss_score": -0.017077388251896197,
+      "loewe_ci": null,
+      "interpretation": "additive",
+      "doses": {
+        "a": 2.5,
+        "b": 2.125
+      }
+    },
+    "monotherapy_effects": {
+      "EGFR": 0.0002050973239613122,
+      "MEK": 0.4510763947439643,
+      "RAF": 0.11647875315369535
+    },
+    "hsi": {
+      "hsi": 0.3529794100712854,
+      "weighted_hsi": 0.3529794100712854,
+      "threshold": 0.75,
+      "collapse_flag": false,
+      "n_nodes": 7,
+      "top_shifts": [
+        {
+          "entity_id": "protein_662cad47c5a5",
+          "name": "RAF",
+          "relative_delta": 0.74171108430545,
+          "contribution": 0.74171108430545
+        },
+        {
+          "entity_id": "protein_3d73ff3931da",
+          "name": "MEK",
+          "relative_delta": -0.5626772989321669,
+          "contribution": 0.5626772989321669
+        },
+        {
+          "entity_id": "protein_118cc6440881",
+          "name": "EGFR",
+          "relative_delta": -0.5595582615344666,
+          "contribution": 0.5595582615344666
+        },
+        {
+          "entity_id": "protein_f3b9be9638da",
+          "name": "ERK",
+          "relative_delta": -0.5545510193705029,
+          "contribution": 0.5545510193705029
+        },
+        {
+          "entity_id": "protein_5059d8dffa95",
+          "name": "RAS",
+          "relative_delta": -0.05235820635641178,
+          "contribution": 0.05235820635641178
+        },
+        {
+          "entity_id": "protein_dc99d7681e16",
+          "name": "EGF",
+          "relative_delta": 0.0,
+          "contribution": 0.0
+        },
+        {
+          "entity_id": "protein_f41e40f2da68",
+          "name": "TP53",
+          "relative_delta": 0.0,
+          "contribution": 0.0
+        }
+      ],
+      "metadata": {
+        "ss_frac": 0.25,
+        "relative_l2": 0.4613821995179832,
+        "max_abs_rel": 0.74171108430545
+      }
+    },
+    "tox_events": [],
+    "tox_safe": true,
+    "stats": [
+      {
+        "entity_id": "protein_f3b9be9638da",
+        "p_value": 5.119226154093326e-09,
+        "effect": -4.401237542061696,
+        "relative_change": -0.4658119288361063,
+        "significant": true
+      }
+    ],
+    "targets": [
+      {
+        "entity_id": "protein_f41e40f2da68",
+        "name": "protein_f41e40f2da68",
+        "score": 0.64849566559904
+      },
+      {
+        "entity_id": "protein_118cc6440881",
+        "name": "protein_118cc6440881",
+        "score": 0.5486364755314397
+      },
+      {
+        "entity_id": "protein_5059d8dffa95",
+        "name": "protein_5059d8dffa95",
+        "score": 0.5486364755314397
+      },
+      {
+        "entity_id": "protein_dc99d7681e16",
+        "name": "protein_dc99d7681e16",
+        "score": 0.5486364755314397
+      },
+      {
+        "entity_id": "protein_3d73ff3931da",
+        "name": "protein_3d73ff3931da",
+        "score": 0.5248045000477263
+      },
+      {
+        "entity_id": "protein_662cad47c5a5",
+        "name": "protein_662cad47c5a5",
+        "score": 0.5107953699044959
+      },
+      {
+        "entity_id": "protein_f3b9be9638da",
+        "name": "protein_f3b9be9638da",
+        "score": 0.4932592399008973
+      }
+    ],
+    "ai_recommendations": [
+      {
+        "entity_id": "protein_f41e40f2da68",
+        "name": "TP53",
+        "score": 0.64849566559904,
+        "summary": "Prioritize TP53 (score=0.648). Top features: binding=+0.125, boolean=+0.107, km=+0.071. Critical edge EGF\u2192EGFR (\u0394=+0.000). Feedback context: MEK\u2192ERK\u2192RAF\u2192MEK.",
+        "feature_attributions": [
+          {
+            "feature_name": "binding",
+            "value": -2.267786838055363,
+            "attribution": 0.12473140338637062
+          },
+          {
+            "feature_name": "boolean",
+            "value": -2.2677868380553634,
+            "attribution": 0.10690600414205076
+          },
+          {
+            "feature_name": "km",
+            "value": 2.2082097898955335,
+            "attribution": 0.07121396589767671
+          },
+          {
+            "feature_name": "in_degree",
+            "value": -1.224744871391589,
+            "attribution": -0.04801977755468544
+          },
+          {
+            "feature_name": "betweenness",
+            "value": -1.2165006031411487,
+            "attribution": 0.04386418677111952
+          },
+          {
+            "feature_name": "mean_trajectory",
+            "value": -1.3754122943319056,
+            "attribution": 0.03840365813320659
+          },
+          {
+            "feature_name": "vmax",
+            "value": -1.976419208792846,
+            "attribution": 0.02654713117781363
+          },
+          {
+            "feature_name": "degradation",
+            "value": -1.0256451881367417,
+            "attribution": -0.025291688291303148
+          },
+          {
+            "feature_name": "final_trajectory",
+            "value": -1.3754122943319056,
+            "attribution": -0.024446294658330963
+          },
+          {
+            "feature_name": "concentration",
+            "value": -1.3754122943319056,
+            "attribution": 0.01739774939635079
+          },
+          {
+            "feature_name": "basal",
+            "value": -0.4774552605594229,
+            "attribution": 0.014293672004558307
+          },
+          {
+            "feature_name": "production",
+            "value": -0.38684260023731604,
+            "attribution": 0.01252085598035847
+          },
+          {
+            "feature_name": "out_degree",
+            "value": 0.0,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "is_receptor",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "is_enzyme",
+            "value": 0.0,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "std_trajectory",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "velocity_proxy",
+            "value": 0.0,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "drug_exposure",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "delta_clearance",
+            "value": 0.0,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "compartment_rank",
+            "value": 0.0,
+            "attribution": 0.0
+          }
+        ],
+        "edge_attributions": [
+          {
+            "edge_id": "edge_39a3bf413be7",
+            "source_id": "protein_dc99d7681e16",
+            "target_id": "protein_118cc6440881",
+            "source_name": "EGF",
+            "target_name": "EGFR",
+            "attribution": 0.0,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_c035a0670655",
+            "source_id": "protein_118cc6440881",
+            "target_id": "protein_5059d8dffa95",
+            "source_name": "EGFR",
+            "target_name": "RAS",
+            "attribution": 0.0,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_a9efe5f45a48",
+            "source_id": "protein_5059d8dffa95",
+            "target_id": "protein_662cad47c5a5",
+            "source_name": "RAS",
+            "target_name": "RAF",
+            "attribution": 0.0,
+            "attention": 0.49841469626518603
+          },
+          {
+            "edge_id": "edge_f8bcdee30c21",
+            "source_id": "protein_662cad47c5a5",
+            "target_id": "protein_3d73ff3931da",
+            "source_name": "RAF",
+            "target_name": "MEK",
+            "attribution": 0.0,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_7d4cfd892cce",
+            "source_id": "protein_3d73ff3931da",
+            "target_id": "protein_f3b9be9638da",
+            "source_name": "MEK",
+            "target_name": "ERK",
+            "attribution": 0.0,
+            "attention": 0.5290504501317571
+          },
+          {
+            "edge_id": "edge_9962b20a6e2f",
+            "source_id": "protein_f3b9be9638da",
+            "target_id": "protein_662cad47c5a5",
+            "source_name": "ERK",
+            "target_name": "RAF",
+            "attribution": 0.0,
+            "attention": 0.5015853037348139
+          }
+        ],
+        "structural": {
+          "feedback_loops": [
+            [
+              "protein_3d73ff3931da",
+              "protein_f3b9be9638da",
+              "protein_662cad47c5a5",
+              "protein_3d73ff3931da"
+            ]
+          ],
+          "feedback_loop_names": [
+            [
+              "MEK",
+              "ERK",
+              "RAF",
+              "MEK"
+            ]
+          ],
+          "hubs": [
+            {
+              "entity_id": "protein_662cad47c5a5",
+              "name": "RAF",
+              "score": 3.0
+            },
+            {
+              "entity_id": "protein_f3b9be9638da",
+              "name": "ERK",
+              "score": 3.0
+            },
+            {
+              "entity_id": "protein_118cc6440881",
+              "name": "EGFR",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_3d73ff3931da",
+              "name": "MEK",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_5059d8dffa95",
+              "name": "RAS",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_dc99d7681e16",
+              "name": "EGF",
+              "score": 1.0
+            },
+            {
+              "entity_id": "protein_f41e40f2da68",
+              "name": "TP53",
+              "score": 1.0
+            }
+          ],
+          "compartment_bottlenecks": [],
+          "cluster_ids": {
+            "protein_118cc6440881": 0,
+            "protein_3d73ff3931da": 0,
+            "protein_5059d8dffa95": 0,
+            "protein_662cad47c5a5": 0,
+            "protein_dc99d7681e16": 0,
+            "protein_f3b9be9638da": 0,
+            "protein_f41e40f2da68": 0
+          },
+          "notes": [
+            "Focus node is a topological hub (high degree centrality).",
+            "Network tagged with disease phenotype 'cancer_signaling'."
+          ]
+        }
+      },
+      {
+        "entity_id": "protein_118cc6440881",
+        "name": "EGFR",
+        "score": 0.5486364755314397,
+        "summary": "Prioritize EGFR (score=0.549). Top features: concentration=-0.000, boolean=+0.000, production=+0.000. Critical edge EGF\u2192EGFR (\u0394=-0.075). Feedback context: MEK\u2192ERK\u2192RAF\u2192MEK.",
+        "feature_attributions": [
+          {
+            "feature_name": "concentration",
+            "value": -0.6255588549473973,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "boolean",
+            "value": 0.37796447300922736,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "production",
+            "value": 2.2673322591115106,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "degradation",
+            "value": 0.5698028822981894,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "vmax",
+            "value": 1.1412422590670863,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "km",
+            "value": -0.6900655593423543,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "binding",
+            "value": 0.37796447300922753,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "basal",
+            "value": 2.196294198573345,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "in_degree",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "out_degree",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "betweenness",
+            "value": 0.14598007237693775,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "is_receptor",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "is_enzyme",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "mean_trajectory",
+            "value": -0.6255588549473973,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "std_trajectory",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "final_trajectory",
+            "value": -0.6255588549473973,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "velocity_proxy",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "drug_exposure",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "delta_clearance",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "compartment_rank",
+            "value": 0.0,
+            "attribution": 0.0
+          }
+        ],
+        "edge_attributions": [
+          {
+            "edge_id": "edge_39a3bf413be7",
+            "source_id": "protein_dc99d7681e16",
+            "target_id": "protein_118cc6440881",
+            "source_name": "EGF",
+            "target_name": "EGFR",
+            "attribution": -0.07470148106674401,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_c035a0670655",
+            "source_id": "protein_118cc6440881",
+            "target_id": "protein_5059d8dffa95",
+            "source_name": "EGFR",
+            "target_name": "RAS",
+            "attribution": 0.026727994046068515,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_a9efe5f45a48",
+            "source_id": "protein_5059d8dffa95",
+            "target_id": "protein_662cad47c5a5",
+            "source_name": "RAS",
+            "target_name": "RAF",
+            "attribution": 0.026727994046068515,
+            "attention": 0.49841469626518603
+          },
+          {
+            "edge_id": "edge_f8bcdee30c21",
+            "source_id": "protein_662cad47c5a5",
+            "target_id": "protein_3d73ff3931da",
+            "source_name": "RAF",
+            "target_name": "MEK",
+            "attribution": 0.026727994046068515,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_7d4cfd892cce",
+            "source_id": "protein_3d73ff3931da",
+            "target_id": "protein_f3b9be9638da",
+            "source_name": "MEK",
+            "target_name": "ERK",
+            "attribution": 0.026727994046068515,
+            "attention": 0.5290504501317571
+          },
+          {
+            "edge_id": "edge_9962b20a6e2f",
+            "source_id": "protein_f3b9be9638da",
+            "target_id": "protein_662cad47c5a5",
+            "source_name": "ERK",
+            "target_name": "RAF",
+            "attribution": 0.026727994046068515,
+            "attention": 0.5015853037348139
+          }
+        ],
+        "structural": {
+          "feedback_loops": [
+            [
+              "protein_3d73ff3931da",
+              "protein_f3b9be9638da",
+              "protein_662cad47c5a5",
+              "protein_3d73ff3931da"
+            ]
+          ],
+          "feedback_loop_names": [
+            [
+              "MEK",
+              "ERK",
+              "RAF",
+              "MEK"
+            ]
+          ],
+          "hubs": [
+            {
+              "entity_id": "protein_662cad47c5a5",
+              "name": "RAF",
+              "score": 3.0
+            },
+            {
+              "entity_id": "protein_f3b9be9638da",
+              "name": "ERK",
+              "score": 3.0
+            },
+            {
+              "entity_id": "protein_118cc6440881",
+              "name": "EGFR",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_3d73ff3931da",
+              "name": "MEK",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_5059d8dffa95",
+              "name": "RAS",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_dc99d7681e16",
+              "name": "EGF",
+              "score": 1.0
+            },
+            {
+              "entity_id": "protein_f41e40f2da68",
+              "name": "TP53",
+              "score": 1.0
+            }
+          ],
+          "compartment_bottlenecks": [],
+          "cluster_ids": {
+            "protein_118cc6440881": 0,
+            "protein_3d73ff3931da": 0,
+            "protein_5059d8dffa95": 0,
+            "protein_662cad47c5a5": 0,
+            "protein_dc99d7681e16": 0,
+            "protein_f3b9be9638da": 0,
+            "protein_f41e40f2da68": 0
+          },
+          "notes": [
+            "Focus node is a topological hub (high degree centrality).",
+            "Network tagged with disease phenotype 'cancer_signaling'."
+          ]
+        }
+      },
+      {
+        "entity_id": "protein_5059d8dffa95",
+        "name": "RAS",
+        "score": 0.5486364755314397,
+        "summary": "Prioritize RAS (score=0.549). Top features: concentration=+0.000, boolean=+0.000, production=-0.000. Critical edge RAS\u2192RAF (\u0394=+0.063). Feedback context: MEK\u2192ERK\u2192RAF\u2192MEK.",
+        "feature_attributions": [
+          {
+            "feature_name": "concentration",
+            "value": 1.3410230725295378,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "boolean",
+            "value": 0.37796447300922736,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "production",
+            "value": -0.38684260023731604,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "degradation",
+            "value": 0.5698028822981894,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "vmax",
+            "value": 0.405979121507466,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "km",
+            "value": -0.6900655593423543,
+            "attribution": -0.0
+          },
+          {
+            "feature_name": "binding",
+            "value": 0.37796447300922753,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "basal",
+            "value": 0.19098210422376913,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "in_degree",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "out_degree",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "betweenness",
+            "value": 0.827220410135981,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "is_receptor",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "is_enzyme",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "mean_trajectory",
+            "value": 1.3410230725295378,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "std_trajectory",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "final_trajectory",
+            "value": 1.3410230725295378,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "velocity_proxy",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "drug_exposure",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "delta_clearance",
+            "value": 0.0,
+            "attribution": 0.0
+          },
+          {
+            "feature_name": "compartment_rank",
+            "value": 0.0,
+            "attribution": 0.0
+          }
+        ],
+        "edge_attributions": [
+          {
+            "edge_id": "edge_a9efe5f45a48",
+            "source_id": "protein_5059d8dffa95",
+            "target_id": "protein_662cad47c5a5",
+            "source_name": "RAS",
+            "target_name": "RAF",
+            "attribution": 0.06259317381243595,
+            "attention": 0.49841469626518603
+          },
+          {
+            "edge_id": "edge_f8bcdee30c21",
+            "source_id": "protein_662cad47c5a5",
+            "target_id": "protein_3d73ff3931da",
+            "source_name": "RAF",
+            "target_name": "MEK",
+            "attribution": 0.06259317381243595,
+            "attention": 1.0
+          },
+          {
+            "edge_id": "edge_7d4cfd892cce",
+            "source_id": "protein_3d73ff3931da",
+            "target_id": "protein_f3b9be9638da",
+            "source_name": "MEK",
+            "target_name": "ERK",
+            "attribution": 0.06259317381243595,
+            "attention": 0.5290504501317571
+          },
+          {
+            "edge_id": "edge_9962b20a6e2f",
+            "source_id": "protein_f3b9be9638da",
+            "target_id": "protein_662cad47c5a5",
+            "source_name": "ERK",
+            "target_name": "RAF",
+            "attribution": 0.06259317381243595,
+            "attention": 0.5015853037348139
+          },
+          {
+            "edge_id": "edge_317a4bd75e2b",
+            "source_id": "protein_f41e40f2da68",
+            "target_id": "protein_f3b9be9638da",
+            "source_name": "TP53",
+            "target_name": "ERK",
+            "attribution": 0.06259317381243595,
+            "attention": 0.4709495498682429
+          },
+          {
+            "edge_id": "edge_39a3bf413be7",
+            "source_id": "protein_dc99d7681e16",
+            "target_id": "protein_118cc6440881",
+            "source_name": "EGF",
+            "target_name": "EGFR",
+            "attribution": -0.008397455378030383,
+            "attention": 1.0
+          }
+        ],
+        "structural": {
+          "feedback_loops": [
+            [
+              "protein_3d73ff3931da",
+              "protein_f3b9be9638da",
+              "protein_662cad47c5a5",
+              "protein_3d73ff3931da"
+            ]
+          ],
+          "feedback_loop_names": [
+            [
+              "MEK",
+              "ERK",
+              "RAF",
+              "MEK"
+            ]
+          ],
+          "hubs": [
+            {
+              "entity_id": "protein_662cad47c5a5",
+              "name": "RAF",
+              "score": 3.0
+            },
+            {
+              "entity_id": "protein_f3b9be9638da",
+              "name": "ERK",
+              "score": 3.0
+            },
+            {
+              "entity_id": "protein_118cc6440881",
+              "name": "EGFR",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_3d73ff3931da",
+              "name": "MEK",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_5059d8dffa95",
+              "name": "RAS",
+              "score": 2.0
+            },
+            {
+              "entity_id": "protein_dc99d7681e16",
+              "name": "EGF",
+              "score": 1.0
+            },
+            {
+              "entity_id": "protein_f41e40f2da68",
+              "name": "TP53",
+              "score": 1.0
+            }
+          ],
+          "compartment_bottlenecks": [],
+          "cluster_ids": {
+            "protein_118cc6440881": 0,
+            "protein_3d73ff3931da": 0,
+            "protein_5059d8dffa95": 0,
+            "protein_662cad47c5a5": 0,
+            "protein_dc99d7681e16": 0,
+            "protein_f3b9be9638da": 0,
+            "protein_f41e40f2da68": 0
+          },
+          "notes": [
+            "Focus node is a topological hub (high degree centrality).",
+            "Network tagged with disease phenotype 'cancer_signaling'."
+          ]
+        }
+      }
+    ],
+    "literature": {
+      "las": 0.5206437522807501,
+      "synergy_alignment": 0.15,
+      "pathway_coverage": 0.8571428571428571,
+      "n_evidence_hits": 25,
+      "corpus_size": 22,
+      "kegg_members": [
+        "BRAF",
+        "EGF",
+        "EGFR",
+        "ERK",
+        "HRAS",
+        "KRAS",
+        "MAP2K1",
+        "MAP2K1_P",
+        "MAP2K2",
+        "MAPK1",
+        "MAPK14",
+        "MAPK1_P",
+        "MAPK3",
+        "MAPK8",
+        "MEK",
+        "RAF",
+        "RAF1",
+        "RAS"
+      ],
+      "summary": "LAS=0.521 (moderate literature concordance). Top simulated targets [TP53, EGFR, RAS] matched 25 curated evidence records (pathway coverage=0.86, synergy=0.15).",
+      "targets": [
+        {
+          "symbol": "TP53",
+          "entity_id": "protein_f41e40f2da68",
+          "simulation_score": 0.64849566559904,
+          "las_component": 0.20500000000000002,
+          "n_evidence": 1,
+          "pathway_hit": false,
+          "drug_target_hit": false,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "TP53",
+              "claim": "Simulation topology edge TP53\u2192ERK (inhibition).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "ERK"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "Simulation topology edge TP53\u2192ERK (inhibition)."
+          ]
+        },
+        {
+          "symbol": "EGFR",
+          "entity_id": "protein_118cc6440881",
+          "simulation_score": 0.5486364755314397,
+          "las_component": 0.9251014097911732,
+          "n_evidence": 5,
+          "pathway_hit": true,
+          "drug_target_hit": true,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "EGFR",
+              "claim": "EGFR is a receptor tyrosine kinase frequently mutated / amplified in cancer; constitutive signalling drives MAPK cascade hyperactivation.",
+              "source": "UniProt:P00533",
+              "evidence_type": "oncogene",
+              "weight": 1.0,
+              "related_symbols": [
+                "RAS",
+                "RAF",
+                "MEK",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "EGFR",
+              "claim": "EGFR tyrosine kinase inhibitors are clinically validated oncology drugs.",
+              "source": "PMID:15118073",
+              "evidence_type": "drug_target",
+              "weight": 1.0,
+              "related_symbols": [
+                "MEK",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "EGFR",
+              "claim": "EGFR\u2013MEK combination therapy mitigates adaptive resistance via ERK rebound.",
+              "source": "PMID:27926792",
+              "evidence_type": "synergy",
+              "weight": 0.85,
+              "related_symbols": [
+                "MEK",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "EGFR",
+              "claim": "Member of KEGG MAPK signalling pathway hsa04010.",
+              "source": "KEGG:hsa04010",
+              "evidence_type": "pathway",
+              "weight": 0.8,
+              "related_symbols": [
+                "RAS",
+                "RAF",
+                "MEK",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "EGFR",
+              "claim": "Simulation topology edge EGFR\u2192RAS (activation).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "RAS"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "EGFR is a receptor tyrosine kinase frequently mutated / amplified in cancer; constitutive signalling drives MAPK cascade hyperactivation.",
+            "EGFR tyrosine kinase inhibitors are clinically validated oncology drugs.",
+            "EGFR\u2013MEK combination therapy mitigates adaptive resistance via ERK rebound.",
+            "EGFR present in vendored KEGG pathway membership."
+          ]
+        },
+        {
+          "symbol": "RAS",
+          "entity_id": "protein_5059d8dffa95",
+          "simulation_score": 0.5486364755314397,
+          "las_component": 0.6196014097911732,
+          "n_evidence": 3,
+          "pathway_hit": true,
+          "drug_target_hit": false,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "RAS",
+              "claim": "RAS GTPases transmit EGFR signals to RAF; oncogenic RAS locks GTP-bound state.",
+              "source": "UniProt:P01112",
+              "evidence_type": "oncogene",
+              "weight": 0.95,
+              "related_symbols": [
+                "EGFR",
+                "RAF"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "RAS",
+              "claim": "STRING-supported physical / functional association with RAF in MAPK cascade.",
+              "source": "STRING",
+              "evidence_type": "ppi",
+              "weight": 0.75,
+              "related_symbols": [
+                "RAF",
+                "EGFR"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "RAS",
+              "claim": "Simulation topology edge RAS\u2192RAF (activation).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "RAF"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "RAS GTPases transmit EGFR signals to RAF; oncogenic RAS locks GTP-bound state.",
+            "STRING-supported physical / functional association with RAF in MAPK cascade.",
+            "Simulation topology edge RAS\u2192RAF (activation).",
+            "RAS present in vendored KEGG pathway membership."
+          ]
+        },
+        {
+          "symbol": "EGF",
+          "entity_id": "protein_dc99d7681e16",
+          "simulation_score": 0.5486364755314397,
+          "las_component": 0.5621014097911731,
+          "n_evidence": 2,
+          "pathway_hit": true,
+          "drug_target_hit": false,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "EGF",
+              "claim": "EGF is the cognate ligand of EGFR initiating receptor dimerisation.",
+              "source": "UniProt:P01133",
+              "evidence_type": "function",
+              "weight": 0.7,
+              "related_symbols": [
+                "EGFR"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "EGF",
+              "claim": "Simulation topology edge EGF\u2192EGFR (activation).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "EGFR"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "EGF is the cognate ligand of EGFR initiating receptor dimerisation.",
+            "Simulation topology edge EGF\u2192EGFR (activation).",
+            "EGF present in vendored KEGG pathway membership."
+          ]
+        },
+        {
+          "symbol": "MEK",
+          "entity_id": "protein_3d73ff3931da",
+          "simulation_score": 0.5248045000477263,
+          "las_component": 0.7689264468349137,
+          "n_evidence": 5,
+          "pathway_hit": true,
+          "drug_target_hit": true,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "MEK",
+              "claim": "MEK1/2 (MAP2K1/2) are dual-specificity kinases activating ERK; MEK inhibitors (trametinib, cobimetinib) are approved therapeutics.",
+              "source": "UniProt:Q02750",
+              "evidence_type": "drug_target",
+              "weight": 1.0,
+              "related_symbols": [
+                "RAF",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "MEK",
+              "claim": "MEK and EGFR dual blockade shows combinatorial benefit in MAPK-driven tumours.",
+              "source": "PMID:26555154",
+              "evidence_type": "synergy",
+              "weight": 0.85,
+              "related_symbols": [
+                "EGFR",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "MEK",
+              "claim": "Member of KEGG MAPK signalling pathway hsa04010.",
+              "source": "KEGG:hsa04010",
+              "evidence_type": "pathway",
+              "weight": 0.8,
+              "related_symbols": [
+                "RAF",
+                "ERK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "MEK",
+              "claim": "STRING-supported association with ERK (MAPK1/3).",
+              "source": "STRING",
+              "evidence_type": "ppi",
+              "weight": 0.75,
+              "related_symbols": [
+                "ERK",
+                "RAF"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "MEK",
+              "claim": "Simulation topology edge MEK\u2192ERK (phosphorylation).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "ERK"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "MEK1/2 (MAP2K1/2) are dual-specificity kinases activating ERK; MEK inhibitors (trametinib, cobimetinib) are approved therapeutics.",
+            "MEK and EGFR dual blockade shows combinatorial benefit in MAPK-driven tumours.",
+            "Member of KEGG MAPK signalling pathway hsa04010.",
+            "MEK present in vendored KEGG pathway membership."
+          ]
+        },
+        {
+          "symbol": "RAF",
+          "entity_id": "protein_662cad47c5a5",
+          "simulation_score": 0.5107953699044959,
+          "las_component": 0.613766196445223,
+          "n_evidence": 3,
+          "pathway_hit": true,
+          "drug_target_hit": false,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "RAF",
+              "claim": "RAF kinases phosphorylate MEK; BRAF V600E is a canonical driver mutation.",
+              "source": "UniProt:P15056",
+              "evidence_type": "oncogene",
+              "weight": 0.95,
+              "related_symbols": [
+                "RAS",
+                "MEK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "RAF",
+              "claim": "STRING-supported association with MEK (MAP2K).",
+              "source": "STRING",
+              "evidence_type": "ppi",
+              "weight": 0.75,
+              "related_symbols": [
+                "MEK",
+                "RAS"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "RAF",
+              "claim": "Simulation topology edge RAF\u2192MEK (phosphorylation).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "MEK"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "RAF kinases phosphorylate MEK; BRAF V600E is a canonical driver mutation.",
+            "STRING-supported association with MEK (MAP2K).",
+            "Simulation topology edge RAF\u2192MEK (phosphorylation).",
+            "RAF present in vendored KEGG pathway membership."
+          ]
+        },
+        {
+          "symbol": "ERK",
+          "entity_id": "protein_f3b9be9638da",
+          "simulation_score": 0.4932592399008973,
+          "las_component": 0.5610620719716384,
+          "n_evidence": 3,
+          "pathway_hit": true,
+          "drug_target_hit": false,
+          "ppi_hit": true,
+          "evidence": [
+            {
+              "symbol": "ERK",
+              "claim": "ERK1/2 (MAPK1/3) are terminal MAPK effectors controlling proliferation.",
+              "source": "UniProt:P28482",
+              "evidence_type": "function",
+              "weight": 0.9,
+              "related_symbols": [
+                "MEK",
+                "RAF"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "ERK",
+              "claim": "Member of KEGG MAPK signalling pathway hsa04010.",
+              "source": "KEGG:hsa04010",
+              "evidence_type": "pathway",
+              "weight": 0.8,
+              "related_symbols": [
+                "MEK"
+              ],
+              "metadata": {}
+            },
+            {
+              "symbol": "ERK",
+              "claim": "Simulation topology edge ERK\u2192RAF (inhibition).",
+              "source": "VOIDSIGNAL:topology",
+              "evidence_type": "ppi",
+              "weight": 0.4,
+              "related_symbols": [
+                "RAF"
+              ],
+              "metadata": {}
+            }
+          ],
+          "notes": [
+            "ERK1/2 (MAPK1/3) are terminal MAPK effectors controlling proliferation.",
+            "Member of KEGG MAPK signalling pathway hsa04010.",
+            "Simulation topology edge ERK\u2192RAF (inhibition).",
+            "ERK present in vendored KEGG pathway membership."
+          ]
+        }
+      ],
+      "metadata": {
+        "weights": {
+          "pathway": 0.2,
+          "drug_target": 0.3,
+          "ppi": 0.15,
+          "function": 0.1,
+          "oncogene": 0.15,
+          "rank_agreement": 0.1
+        },
+        "n_targets": 7
+      }
+    },
+    "report_markdown_chars": 8568,
+    "notes": [
+      "Disease ERK=7.383 \u2192 treated=3.707 (reduction=49.8%)"
+    ],
+    "metadata": {
+      "disease_readout": 7.383131100337077,
+      "treated_readout": 3.706797365971252,
+      "readout_id": "protein_f3b9be9638da"
+    }
+  },
+  "brief_path": "C:\\Users\\Gururaja\\Projects\\voidsignal\\examples\\output\\clinical_discovery_brief.md"
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!DOCTYPE pathway SYSTEM "https://www.kegg.jp/kegg/xml/KGML_v0.7.2_.dtd">
+<pathway name="path:hsa04010" org="hsa" number="04010" title="MAPK signaling pathway">
+  <entry id="1" name="hsa:1950" type="gene">
+    <graphics name="EGF" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="100" y="100" width="46" height="17"/>
+  </entry>
+  <entry id="2" name="hsa:1956" type="gene">
+    <graphics name="EGFR" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="200" y="100" width="46" height="17"/>
+  </entry>
+  <entry id="3" name="hsa:3845" type="gene">
+    <graphics name="KRAS" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="300" y="100" width="46" height="17"/>
+  </entry>
+  <entry id="4" name="hsa:673" type="gene">
+    <graphics name="BRAF" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="400" y="100" width="46" height="17"/>
+  </entry>
+  <entry id="5" name="hsa:5604" type="gene">
+    <graphics name="MAP2K1, MEK1" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="500" y="100" width="46" height="17"/>
+  </entry>
+  <entry id="6" name="hsa:5594" type="gene">
+    <graphics name="MAPK1, ERK" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="600" y="100" width="46" height="17"/>
+  </entry>
+  <entry id="10" name="cpd:C00031" type="compound">
+    <graphics name="Glucose" fgcolor="#000000" bgcolor="#FFFFFF" type="circle" x="100" y="200" width="8" height="8"/>
+  </entry>
+  <entry id="11" name="cpd:C00022" type="compound">
+    <graphics name="Pyruvate" fgcolor="#000000" bgcolor="#FFFFFF" type="circle" x="200" y="200" width="8" height="8"/>
+  </entry>
+  <entry id="12" name="hsa:3098" type="gene" reaction="rn:R00299">
+    <graphics name="HK1" fgcolor="#000000" bgcolor="#BFFFBF" type="rectangle" x="150" y="200" width="46" height="17"/>
+  </entry>
+  <relation entry1="1" entry2="2" type="PPrel">
+    <subtype name="activation"/>
+  </relation>
+  <relation entry1="2" entry2="3" type="PPrel">
+    <subtype name="activation"/>
+  </relation>
+  <relation entry1="3" entry2="4" type="PPrel">
+    <subtype name="activation"/>
+  </relation>
+  <relation entry1="4" entry2="5" type="PPrel">
+    <subtype name="phosphorylation"/>
+  </relation>
+  <relation entry1="5" entry2="6" type="PPrel">
+    <subtype name="phosphorylation"/>
+  </relation>
+  <relation entry1="6" entry2="4" type="PPrel">
+    <subtype name="inhibition"/>
+  </relation>
+  <reaction id="20" name="rn:R00299" type="irreversible">
+    <substrate id="10" name="cpd:C00031" stoichiometry="1"/>
+    <product id="11" name="cpd:C00022" stoichiometry="2"/>
+  </reaction>
+</pathway>

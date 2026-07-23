@@ -1,0 +1,13 @@
+##fileformat=VCFv4.2
+##source=VOIDSIGNAL_clinical_benchmark
+##INFO=<ID=GENE,Number=1,Type=String,Description="Gene symbol">
+##INFO=<ID=Consequence,Number=.,Type=String,Description="Variant consequence">
+##INFO=<ID=HGVSp,Number=1,Type=String,Description="Protein HGVS">
+##INFO=<ID=AA_POS,Number=1,Type=Integer,Description="Amino-acid position">
+##INFO=<ID=CLNSIG,Number=.,Type=String,Description="ClinVar significance">
+##INFO=<ID=CSQ,Number=.,Type=String,Description="Consequence annotations from Ensembl VEP. Format: Allele|Consequence|SYMBOL|HGVSp|Protein_position">
+##SAMPLE=<ID=PATIENT01>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	PATIENT01
+7	55259515	rsCLIN1_EGFR	T	G	99	PASS	GENE=EGFR;Consequence=missense_variant;HGVSp=p.L858R;AA_POS=858;CLNSIG=Pathogenic;CSQ=G|missense_variant|EGFR|p.L858R|858	GT	0/1
+12	25398284	rsCLIN2_KRAS	C	T	99	PASS	GENE=KRAS;Consequence=missense_variant;HGVSp=p.G12D;AA_POS=12;CLNSIG=Pathogenic;CSQ=T|missense_variant|KRAS|p.G12D|12	GT	0/1
+17	7578212	rsCLIN3_TP53	G	A	99	PASS	GENE=TP53;Consequence=stop_gained;HGVSp=p.R213*;AA_POS=213;CLNSIG=Pathogenic;CSQ=A|stop_gained|TP53|p.R213*|213	GT	0/1

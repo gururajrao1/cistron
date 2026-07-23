@@ -1,0 +1,1 @@
+# Pathway KGML assets
