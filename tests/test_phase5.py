@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     AIScientistReasoner,
     DualEngineSimulator,
     EncoderKind,

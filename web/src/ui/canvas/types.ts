@@ -1,5 +1,5 @@
 /**
- * Visual canvas types — mirror of voidsignal/ui/visual_translator.py exports.
+ * Visual canvas types — mirror of cistron/ui/visual_translator.py exports.
  */
 
 export type NodeVisualState =

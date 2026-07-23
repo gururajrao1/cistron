@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from voidsignal import (
+from cistron import (
     GenomicIntervalIndex,
     InteractionType,
     MutationKind,
@@ -19,8 +19,8 @@ from voidsignal import (
     reaction_to_relations,
     variants_to_mutations,
 )
-from voidsignal.knowledge_graph import KEGGClient, ReactomeClient
-from voidsignal.parsers import GeneInterval
+from cistron.knowledge_graph import KEGGClient, ReactomeClient
+from cistron.parsers import GeneInterval
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

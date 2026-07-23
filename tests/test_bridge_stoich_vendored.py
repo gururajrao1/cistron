@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     KineticParameters,
@@ -15,14 +15,14 @@ from voidsignal import (
     build_network_from_kgml,
     pathway_map_to_network,
 )
-from voidsignal.knowledge_graph import (
+from cistron.knowledge_graph import (
     PathwayMap,
     PathwayRelation,
     ReactionDefinition,
     StoichiometricSpecies,
     reaction_to_relations,
 )
-from voidsignal.pipeline import BioDataPipeline, LocalDataset
+from cistron.pipeline import BioDataPipeline, LocalDataset
 
 
 def test_stoichiometric_mass_action_flux_scales_products() -> None:
@@ -151,7 +151,7 @@ def test_pipeline_prefer_vendored_skips_api() -> None:
 
 
 def test_safe_power_handles_near_zero() -> None:
-    from voidsignal.simulation import _safe_power
+    from cistron.simulation import _safe_power
 
     assert _safe_power(0.0, 2.0) >= 0.0
     assert _safe_power(1e-20, 3.0) > 0.0

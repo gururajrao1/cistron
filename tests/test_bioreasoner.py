@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from voidsignal.ai.prioritizer import prioritize
-from voidsignal.data.omnipath import hypoxia_network_preset
-from voidsignal.engine.solver import HillCubeConfig, HillCubeEngine
-from voidsignal.reasoner.bioreasoner import (
+from cistron.ai.prioritizer import prioritize
+from cistron.data.omnipath import hypoxia_network_preset
+from cistron.engine.solver import HillCubeConfig, HillCubeEngine
+from cistron.reasoner.bioreasoner import (
     DISCOVERY_BRIEF_RULES,
     attention_to_distance,
     build_causal_context,
@@ -16,7 +16,7 @@ from voidsignal.reasoner.bioreasoner import (
     generate_discovery_brief_prompt,
     synthesize_deterministic_brief,
 )
-from voidsignal.serialization.scrubber import scrub_simulation
+from cistron.serialization.scrubber import scrub_simulation
 
 
 @pytest.fixture

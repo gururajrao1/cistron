@@ -7,7 +7,7 @@ import sys
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     KineticParameters,
@@ -16,7 +16,7 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.ui.visual_translator import (
+from cistron.ui.visual_translator import (
     EdgeVisualState,
     VisualPathwayTranslator,
     VisualTranslatorConfig,
@@ -26,7 +26,7 @@ from voidsignal.ui.visual_translator import (
 
 
 def main() -> int:
-    print(f"VOIDSIGNAL {__version__} - visual pathway canvas smoke")
+    print(f"CISTRON {__version__} - visual pathway canvas smoke")
     print("=" * 60)
 
     net = SignalingNetwork(name="viz_demo")

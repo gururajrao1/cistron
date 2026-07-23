@@ -6,9 +6,9 @@ import os
 import sys
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-os.environ["VOIDSIGNAL_HEADLESS"] = "1"
+os.environ["CISTRON_HEADLESS"] = "1"
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     KineticParameters,
@@ -17,8 +17,8 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.immuno import ImmunoOncologyBridge, make_demo_immuno_profile
-from voidsignal.patient_profile import PatientSignalingNetwork
+from cistron.immuno import ImmunoOncologyBridge, make_demo_immuno_profile
+from cistron.patient_profile import PatientSignalingNetwork
 
 
 def build_net() -> tuple[SignalingNetwork, dict[str, str]]:
@@ -41,7 +41,7 @@ def build_net() -> tuple[SignalingNetwork, dict[str, str]]:
 
 
 def main() -> int:
-    print(f"VOIDSIGNAL {__version__} - Phase 13 immuno-oncology smoke demo")
+    print(f"CISTRON {__version__} - Phase 13 immuno-oncology smoke demo")
     print("=" * 60)
 
     net, ids = build_net()

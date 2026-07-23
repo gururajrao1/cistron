@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     KineticParameters,
@@ -15,7 +15,7 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.ui.visual_translator import (
+from cistron.ui.visual_translator import (
     VISUAL_LEGEND,
     EdgeVisualState,
     NodeVisualState,

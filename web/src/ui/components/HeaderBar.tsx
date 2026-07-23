@@ -44,7 +44,7 @@ export function HeaderBar({
           </div>
           <div className="min-w-0">
             <div className="truncate text-[14px] font-semibold tracking-tight text-[#F8FAFC]">
-              VOIDSIGNAL
+              CISTRON
             </div>
             <div className={clsx(tw.label, "leading-none")}>Virtual Cellular Laboratory</div>
           </div>

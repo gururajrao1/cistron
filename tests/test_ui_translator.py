@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from voidsignal import __version__
-from voidsignal.ui.translator import (
+from cistron import __version__
+from cistron.ui.translator import (
     METRIC_CATALOG,
     BadgeTone,
     MetricTranslator,

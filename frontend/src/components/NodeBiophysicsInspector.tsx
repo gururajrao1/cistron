@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Ban, Crosshair, Loader2, X } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import { GeneBadge, MetaLabel, SparkBar } from './ui'
@@ -13,11 +13,142 @@ import type {
   XAIAttributionResult,
 } from '../api/types'
 import { ProvenanceBadge } from './ProvenanceBadge'
+import { useLab } from '../lab/LabContext'
 
-function mean(series: number[] | undefined): number {
-  if (!series?.length) return 0
-  return series.reduce((a, b) => a + b, 0) / series.length
+/** Map scrubber minutes → discrete trajectory keyframe index. */
+function frameIndexAt(payload: ScrubberPayload | null, scrubT: number): number {
+  if (!payload?.time_steps.length) return 0
+  const trajLen =
+    (payload.nodes && Object.values(payload.nodes)[0]?.length) ||
+    payload.time_steps.length
+  if (trajLen <= 1) return 0
+  const tEnd = payload.time_steps[payload.time_steps.length - 1] ?? 60
+  if (tEnd <= 0) return 0
+  return Math.max(0, Math.min(trajLen - 1, Math.round((scrubT / tEnd) * (trajLen - 1))))
 }
+
+function yAt(
+  payload: ScrubberPayload | null,
+  node: string,
+  frame: number,
+): number {
+  return payload?.nodes[node]?.[frame] ?? 0
+}
+
+/** Instantaneous mass-action flux Fᵢⱼ(t) = wᵢⱼ · y_source(t) · (1 − y_target(t)). */
+function instantaneousFlux(
+  payload: ScrubberPayload | null,
+  source: string,
+  target: string,
+  frame: number,
+  w: number,
+): number {
+  const ys = yAt(payload, source, frame)
+  const yt = yAt(payload, target, frame)
+  return w * ys * (1 - yt)
+}
+
+function edgeWeight(evidence: number | null | undefined): number {
+  return typeof evidence === 'number' && Number.isFinite(evidence) ? Math.max(0, evidence) : 1
+}
+
+/** Isolated so scrubbing only recomputes this card, not SHAP / identifiers. */
+const LocalFluxesCard = memo(function LocalFluxesCard({
+  nodeId,
+  graph,
+  payload,
+  xai,
+}: {
+  nodeId: string
+  graph: PresetDetail | null
+  payload: ScrubberPayload | null
+  xai?: XAIAttributionResult | null
+}) {
+  const { scrubT } = useLab()
+  const frame = useMemo(() => frameIndexAt(payload, scrubT), [payload, scrubT])
+  const scrubMin = Math.round(scrubT)
+
+  const { upstream, downstream } = useMemo(() => {
+    const edges = graph?.edges ?? []
+    const impacts = xai?.edge_flow_impacts
+
+    const upstream = edges
+      .filter((e) => e.target === nodeId)
+      .map((e) => {
+        const key = `${e.source}->${e.target}`
+        const w = edgeWeight(e.evidence_score)
+        const flux = instantaneousFlux(payload, e.source, e.target, frame, w)
+        const impact: EdgeFlowImpact | undefined = impacts?.find((f) => f.edge_key === key)
+        return { source: e.source, sign: e.sign, flux, alpha: impact?.alpha ?? 0 }
+      })
+
+    const downstream = edges
+      .filter((e) => e.source === nodeId)
+      .map((e) => {
+        const key = `${e.source}->${e.target}`
+        const w = edgeWeight(e.evidence_score)
+        const flux = instantaneousFlux(payload, e.source, e.target, frame, w)
+        const impact = impacts?.find((f) => f.edge_key === key)
+        return { target: e.target, sign: e.sign, flux, alpha: impact?.alpha ?? 0 }
+      })
+
+    return { upstream, downstream }
+  }, [graph, payload, nodeId, frame, xai])
+
+  return (
+    <GlassCard
+      title="Local Fluxes"
+      hint={`Fᵢⱼ(t)=w·yₛ(t)·(1−yₜ(t)) · frame ${frame} · t=${scrubMin} min`}
+    >
+      <MetaLabel className="mb-1.5">Upstream → {nodeId}</MetaLabel>
+      {upstream.length ? (
+        <ul className="mb-2.5 space-y-1">
+          {upstream.map((u) => (
+            <li
+              key={u.source}
+              className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-obsidian/50 px-2 py-1.5 text-[11px]"
+            >
+              <span className="flex min-w-0 items-center gap-1.5">
+                <GeneBadge name={u.source} tone={u.sign < 0 ? 'coral' : 'cyan'} />
+                <span className={u.sign < 0 ? 'text-coral-action' : 'text-cyan-flux'}>
+                  {u.sign < 0 ? '⊣' : '→'}
+                </span>
+              </span>
+              <span className="lab-mono shrink-0 text-emerald-300/90">
+                F({scrubMin}m) = {u.flux.toFixed(3)} · α={u.alpha.toFixed(2)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-2.5 text-[11px] text-slate-500">No upstream edges.</p>
+      )}
+      <MetaLabel className="mb-1.5">{nodeId} → Downstream</MetaLabel>
+      {downstream.length ? (
+        <ul className="space-y-1">
+          {downstream.map((d) => (
+            <li
+              key={d.target}
+              className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-obsidian/50 px-2 py-1.5 text-[11px]"
+            >
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className={d.sign < 0 ? 'text-coral-action' : 'text-cyan-flux'}>
+                  {d.sign < 0 ? '⊣' : '→'}
+                </span>
+                <GeneBadge name={d.target} tone={d.sign < 0 ? 'coral' : 'emerald'} />
+              </span>
+              <span className="lab-mono shrink-0 text-emerald-300/90">
+                F({scrubMin}m) = {d.flux.toFixed(3)} · α={d.alpha.toFixed(2)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[11px] text-slate-500">No downstream edges.</p>
+      )}
+    </GlassCard>
+  )
+})
 
 export function NodeBiophysicsInspector({
   nodeId,
@@ -38,18 +169,20 @@ export function NodeBiophysicsInspector({
   onKnockout: (node: string) => void
   onClamp: (node: string) => void
 }) {
+  const activeNode = nodeId
+
   const [meta, setMeta] = useState<ProteinMeta | null>(null)
   const [loadingMeta, setLoadingMeta] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoadingMeta(true)
-    fetchProteinMeta(nodeId)
+    fetchProteinMeta(activeNode)
       .then((m) => {
         if (!cancelled) setMeta(m)
       })
       .catch(() => {
-        if (!cancelled) setMeta({ gene_symbol: nodeId, localization: 'Unknown' })
+        if (!cancelled) setMeta({ gene_symbol: activeNode, localization: 'Unknown' })
       })
       .finally(() => {
         if (!cancelled) setLoadingMeta(false)
@@ -57,31 +190,11 @@ export function NodeBiophysicsInspector({
     return () => {
       cancelled = true
     }
-  }, [nodeId])
+  }, [activeNode])
 
   const shap: NodeShapAttribution | undefined = xai?.node_attributions.find(
-    (a) => a.node === nodeId,
+    (a) => a.node === activeNode,
   )
-
-  const upstream = (graph?.edges ?? [])
-    .filter((e) => e.target === nodeId)
-    .map((e) => {
-      const key = `${e.source}->${e.target}`
-      const flux = mean(payload?.edges[key])
-      const impact: EdgeFlowImpact | undefined = xai?.edge_flow_impacts.find(
-        (f) => f.edge_key === key,
-      )
-      return { source: e.source, sign: e.sign, flux, alpha: impact?.alpha ?? 0 }
-    })
-
-  const downstream = (graph?.edges ?? [])
-    .filter((e) => e.source === nodeId)
-    .map((e) => {
-      const key = `${e.source}->${e.target}`
-      const flux = mean(payload?.edges[key])
-      const impact = xai?.edge_flow_impacts.find((f) => f.edge_key === key)
-      return { target: e.target, sign: e.sign, flux, alpha: impact?.alpha ?? 0 }
-    })
 
   const featureRows = [
     { key: 'y₀', label: 'y_init', value: vector?.y_init ?? 0, tone: 'cyan' as const },
@@ -108,8 +221,8 @@ export function NodeBiophysicsInspector({
         <div className="min-w-0">
           <MetaLabel className="text-emerald-400/80">Node Biophysics Inspector</MetaLabel>
           <div className="mt-1 flex items-center gap-2">
-            <h2 className="text-lg font-extrabold tracking-tight text-slate-50">{nodeId}</h2>
-            <GeneBadge name={nodeId} tone="emerald" />
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-50">{activeNode}</h2>
+            <GeneBadge name={activeNode} tone="emerald" />
           </div>
           {meta?.full_name ? (
             <p className="mt-0.5 truncate text-[11px] text-slate-400">{meta.full_name}</p>
@@ -134,7 +247,7 @@ export function NodeBiophysicsInspector({
           <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5 text-[12px]">
             <dt className="lab-meta !normal-case !tracking-normal text-slate-500">Gene</dt>
             <dd>
-              <GeneBadge name={nodeId} />
+              <GeneBadge name={activeNode} />
             </dd>
             <dt className="lab-meta !normal-case !tracking-normal text-slate-500">UniProt</dt>
             <dd className="lab-mono text-emerald-300">{meta?.uniprot_id ?? '—'}</dd>
@@ -149,13 +262,13 @@ export function NodeBiophysicsInspector({
             <dt className="lab-meta !normal-case !tracking-normal text-slate-500">Sources</dt>
             <dd className="flex flex-wrap gap-1">
               {(() => {
-                const nodeMeta = graph?.nodes?.[nodeId]?.metadata ?? {}
+                const nodeMeta = graph?.nodes?.[activeNode]?.metadata ?? {}
                 const badges = new Set<string>()
                 const prov = nodeMeta.provenance as Record<string, unknown> | undefined
                 if (prov?.source) badges.add(String(prov.source))
                 if (nodeMeta.source) badges.add(String(nodeMeta.source))
                 for (const e of graph?.edges ?? []) {
-                  if (e.source === nodeId || e.target === nodeId) {
+                  if (e.source === activeNode || e.target === activeNode) {
                     for (const s of e.sources ?? e.datasets ?? []) badges.add(s)
                   }
                 }
@@ -227,60 +340,18 @@ export function NodeBiophysicsInspector({
           ) : null}
         </GlassCard>
 
-        <GlassCard title="Local Fluxes" hint="Upstream regulators · downstream targets">
-          <MetaLabel className="mb-1.5">Upstream → {nodeId}</MetaLabel>
-          {upstream.length ? (
-            <ul className="mb-2.5 space-y-1">
-              {upstream.map((u) => (
-                <li
-                  key={u.source}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-obsidian/50 px-2 py-1.5 text-[11px]"
-                >
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <GeneBadge name={u.source} tone={u.sign < 0 ? 'coral' : 'cyan'} />
-                    <span className={u.sign < 0 ? 'text-coral-action' : 'text-cyan-flux'}>
-                      {u.sign < 0 ? '⊣' : '→'}
-                    </span>
-                  </span>
-                  <span className="lab-mono shrink-0 text-emerald-300/90">
-                    F̄={u.flux.toFixed(3)} · α={u.alpha.toFixed(2)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mb-2.5 text-[11px] text-slate-500">No upstream edges.</p>
-          )}
-          <MetaLabel className="mb-1.5">{nodeId} → Downstream</MetaLabel>
-          {downstream.length ? (
-            <ul className="space-y-1">
-              {downstream.map((d) => (
-                <li
-                  key={d.target}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-obsidian/50 px-2 py-1.5 text-[11px]"
-                >
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span className={d.sign < 0 ? 'text-coral-action' : 'text-cyan-flux'}>
-                      {d.sign < 0 ? '⊣' : '→'}
-                    </span>
-                    <GeneBadge name={d.target} tone={d.sign < 0 ? 'coral' : 'emerald'} />
-                  </span>
-                  <span className="lab-mono shrink-0 text-emerald-300/90">
-                    F̄={d.flux.toFixed(3)} · α={d.alpha.toFixed(2)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[11px] text-slate-500">No downstream edges.</p>
-          )}
-        </GlassCard>
+        <LocalFluxesCard
+          nodeId={activeNode}
+          graph={graph}
+          payload={payload}
+          xai={xai}
+        />
 
         <GlassCard title="Quick Actions" hint="Instant virtual perturbations">
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => onKnockout(nodeId)}
+              onClick={() => onKnockout(activeNode)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-coral-action/40 bg-coral-action/10 px-3 py-2 text-[11px] font-semibold text-red-200 hover:bg-coral-action/20"
             >
               <Ban className="h-3.5 w-3.5" />
@@ -288,7 +359,7 @@ export function NodeBiophysicsInspector({
             </button>
             <button
               type="button"
-              onClick={() => onClamp(nodeId)}
+              onClick={() => onClamp(activeNode)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/20"
             >
               <Crosshair className="h-3.5 w-3.5" />

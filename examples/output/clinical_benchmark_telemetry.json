@@ -140,8 +140,8 @@
       "RAS",
       "TP53"
     ],
-    "vcf_path": "C:\\Users\\Gururaja\\Projects\\voidsignal\\examples\\output\\multihit_clinical.vcf",
-    "expression_path": "C:\\Users\\Gururaja\\Projects\\voidsignal\\examples\\output\\clinical_expression.tsv"
+    "vcf_path": "C:\\Users\\Gururaja\\Projects\\cistron\\examples\\output\\multihit_clinical.vcf",
+    "expression_path": "C:\\Users\\Gururaja\\Projects\\cistron\\examples\\output\\clinical_expression.tsv"
   },
   "pre_hsi": {
     "hsi": 0.7301984580510269,
@@ -1224,7 +1224,7 @@
             {
               "symbol": "TP53",
               "claim": "Simulation topology edge TP53\u2192ERK (inhibition).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1302,7 +1302,7 @@
             {
               "symbol": "EGFR",
               "claim": "Simulation topology edge EGFR\u2192RAS (activation).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1355,7 +1355,7 @@
             {
               "symbol": "RAS",
               "claim": "Simulation topology edge RAS\u2192RAF (activation).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1395,7 +1395,7 @@
             {
               "symbol": "EGF",
               "claim": "Simulation topology edge EGF\u2192EGFR (activation).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1471,7 +1471,7 @@
             {
               "symbol": "MEK",
               "claim": "Simulation topology edge MEK\u2192ERK (phosphorylation).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1524,7 +1524,7 @@
             {
               "symbol": "RAF",
               "claim": "Simulation topology edge RAF\u2192MEK (phosphorylation).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1576,7 +1576,7 @@
             {
               "symbol": "ERK",
               "claim": "Simulation topology edge ERK\u2192RAF (inhibition).",
-              "source": "VOIDSIGNAL:topology",
+              "source": "CISTRON:topology",
               "evidence_type": "ppi",
               "weight": 0.4,
               "related_symbols": [
@@ -1615,5 +1615,5 @@
       "readout_id": "protein_f3b9be9638da"
     }
   },
-  "brief_path": "C:\\Users\\Gururaja\\Projects\\voidsignal\\examples\\output\\clinical_discovery_brief.md"
+  "brief_path": "C:\\Users\\Gururaja\\Projects\\cistron\\examples\\output\\clinical_discovery_brief.md"
 }

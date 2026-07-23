@@ -1,8 +1,8 @@
-"""MAPK-like cascade smoke demo for VOIDSIGNAL Phase 1."""
+"""MAPK-like cascade smoke demo for CISTRON Phase 1."""
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     LogicGate,

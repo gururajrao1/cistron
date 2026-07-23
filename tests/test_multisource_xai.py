@@ -1,7 +1,7 @@
 """
 API schema contracts for multi-source resolve + XAI + AI Scientist.
 
-Defines and validates Pydantic contracts used by upcoming VoidSignal backend
+Defines and validates Pydantic contracts used by upcoming Cistron backend
 updates, and asserts that ``POST /api/v1/search-and-simulate`` request /
 response shapes remain stable.
 """
@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from voidsignal.api.schemas import (
+from cistron.api.schemas import (
     DrugDoseRequest,
     NodeInspectorResponse,
     PresetDetail,
@@ -21,11 +21,11 @@ from voidsignal.api.schemas import (
     SearchAndSimulateRequest,
     SearchAndSimulateResponse,
 )
-from voidsignal.models.prioritization import NodeFeatureVector, PrioritizationResult
-from voidsignal.models.reasoner import CausalContextPayload, CausalPathContext
-from voidsignal.models.serialization import ScrubberPayload
-from voidsignal.models.topology_analysis import TopologicalAnalysis
-from voidsignal.models.xai import (
+from cistron.models.prioritization import NodeFeatureVector, PrioritizationResult
+from cistron.models.reasoner import CausalContextPayload, CausalPathContext
+from cistron.models.serialization import ScrubberPayload
+from cistron.models.topology_analysis import TopologicalAnalysis
+from cistron.models.xai import (
     CounterfactualResult,
     EdgeFlowImpact,
     FeatureAttribution,
@@ -37,7 +37,7 @@ from voidsignal.models.xai import (
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from voidsignal.api.app import create_app
+from cistron.api.app import create_app
 
 # ---------------------------------------------------------------------------
 # Schema contracts (canonical shapes the lab API must honour)

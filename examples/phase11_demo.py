@@ -6,9 +6,9 @@ import os
 import sys
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-os.environ["VOIDSIGNAL_HEADLESS"] = "1"
+os.environ["CISTRON_HEADLESS"] = "1"
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     Protein,
@@ -16,7 +16,7 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.docking import (
+from cistron.docking import (
     BindingScorer,
     DockedDrugSpec,
     DockingKineticsBridge,
@@ -27,11 +27,11 @@ from voidsignal.docking import (
 
 
 def main() -> int:
-    print(f"VOIDSIGNAL {__version__} — Phase 11 docking smoke demo")
+    print(f"CISTRON {__version__} — Phase 11 docking smoke demo")
     print("=" * 60)
 
     receptor, ligand = make_demo_receptor_ligand()
-    from voidsignal.docking import local_pose_search
+    from cistron.docking import local_pose_search
 
     scorer = BindingScorer()
     score = local_pose_search(receptor, ligand, scorer=scorer, step=0.5, grid=2)

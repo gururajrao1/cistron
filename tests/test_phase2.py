@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     BioDataPipeline,
     DualEngineSimulator,
     InteractionType,
@@ -24,8 +24,8 @@ from voidsignal import (
     normalize_consequence,
     variants_to_mutations,
 )
-from voidsignal.knowledge_graph import KEGGClient, apply_ppi_edges
-from voidsignal.parsers import BEDParser, FASTAParser, GFFParser, VCFParser
+from cistron.knowledge_graph import KEGGClient, apply_ppi_edges
+from cistron.parsers import BEDParser, FASTAParser, GFFParser, VCFParser
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -124,7 +124,7 @@ def test_pipeline_offline_etl_maps_vcf_mutations() -> None:
     seed = build_network_from_kgml(kgml, pathway_id="hsa04010")
 
     # Alias MEK/ERK style names already in network; add TP53 for frameshift mapping
-    from voidsignal import Protein
+    from cistron import Protein
 
     if not any(e.name == "TP53" for e in seed.registry.entities()):
         seed.add_node(Protein(name="TP53", concentration=0.1))

@@ -40,7 +40,7 @@ export function HeaderBar() {
         <div className="min-w-0 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-extrabold tracking-tight text-slate-50">
-              VoidSignal
+              Cistron
             </span>
             <span className="hidden rounded-full border border-cyan-flux/30 bg-cyan-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300 sm:inline">
               VCL

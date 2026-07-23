@@ -75,18 +75,17 @@ export const PRIMARY_NAV: NavItem[] = [
     icon: GitBranch,
     shortcut: '6',
   },
-]
-
-export const FUTURE_NAV: NavItem[] = [
   {
     id: 'omics',
     path: '/omics',
     label: 'VCF & Multi-Omics',
     shortLabel: 'Omics',
     icon: Dna,
-    comingSoon: true,
-    phase: 2,
+    shortcut: '7',
   },
+]
+
+export const FUTURE_NAV: NavItem[] = [
   {
     id: 'biophysics',
     path: '/biophysics',
@@ -129,12 +128,12 @@ export function SidebarNav({
     >
       <div className={clsx('flex items-center gap-2.5 px-3 py-3.5', collapsed && 'justify-center')}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/40 bg-gradient-to-br from-emerald-500/25 via-cyan-flux/15 to-violet-hub/20 text-[10px] font-extrabold tracking-wide text-emerald-50 glow-emerald">
-          VS
+          CS
         </div>
         {!collapsed ? (
           <div className="min-w-0">
             <div className="truncate text-[13px] font-extrabold tracking-tight text-slate-50">
-              VoidSignal
+              Cistron
             </div>
             <MetaLabel className="!normal-case !tracking-wide text-slate-500">
               Virtual Cellular Lab

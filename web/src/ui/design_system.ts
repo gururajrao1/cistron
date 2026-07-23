@@ -1,5 +1,5 @@
 /**
- * VOIDSIGNAL V1 design tokens — Life Sciences Enterprise aesthetic
+ * CISTRON V1 design tokens — Life Sciences Enterprise aesthetic
  */
 
 export const colors = {

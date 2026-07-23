@@ -7,10 +7,10 @@ import json
 import numpy as np
 import pytest
 
-from voidsignal.data.omnipath import hypoxia_network_preset
-from voidsignal.engine.solver import HillCubeConfig, HillCubeEngine, SimulationResult
-from voidsignal.models.serialization import ScrubberPayload
-from voidsignal.serialization.scrubber import (
+from cistron.data.omnipath import hypoxia_network_preset
+from cistron.engine.solver import HillCubeConfig, HillCubeEngine, SimulationResult
+from cistron.models.serialization import ScrubberPayload
+from cistron.serialization.scrubber import (
     compute_edge_flux,
     edge_flux_key,
     sample_uniform_keyframes,

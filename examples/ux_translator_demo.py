@@ -7,8 +7,8 @@ import sys
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-from voidsignal import __version__
-from voidsignal.ui.translator import (
+from cistron import __version__
+from cistron.ui.translator import (
     build_executive_summary,
     compose_progressive_brief,
     translate_metric,
@@ -16,7 +16,7 @@ from voidsignal.ui.translator import (
 
 
 def main() -> int:
-    print(f"VOIDSIGNAL {__version__} - UX translator smoke demo")
+    print(f"CISTRON {__version__} - UX translator smoke demo")
     print("=" * 60)
 
     for key, val in (

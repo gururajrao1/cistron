@@ -4,21 +4,21 @@ from __future__ import annotations
 
 import pytest
 
-from voidsignal.lifecycle import VoidSignalPipeline, VoidSignalPipelineConfig
-from voidsignal.ui.app import build_network_figure, build_trajectory_figure, lerp_at_time
+from cistron.lifecycle import CistronPipeline, CistronPipelineConfig
+from cistron.ui.app import build_network_figure, build_trajectory_figure, lerp_at_time
 
 
 @pytest.fixture(scope="module")
 def lab_result():
     pytest.importorskip("plotly")
-    cfg = VoidSignalPipelineConfig(
+    cfg = CistronPipelineConfig(
         preset="hypoxia",
         clamps={"O2": 0.0},
         source_node="O2",
         target_node="VEGFA",
         simulation_id="lab_test",
     )
-    pipe = VoidSignalPipeline(cfg)
+    pipe = CistronPipeline(cfg)
     return pipe.run(), pipe.ingest()
 
 

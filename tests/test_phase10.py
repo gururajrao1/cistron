@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     BiologicalAgentPlanner,
     LiteratureReasoner,
     ResearchGoal,
@@ -12,9 +12,9 @@ from voidsignal import (
     literature_alignment_score,
     parse_research_goal,
 )
-from voidsignal.agent.literature_reasoner import default_mapk_corpus
-from voidsignal.agent.reporter import ReportContext
-from voidsignal.visualization.session import build_demo_mapk
+from cistron.agent.literature_reasoner import default_mapk_corpus
+from cistron.agent.reporter import ReportContext
+from cistron.visualization.session import build_demo_mapk
 
 
 RESEARCH_GOAL = (

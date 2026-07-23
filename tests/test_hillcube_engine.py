@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from voidsignal.data.omnipath import hypoxia_network_preset
-from voidsignal.engine.solver import (
+from cistron.data.omnipath import hypoxia_network_preset
+from cistron.engine.solver import (
     DrugDose,
     FootprintPriors,
     HillCubeConfig,

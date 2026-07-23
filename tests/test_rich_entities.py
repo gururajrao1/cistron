@@ -6,7 +6,7 @@ import copy
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     CausalBioReasoner,
     ClinicalAnnotation,
     DrugAssociation,
@@ -22,7 +22,7 @@ from voidsignal import (
     StructuralMetadata,
     __version__,
 )
-from voidsignal.simulation import SimulatorBackend, TrajectoryResult
+from cistron.simulation import SimulatorBackend, TrajectoryResult
 
 
 def test_version_bump() -> None:

@@ -6,18 +6,18 @@ import time
 
 import pytest
 
-from voidsignal.data.multisource import (
+from cistron.data.multisource import (
     fuse_edges,
     list_available_sources,
     normalize_sources,
     resolve_multisource_network,
 )
-from voidsignal.models.graph import ActivityFlowEdge, MechanismKind
+from cistron.models.graph import ActivityFlowEdge, MechanismKind
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from voidsignal.api.app import create_app
+from cistron.api.app import create_app
 
 
 def _edge(src: str, tgt: str, sign: int = 1, *tags: str) -> ActivityFlowEdge:

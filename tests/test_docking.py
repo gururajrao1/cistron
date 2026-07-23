@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     DrugAgent,
     DualEngineSimulator,
     InteractionType,
@@ -15,7 +15,7 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.docking import (
+from cistron.docking import (
     BindingScorer,
     DockedDrugSpec,
     DockingKineticsBridge,
@@ -41,7 +41,7 @@ END
 """
 
 SAMPLE_PDBQT = """\
-REMARK  VOIDSIGNAL demo ligand
+REMARK  CISTRON demo ligand
 ROOT
 ATOM      1  C1  LIG L   1       0.000   0.000   0.000  0.00  0.00    +0.100 A
 ATOM      2  N1  LIG L   1       1.300   0.000   0.000  0.00  0.00    -0.400 N
@@ -103,7 +103,7 @@ def test_scoring_stability_and_contacts() -> None:
 
 
 def test_far_pose_worse_than_bound() -> None:
-    from voidsignal.docking.scoring import local_pose_search, translate_molecule
+    from cistron.docking.scoring import local_pose_search, translate_molecule
 
     receptor, ligand = make_demo_receptor_ligand()
     scorer = BindingScorer()

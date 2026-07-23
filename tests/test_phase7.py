@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     DiseaseSimulator,
     DualEngineSimulator,
     ExpressionRecord,
@@ -180,14 +180,14 @@ def test_pathology_metrics_hsi_pds() -> None:
     )
     # Compare series lengths; HSI uses name-aligned finals via shared topology names
     # For identical UUID layouts we'd need same factory — use node names via remap:
-    from voidsignal.pathology_metrics import HomeostaticShiftReport
+    from cistron.pathology_metrics import HomeostaticShiftReport
 
     # Map baseline finals by name onto disease ids
     base_by_name = {
         net3.registry.get(eid).name: val for eid, val in base3.final_concentrations().items()
     }
     # Synthesize a fake baseline traj with disease entity ids
-    from voidsignal.simulation import SimulatorBackend, TrajectoryResult
+    from cistron.simulation import SimulatorBackend, TrajectoryResult
 
     remapped_conc = []
     for sample in base3.concentrations:

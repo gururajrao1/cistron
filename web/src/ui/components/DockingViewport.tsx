@@ -39,7 +39,7 @@ function buildDefaultScene(pose: DockingPose): { atoms: DockingAtom[]; bonds: Do
   if (pose.atoms?.length) {
     return { atoms: pose.atoms, bonds: pose.bonds ?? [] };
   }
-  // Fallback demo pocket matching voidsignal.docking.make_demo_receptor_ligand
+  // Fallback demo pocket matching cistron.docking.make_demo_receptor_ligand
   const atoms: DockingAtom[] = [
     { serial: 1, name: "N1", element: "N", x: 3, y: 0, z: 0, role: "receptor" },
     { serial: 2, name: "O1", element: "O", x: 0, y: 3, z: 0, role: "receptor" },

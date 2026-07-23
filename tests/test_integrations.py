@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from voidsignal.integrations import (
+from cistron.integrations import (
     BiologicalEnrichmentEngine,
     DepMapClient,
     EncodeClient,
@@ -21,7 +21,7 @@ from voidsignal.integrations import (
     list_pathway_catalog,
     resolve_pathway_ids,
 )
-from voidsignal.integrations.offline_data import OFFLINE_PATHWAY_EDGES, OFFLINE_UNIPROT
+from cistron.integrations.offline_data import OFFLINE_PATHWAY_EDGES, OFFLINE_UNIPROT
 
 
 @pytest.fixture()
@@ -58,7 +58,7 @@ def test_uniprot_offline_enrichment(cache: IntegrationCache) -> None:
     data = client.lookup("EGFR")
     assert data is not None
     assert data["accession"] == OFFLINE_UNIPROT["EGFR"]["accession"]
-    from voidsignal.components import Protein
+    from cistron.components import Protein
 
     p = Protein(name="EGFR", gene_symbol="EGFR", concentration=0.5)
     client.enrich_protein(p)
@@ -124,7 +124,7 @@ def test_multi_pathway_merger_crosstalk_hubs(cache: IntegrationCache) -> None:
 
 
 def test_structure_client_offline(cache: IntegrationCache) -> None:
-    from voidsignal.integrations import StructureClient
+    from cistron.integrations import StructureClient
 
     rec = StructureClient(cache).lookup_pdb("1M17")
     assert rec.pdb_id == "1M17"

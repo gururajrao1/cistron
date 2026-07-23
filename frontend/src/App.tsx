@@ -7,6 +7,7 @@ import { XaiView } from './views/XaiView'
 import { PharmacologyView } from './views/PharmacologyView'
 import { BriefsView } from './views/BriefsView'
 import { CombinationsView } from './views/CombinationsView'
+import { OmicsView } from './views/OmicsView'
 import { PlaceholderView } from './views/PlaceholderView'
 
 export default function App() {
@@ -21,16 +22,7 @@ export default function App() {
             <Route path="xai" element={<XaiView />} />
             <Route path="pharmacology" element={<PharmacologyView />} />
             <Route path="briefs" element={<BriefsView />} />
-            <Route
-              path="omics"
-              element={
-                <PlaceholderView
-                  title="VCF Variant & Multi-Omics Mapper"
-                  phase={2}
-                  description="Patient-specific VCF ingestion, multi-omics overlay, and capacity remapping onto the causal activity graph."
-                />
-              }
-            />
+            <Route path="omics" element={<OmicsView />} />
             <Route path="combinations" element={<CombinationsView />} />
             <Route
               path="biophysics"

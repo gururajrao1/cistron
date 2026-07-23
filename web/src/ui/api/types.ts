@@ -1,5 +1,5 @@
 /**
- * Shared API contracts for VOIDSIGNAL Research Studio ↔ Python backend
+ * Shared API contracts for CISTRON Research Studio ↔ Python backend
  */
 
 export type SystemHealth = {

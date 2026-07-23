@@ -1,5 +1,5 @@
 """
-VOIDSIGNAL research dashboard (Streamlit) — Phase 9 viz + Phase 10 agent.
+CISTRON research dashboard (Streamlit) — Phase 9 viz + Phase 10 agent.
 
 Launch::
 
@@ -17,8 +17,8 @@ _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from voidsignal.agent.planner import BiologicalAgentPlanner, ResearchGoal  # noqa: E402
-from voidsignal.visualization.session import (  # noqa: E402
+from cistron.agent.planner import BiologicalAgentPlanner, ResearchGoal  # noqa: E402
+from cistron.visualization.session import (  # noqa: E402
     DashboardControls,
     DashboardSession,
     write_demo_vcf,
@@ -37,7 +37,7 @@ def _require_streamlit() -> Any:
     except ImportError as exc:  # pragma: no cover
         raise SystemExit(
             "Streamlit is required for the interactive dashboard.\n"
-            "Install with:  pip install 'voidsignal[ui]'   or   pip install streamlit plotly"
+            "Install with:  pip install 'cistron[ui]'   or   pip install streamlit plotly"
         ) from exc
     return st
 
@@ -415,10 +415,10 @@ def _render_causal_banner(st: Any, causal: Dict[str, Any]) -> None:
 
 def _render_biology_lab_tab(st: Any) -> None:
     """Virtual Cellular Laboratory: encyclopedia + crosstalk + causal reasoner."""
-    from voidsignal.components import ClinicalAnnotation, DrugAssociation, Protein
-    from voidsignal.simulation import SimulatorBackend, TrajectoryResult
-    from voidsignal.topology import InteractionType, SignalingNetwork
-    from voidsignal.ui.studio_cards import (
+    from cistron.components import ClinicalAnnotation, DrugAssociation, Protein
+    from cistron.simulation import SimulatorBackend, TrajectoryResult
+    from cistron.topology import InteractionType, SignalingNetwork
+    from cistron.ui.studio_cards import (
         build_causal_payload,
         crosstalk_viewport_payload,
         demo_rich_mapk_entities,
@@ -557,7 +557,7 @@ def _render_biology_lab_tab(st: Any) -> None:
 
 def _render_experiment_studio(st: Any) -> None:
     """Experiment Studio: pathway merge presets + VCF/RNA-style uploads."""
-    from voidsignal.integrations import (
+    from cistron.integrations import (
         BiologicalEnrichmentEngine,
         MultiPathwayMerger,
         list_pathway_catalog,
@@ -602,8 +602,8 @@ def _render_experiment_studio(st: Any) -> None:
 
 
 def _render_protein_explorer(st: Any) -> None:
-    from voidsignal.integrations import BiologicalEnrichmentEngine, LabUniProtClient
-    from voidsignal.ui.studio_cards import demo_rich_mapk_entities, encyclopedia_card_for
+    from cistron.integrations import BiologicalEnrichmentEngine, LabUniProtClient
+    from cistron.ui.studio_cards import demo_rich_mapk_entities, encyclopedia_card_for
 
     st.subheader("Protein Explorer")
     st.caption("UniProt search · styled encyclopedia cards — never raw JSON.")
@@ -676,8 +676,8 @@ def _render_docking_stage(st: Any) -> None:
     st.subheader("3D Structural Docking")
     st.caption("Pocket geometry · ligand pose · binding free energy HUD")
     try:
-        from voidsignal.docking import delta_g_to_ki, make_demo_receptor_ligand
-        from voidsignal.integrations import StructureClient
+        from cistron.docking import delta_g_to_ki, make_demo_receptor_ligand
+        from cistron.integrations import StructureClient
 
         receptor, ligand = make_demo_receptor_ligand()
         dg = -9.4
@@ -701,13 +701,13 @@ def _render_docking_stage(st: Any) -> None:
 def run_dashboard() -> None:
     st = _require_streamlit()
     st.set_page_config(
-        page_title="VOIDSIGNAL Virtual Cellular Laboratory",
+        page_title="CISTRON Virtual Cellular Laboratory",
         page_icon="◈",
         layout="wide",
         initial_sidebar_state="expanded",
     )
 
-    st.title("VOIDSIGNAL Virtual Cellular Laboratory")
+    st.title("CISTRON Virtual Cellular Laboratory")
     st.caption(
         "V1 Core Virtual Cellular Laboratory · UniProt / KEGG / STRING / AlphaFold · "
         "4-stage sidebar workspace"
@@ -782,7 +782,7 @@ def run_dashboard() -> None:
 
     vcf_path: Optional[str] = None
     if uploaded is not None:
-        tmp = Path(tempfile.gettempdir()) / f"voidsignal_upload_{uploaded.name}"
+        tmp = Path(tempfile.gettempdir()) / f"cistron_upload_{uploaded.name}"
         tmp.write_bytes(uploaded.getvalue())
         vcf_path = str(tmp)
     elif use_demo_vcf:
@@ -822,8 +822,8 @@ def run_dashboard() -> None:
 
     # Causal banner above legacy tabs when both trajectories exist
     try:
-        from voidsignal.ui.studio_cards import build_causal_payload
-        from voidsignal.visualization.session import build_demo_mapk
+        from cistron.ui.studio_cards import build_causal_payload
+        from cistron.visualization.session import build_demo_mapk
 
         net, ids_map = build_demo_mapk()
         # Align entity IDs with the run when possible (silent mismatch → skip, no crash)

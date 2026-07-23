@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from voidsignal.data.resolver import (
+from cistron.data.resolver import (
     list_condition_suggestions,
     match_condition_profile,
     resolve_condition_network,
@@ -15,7 +15,7 @@ from voidsignal.data.resolver import (
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from voidsignal.api.app import create_app
+from cistron.api.app import create_app
 
 
 @pytest.fixture(scope="module")

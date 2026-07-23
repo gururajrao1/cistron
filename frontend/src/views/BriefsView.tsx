@@ -40,7 +40,7 @@ export function BriefsView() {
       exported_at: new Date().toISOString(),
     }
     downloadBlob(
-      `voidsignal_${lab.profileId}_${Date.now()}.json`,
+      `cistron_${lab.profileId}_${Date.now()}.json`,
       JSON.stringify(payload, null, 2),
       'application/json',
     )
@@ -48,7 +48,7 @@ export function BriefsView() {
 
   const exportMarkdown = () => {
     const md = [
-      `# VoidSignal Research Brief`,
+      `# Cistron Research Brief`,
       ``,
       `**Scenario:** ${lab.controls.conditionQuery}`,
       `**Profile:** ${lab.profileId}`,
@@ -76,18 +76,18 @@ export function BriefsView() {
         .map(([g, s], i) => `${i + 1}. \`${g}\` — Sᵢ = ${s.toFixed(4)}`),
       ``,
     ].join('\n')
-    downloadBlob(`voidsignal_brief_${lab.profileId}.md`, md, 'text/markdown')
+    downloadBlob(`cistron_brief_${lab.profileId}.md`, md, 'text/markdown')
   }
 
   const exportPdfFriendly = () => {
     // Printable HTML the browser can Save as PDF
-    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>VoidSignal Brief</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Cistron Brief</title>
 <style>
 body{font-family:Georgia,serif;max-width:720px;margin:40px auto;color:#0f172a;line-height:1.5}
 h1{font-size:22px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #cbd5e1;padding-bottom:4px}
 .meta{color:#64748b;font-size:13px}code{background:#f1f5f9;padding:1px 4px;border-radius:4px}
 </style></head><body>
-<h1>VoidSignal Research Brief</h1>
+<h1>Cistron Research Brief</h1>
 <p class="meta">${lab.controls.conditionQuery} · ${lab.profileId} · ${new Date().toLocaleString()}</p>
 <h2>AI Scientist</h2><p>${scientist || '—'}</p>
 <h2>Causal BioReasoner</h2><p>${brief || '—'}</p>

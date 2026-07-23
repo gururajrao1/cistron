@@ -13,7 +13,7 @@ import type {
 
 /**
  * Visualization-only API client.
- * All ODE / GAT / BioReasoner math stays on FastAPI (`voidsignal.api.app`).
+ * All ODE / GAT / BioReasoner math stays on FastAPI (`cistron.api.app`).
  *
  * Prefer direct backend URL so the Vite UI works even if the proxy is misconfigured.
  * Override with VITE_API_BASE (e.g. empty string to use the Vite /api proxy).
@@ -30,7 +30,7 @@ export const api = axios.create({
 const v1 = '/api/v1'
 
 export class ApiOfflineError extends Error {
-  constructor(message = 'VoidSignal API is offline') {
+  constructor(message = 'Cistron API is offline') {
     super(message)
     this.name = 'ApiOfflineError'
   }
@@ -45,8 +45,8 @@ export function formatApiError(err: unknown): string {
         return 'API request timed out. Is uvicorn running on http://127.0.0.1:8000?'
       }
       return (
-        'Cannot reach VoidSignal API at http://127.0.0.1:8000. ' +
-        'Start the backend with: uvicorn voidsignal.api.app:app --reload --port 8000'
+        'Cannot reach Cistron API at http://127.0.0.1:8000. ' +
+        'Start the backend with: uvicorn cistron.api.app:app --reload --port 8000'
       )
     }
     const detail = ax.response.data?.detail
@@ -165,6 +165,48 @@ export async function fetchProteinMeta(
 ): Promise<import('./types').ProteinMeta> {
   return withApiErrors(async () => {
     const { data } = await api.get(`${v1}/proteins/${encodeURIComponent(symbol)}`)
+    return data
+  })
+}
+
+/** POST /api/v1/omics/upload — multipart CSV → OmicsProfile. */
+export async function uploadOmicsCsv(
+  file: File,
+  sampleName: string,
+  condition: string,
+): Promise<import('./types').OmicsProfile> {
+  return withApiErrors(async () => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('sample_name', sampleName)
+    form.append('condition', condition)
+    const { data } = await api.post(`${v1}/omics/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30_000,
+    })
+    return data
+  })
+}
+
+/** POST /api/v1/omics/simulate — omics-conditioned lab pipeline. */
+export async function simulateOmicsProfile(
+  profile: import('./types').OmicsProfile,
+  params: import('./types').OmicsSimulateParams = {},
+): Promise<import('./types').SearchAndSimulateResponse> {
+  return withApiErrors(async () => {
+    const { data } = await api.post(`${v1}/omics/simulate`, {
+      profile,
+      t_end: params.t_end ?? 60,
+      knockouts: params.knockouts ?? [],
+      drugs: params.drugs ?? [],
+      dense_output_points: params.dense_output_points ?? 61,
+      source_node: params.source_node,
+      target_node: params.target_node,
+      simulation_id: params.simulation_id,
+      scaling_factor: params.scaling_factor ?? 1.0,
+      baseline_y0: params.baseline_y0 ?? 0.5,
+      previous_state_summary: params.previous_state_summary ?? null,
+    })
     return data
   })
 }

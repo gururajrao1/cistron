@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     KineticParameters,
@@ -15,7 +15,7 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.immuno import (
+from cistron.immuno import (
     CheckpointConfig,
     HLAAllele,
     ImmunoOncologyBridge,
@@ -33,8 +33,8 @@ from voidsignal.immuno import (
     predict_binding,
     tme_rhs,
 )
-from voidsignal.immuno.neoantigens import CodingMutation
-from voidsignal.patient_profile import PatientSignalingNetwork
+from cistron.immuno.neoantigens import CodingMutation
+from cistron.patient_profile import PatientSignalingNetwork
 
 
 def _mapk() -> tuple[SignalingNetwork, dict[str, str]]:
@@ -115,7 +115,7 @@ def test_checkpoint_exhaustion_and_blockade() -> None:
 
 def test_tme_rhs_balance_and_simulator() -> None:
     state = TMEState(tumor=1.0, ctl=0.5, treg=0.2, mdsc=0.2, tgfb=0.3, il10=0.3, vegf=0.4)
-    from voidsignal.immuno import TMEParameters
+    from cistron.immuno import TMEParameters
 
     dydt = tme_rhs(state, TMEParameters(antigen_drive=0.6, epsilon_exhaustion=0.2))
     assert len(dydt) == 7

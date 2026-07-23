@@ -10,7 +10,7 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient
 
-from voidsignal.api.app import create_app
+from cistron.api.app import create_app
 
 LATENCY_BUDGET_MS = 100.0
 

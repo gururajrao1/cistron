@@ -1,5 +1,5 @@
 """
-Real-world clinical benchmarking pipeline for VOIDSIGNAL (Option A).
+Real-world clinical benchmarking pipeline for CISTRON (Option A).
 
 1. Load air-gapped MAPK pathway via VendoredPathwayRepository
 2. Ingest multi-hit VCF (EGFR L858R, KRAS G12D, TP53 R213*) + RNA-seq folds
@@ -21,22 +21,22 @@ import os
 import sys
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-os.environ.setdefault("VOIDSIGNAL_HEADLESS", "1")
+os.environ.setdefault("CISTRON_HEADLESS", "1")
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from voidsignal import ResearchGoal, __version__
-from voidsignal.agent.planner import BiologicalAgentPlanner
-from voidsignal.agent.reporter import ReportContext, ScientificReportGenerator
-from voidsignal.benchmarks.clinical_data import (
+from cistron import ResearchGoal, __version__
+from cistron.agent.planner import BiologicalAgentPlanner
+from cistron.agent.reporter import ReportContext, ScientificReportGenerator
+from cistron.benchmarks.clinical_data import (
     ClinicalIngestionEngine,
     write_expression_tsv,
     write_multihit_vcf,
 )
-from voidsignal.simulation import DualEngineSimulator, SimulationConfig
-from voidsignal.pathology_metrics import homeostatic_shift_index
+from cistron.simulation import DualEngineSimulator, SimulationConfig
+from cistron.pathology_metrics import homeostatic_shift_index
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("clinical_benchmark")
@@ -96,7 +96,7 @@ def _resolve_readout_name(bundle) -> str:
     return "ERK"
 
 def main() -> int:
-    print(f"VOIDSIGNAL {__version__} — clinical benchmark (Option A)")
+    print(f"CISTRON {__version__} — clinical benchmark (Option A)")
     print("=" * 64)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -106,7 +106,7 @@ def main() -> int:
     print(f"    Wrote expression TSV → {expr_path}")
 
     # Air-gapped pathway proof (vendored KGML)
-    from voidsignal.benchmarks.clinical_data import build_clinical_baseline
+    from cistron.benchmarks.clinical_data import build_clinical_baseline
 
     vendored_net, vendored_ids, vw = build_clinical_baseline(
         pathway_id="hsa04010", prefer_vendored=True, fallback_demo=False
@@ -210,7 +210,7 @@ def main() -> int:
     preamble = [
         "# Clinical Discovery Brief — Multi-Hit Oncology Benchmark",
         "",
-        f"**VOIDSIGNAL** `{__version__}` · patient `{bundle.patient.patient_id}`",
+        f"**CISTRON** `{__version__}` · patient `{bundle.patient.patient_id}`",
         "",
         "## Clinical profile",
         "",

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from voidsignal.data.omnipath import (
+from cistron.data.omnipath import (
     OmniPathClient,
     activity_weight_from_ddg,
     apply_structural_disruption,
@@ -18,15 +18,15 @@ from voidsignal.data.omnipath import (
     tau_for_mechanism,
     to_signaling_network,
 )
-from voidsignal.integrations.cache_store import IntegrationCache
-from voidsignal.models.graph import (
+from cistron.integrations.cache_store import IntegrationCache
+from cistron.models.graph import (
     TAU_ENZYMATIC_MIN,
     TAU_TRANSCRIPTIONAL_MIN,
     CausalActivityGraph,
     GraphNode,
     MechanismKind,
 )
-from voidsignal.topology import InteractionType
+from cistron.topology import InteractionType
 
 
 @pytest.fixture()

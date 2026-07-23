@@ -1,4 +1,4 @@
-/** Shared API / domain types for the VoidSignal laboratory frontend. */
+/** Shared API / domain types for the Cistron laboratory frontend. */
 
 export interface PresetSummary {
   id: string
@@ -269,6 +269,62 @@ export interface SearchAndSimulateResponse {
   stages: string[]
   metadata: Record<string, unknown>
 }
+
+/** Differential-omics feature (matches cistron.models.omics.OmicsFeature). */
+export interface OmicsFeature {
+  symbol: string
+  uniprot_id?: string | null
+  ensembl_id?: string | null
+  log2_fc: number
+  p_value?: number | null
+  expression_level?: number | null
+}
+
+/** Uploaded / example omics profile. */
+export interface OmicsProfile {
+  profile_id: string
+  sample_name: string
+  condition: string
+  features: Record<string, OmicsFeature>
+}
+
+/** Optional knobs for POST /api/v1/omics/simulate. */
+export interface OmicsSimulateParams {
+  t_end?: number
+  knockouts?: string[]
+  drugs?: Array<{ target: string; c_drug?: number; concentration?: number; ki: number }>
+  dense_output_points?: number
+  source_node?: string
+  target_node?: string
+  simulation_id?: string
+  scaling_factor?: number
+  baseline_y0?: number
+  previous_state_summary?: PreviousStateSummary | null
+}
+
+/** Soft y₀ bounds used by the backend sigmoid mapper. */
+export const OMICS_Y0_MIN = 0.01
+export const OMICS_Y0_MAX = 0.99
+
+/** Client-side mirror of OmicsProfile.map_to_initial_states sigmoid. */
+export function mapLog2FcToY0(
+  log2Fc: number,
+  scalingFactor = 1.0,
+): number {
+  const y = 1 / (1 + Math.exp(-scalingFactor * log2Fc))
+  return Math.max(OMICS_Y0_MIN, Math.min(OMICS_Y0_MAX, y))
+}
+
+/** Built-in hypoxia RNA-seq demo for instant Studio testing. */
+export const EXAMPLE_HYPOXIA_RNASEQ_CSV = `Gene,Log2FC,padj,UniProt
+HIF1A,2.40,0.0002,Q16665
+EGLN1,-1.80,0.0011,Q9GZT9
+VEGFA,1.95,0.0008,P15692
+GLUT1,1.55,0.0042,P11166
+MTOR,0.65,0.031,P42345
+AKT1,0.40,0.082,P31749
+O2,-3.20,0.0001,
+`
 
 export interface ProteinMeta {
   gene_symbol: string

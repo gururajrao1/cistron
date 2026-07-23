@@ -1,5 +1,5 @@
 /**
- * Typed REST / WebSocket client for VOIDSIGNAL backend.
+ * Typed REST / WebSocket client for CISTRON backend.
  * Defaults to in-browser mock adapters; set VITE_API_BASE to hit FastAPI.
  */
 

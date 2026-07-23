@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-from voidsignal import (
+from cistron import (
     BindingPocket,
     CentralDogmaEngine,
     CompartmentTier,
@@ -27,7 +27,7 @@ from voidsignal import (
     delay_from_length,
     degradation_rate_from_half_life,
 )
-from voidsignal.parsers import VariantConsequence
+from cistron.parsers import VariantConsequence
 
 
 def test_structure_pocket_hit_scales_kinetics() -> None:

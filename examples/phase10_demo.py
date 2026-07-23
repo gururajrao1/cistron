@@ -6,13 +6,13 @@ import os
 import sys
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-os.environ["VOIDSIGNAL_HEADLESS"] = "1"
+os.environ["CISTRON_HEADLESS"] = "1"
 
-from voidsignal import BiologicalAgentPlanner, ResearchGoal, __version__
+from cistron import BiologicalAgentPlanner, ResearchGoal, __version__
 
 
 def main() -> int:
-    print(f"VOIDSIGNAL {__version__} — Phase 10 agent smoke demo")
+    print(f"CISTRON {__version__} — Phase 10 agent smoke demo")
     print("=" * 60)
 
     goal_text = (

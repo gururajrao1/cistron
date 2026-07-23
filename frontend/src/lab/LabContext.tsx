@@ -14,19 +14,24 @@ import {
   fetchHealth,
   formatApiError,
   searchAndSimulate,
+  simulateOmicsProfile,
 } from '../api/client'
 import type {
   ConditionSuggestion,
   LabControls,
+  OmicsProfile,
+  OmicsSimulateParams,
   PresetDetail,
   PreviousStateSummary,
   PrioritizationResult,
   ReasonResponse,
   ScientistReasoning,
   ScrubberPayload,
+  SearchAndSimulateResponse,
   TopologicalAnalysis,
   XAIAttributionResult,
 } from '../api/types'
+import { DEFAULT_SELECTED_SOURCES } from '../api/types'
 
 const STAGE_LABELS = [
   'Fetching multi-source topology',
@@ -90,6 +95,8 @@ export type LabContextValue = {
   offlineMessage: string | null
   topRegulator: string | null
   pathNodes: string[]
+  activeOmicsProfile: OmicsProfile | null
+  omicsClamps: Record<string, number>
   runSimulation: (
     override?: Partial<LabControls> & {
       query?: string
@@ -97,6 +104,8 @@ export type LabContextValue = {
     },
   ) => void
   runQuery: (query: string) => void
+  /** Upload/example → simulate omics profile and hydrate Studio canvas. */
+  runOmicsProfile: (profile: OmicsProfile, params?: OmicsSimulateParams) => void
 }
 
 const LabContext = createContext<LabContextValue | null>(null)
@@ -118,6 +127,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const [pingMs, setPingMs] = useState<number | null>(null)
   const [profileId, setProfileId] = useState('hypoxia')
   const [statusStage, setStatusStage] = useState<string | null>(null)
+  const [activeOmicsProfile, setActiveOmicsProfile] = useState<OmicsProfile | null>(null)
+  const [omicsClamps, setOmicsClamps] = useState<Record<string, number>>({})
 
   const stageTimer = useRef<number | null>(null)
   const controlsRef = useRef(controls)
@@ -188,43 +199,39 @@ export function LabProvider({ children }: { children: ReactNode }) {
   }, [clearStageTimer])
 
   /** Apply results synchronously — startTransition was leaving a blank Studio. */
-  const applySearchResult = useCallback(
-    (body: Awaited<ReturnType<typeof searchAndSimulate>>) => {
-      setPayload(body.scrubber_payload)
-      setGraph(body.resolved_graph)
-      setPrioritization(body.prioritization)
-      setReason(body.causal_brief)
-      setXai(body.xai_attributions ?? null)
-      setScientist(body.scientist_reasoning ?? null)
-      setStateSummary(body.state_summary ?? null)
-      setTopologicalAnalysis(body.topological_analysis ?? null)
-      setLatencyMs(body.elapsed_ms)
-      setProfileId(body.profile_id)
-      setScrubT(0)
-      setStatusStage(null)
-      const clamps = body.default_clamps
-      const clampNode =
-        controlsRef.current.clampNode in clamps
-          ? controlsRef.current.clampNode
-          : (Object.keys(clamps)[0] ?? body.source_node)
-      setControls((prev) => ({
-        ...prev,
-        conditionQuery: body.query,
-        clampNode,
-        clampValue: clamps[clampNode] ?? prev.clampValue,
-        sourceNode: body.source_node,
-        targetNode: body.target_node,
-        drugTarget:
-          prev.drugTarget in (body.resolved_graph.nodes ?? {})
-            ? prev.drugTarget
-            : body.target_node,
-        knockouts: prev.knockouts.filter(
-          (k) => k in (body.resolved_graph.nodes ?? {}),
-        ),
-      }))
-    },
-    [],
-  )
+  const applySearchResult = useCallback((body: SearchAndSimulateResponse) => {
+    setPayload(body.scrubber_payload)
+    setGraph(body.resolved_graph)
+    setPrioritization(body.prioritization)
+    setReason(body.causal_brief)
+    setXai(body.xai_attributions ?? null)
+    setScientist(body.scientist_reasoning ?? null)
+    setStateSummary(body.state_summary ?? null)
+    setTopologicalAnalysis(body.topological_analysis ?? null)
+    setLatencyMs(body.elapsed_ms)
+    setProfileId(body.profile_id)
+    setScrubT(0)
+    setStatusStage(null)
+    const clamps = body.default_clamps
+    setOmicsClamps(clamps)
+    const clampNode =
+      controlsRef.current.clampNode in clamps
+        ? controlsRef.current.clampNode
+        : (Object.keys(clamps)[0] ?? body.source_node)
+    setControls((prev) => ({
+      ...prev,
+      conditionQuery: body.query,
+      clampNode,
+      clampValue: clamps[clampNode] ?? prev.clampValue,
+      sourceNode: body.source_node,
+      targetNode: body.target_node,
+      drugTarget:
+        prev.drugTarget in (body.resolved_graph.nodes ?? {})
+          ? prev.drugTarget
+          : body.target_node,
+      knockouts: prev.knockouts.filter((k) => k in (body.resolved_graph.nodes ?? {})),
+    }))
+  }, [])
 
   const runMutation = useMutation({
     mutationFn: async (
@@ -265,6 +272,46 @@ export function LabProvider({ children }: { children: ReactNode }) {
       startStageTicker()
     },
     onSuccess: (body) => {
+      applySearchResult(body)
+    },
+    onError: () => {
+      setStatusStage(null)
+    },
+    onSettled: () => {
+      simBusyRef.current = false
+      clearStageTimer()
+      setStatusStage(null)
+    },
+  })
+
+  const omicsMutation = useMutation({
+    mutationFn: async ({
+      profile,
+      params,
+    }: {
+      profile: OmicsProfile
+      params?: OmicsSimulateParams
+    }) => {
+      const c = controlsRef.current
+      return await simulateOmicsProfile(profile, {
+        t_end: 60,
+        knockouts: c.knockouts,
+        drugs: c.drugEnabled
+          ? [{ target: c.drugTarget, c_drug: c.cDrug, ki: c.ki }]
+          : [],
+        source_node: c.sourceNode || undefined,
+        target_node: c.targetNode || undefined,
+        simulation_id: `omics_${Date.now().toString(36)}`,
+        previous_state_summary: stateSummaryRef.current,
+        ...params,
+      })
+    },
+    onMutate: () => {
+      simBusyRef.current = true
+      startStageTicker()
+    },
+    onSuccess: (body, vars) => {
+      setActiveOmicsProfile(vars.profile)
       applySearchResult(body)
     },
     onError: () => {
@@ -318,14 +365,24 @@ export function LabProvider({ children }: { children: ReactNode }) {
     [patchControls, runMutation],
   )
 
+  const runOmicsProfile = useCallback(
+    (profile: OmicsProfile, params?: OmicsSimulateParams) => {
+      if (simBusyRef.current || runMutation.isPending || omicsMutation.isPending) return
+      omicsMutation.mutate({ profile, params })
+    },
+    [runMutation.isPending, omicsMutation],
+  )
+
   const engineLive = healthQ.isSuccess && healthQ.data?.status === 'ok'
-  const busy = runMutation.isPending
+  const busy = runMutation.isPending || omicsMutation.isPending
   const initializing = engineLive && !payload && !runMutation.isError && busy
   const offlineMessage = healthQ.isError
     ? formatApiError(healthQ.error)
     : runMutation.isError
       ? formatApiError(runMutation.error)
-      : null
+      : omicsMutation.isError
+        ? formatApiError(omicsMutation.error)
+        : null
 
   const value = useMemo<LabContextValue>(
     () => ({
@@ -357,8 +414,11 @@ export function LabProvider({ children }: { children: ReactNode }) {
       offlineMessage,
       topRegulator,
       pathNodes,
+      activeOmicsProfile,
+      omicsClamps,
       runSimulation,
       runQuery,
+      runOmicsProfile,
     }),
     [
       controls,
@@ -386,8 +446,11 @@ export function LabProvider({ children }: { children: ReactNode }) {
       offlineMessage,
       topRegulator,
       pathNodes,
+      activeOmicsProfile,
+      omicsClamps,
       runSimulation,
       runQuery,
+      runOmicsProfile,
     ],
   )
 

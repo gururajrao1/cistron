@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from voidsignal.ai.prioritizer import (
+from cistron.ai.prioritizer import (
     ATTENTION_EPS,
     compute_attention_matrix,
     node_feature_array,
@@ -13,9 +13,9 @@ from voidsignal.ai.prioritizer import (
     rank_combination_targets,
     resolve_output_nodes,
 )
-from voidsignal.data.omnipath import hypoxia_network_preset
-from voidsignal.engine.solver import HillCubeConfig, HillCubeEngine
-from voidsignal.serialization.scrubber import scrub_simulation
+from cistron.data.omnipath import hypoxia_network_preset
+from cistron.engine.solver import HillCubeConfig, HillCubeEngine
+from cistron.serialization.scrubber import scrub_simulation
 
 
 @pytest.fixture

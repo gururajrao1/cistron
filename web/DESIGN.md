@@ -1,4 +1,4 @@
-# VOIDSIGNAL Enterprise Research Studio — Design System
+# CISTRON Enterprise Research Studio — Design System
 
 Biotech / dark-mode precision console for ODE simulation, genomic VCF workflows,
 graph ML, and autonomous AI Scientist briefs. Tokens in this document are the

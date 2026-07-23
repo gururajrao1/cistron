@@ -1,4 +1,4 @@
-# VOIDSIGNAL
+# CISTRON
 
 
 Research-grade computational biology platform — **Phase 1: Core Simulation & Network Engine**.
@@ -12,7 +12,7 @@ discrete Boolean logic and continuous mass-action ODEs, with mid-run mutations a
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                        VOIDSIGNAL Phase 1                            │
+│                        CISTRON Phase 1                            │
 ├──────────────────────────────────────────────────────────────────────┤
 │  components.py                                                       │
 │    Gene · RNA · Protein · Complex · Ligand · Receptor · Compartment  │
@@ -69,7 +69,7 @@ EntityRegistry ──► SignalingNetwork (IDs + typed edges + NodeLogic)
 ## Install
 
 ```bash
-cd voidsignal
+cd cistron
 pip install -e ".[dev]"
 ```
 
@@ -83,7 +83,7 @@ pytest
 ```
 
 ```python
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     PerturbationManager,
@@ -122,10 +122,10 @@ ode_traj = engine.run_ode(
 
 | File | Responsibility |
 | --- | --- |
-| [`voidsignal/components.py`](voidsignal/components.py) | Biological entities, kinetics, compartments, registry |
-| [`voidsignal/topology.py`](voidsignal/topology.py) | Typed directed graph, motifs, hubs, robustness |
-| [`voidsignal/simulation.py`](voidsignal/simulation.py) | Boolean + ODE engines, trajectories |
-| [`voidsignal/perturbation.py`](voidsignal/perturbation.py) | Mutations, drugs, rate overrides, manager |
+| [`cistron/components.py`](cistron/components.py) | Biological entities, kinetics, compartments, registry |
+| [`cistron/topology.py`](cistron/topology.py) | Typed directed graph, motifs, hubs, robustness |
+| [`cistron/simulation.py`](cistron/simulation.py) | Boolean + ODE engines, trajectories |
+| [`cistron/perturbation.py`](cistron/perturbation.py) | Mutations, drugs, rate overrides, manager |
 
 ---
 

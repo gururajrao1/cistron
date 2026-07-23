@@ -15,11 +15,11 @@ export function Navbar({
     <header className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur-md">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/25 to-coral-action/20 text-sm font-extrabold text-emerald-50 shadow-[0_0_24px_rgba(16,185,129,0.35)]">
-          VS
+          CS
         </div>
         <div>
           <div className="font-[family-name:var(--font-sans)] text-base font-extrabold tracking-tight text-slate-50">
-            VoidSignal
+            Cistron
           </div>
           <div className="text-xs text-slate-500">Virtual Cellular Laboratory</div>
         </div>

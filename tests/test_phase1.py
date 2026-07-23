@@ -1,4 +1,4 @@
-"""Phase 1 unit tests for the VOIDSIGNAL core engine."""
+"""Phase 1 unit tests for the CISTRON core engine."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     ActivityState,
     BooleanSimulator,
     CellularCompartment,

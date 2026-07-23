@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     DashboardControls,
     DashboardSession,
     DoseResponseCurve,
@@ -19,8 +19,8 @@ from voidsignal import (
     synergy_heatmap_figure,
     trajectory_comparison_figure,
 )
-from voidsignal.hpc_runner import aggregate_ensemble
-from voidsignal.visualization.plots import hsi_gauge_figure, is_headless
+from cistron.hpc_runner import aggregate_ensemble
+from cistron.visualization.plots import hsi_gauge_figure, is_headless
 
 
 def test_version_phase9() -> None:

@@ -1,6 +1,6 @@
-# VOIDSIGNAL Enterprise Research Studio
+# CISTRON Enterprise Research Studio
 
-Decoupled React + TypeScript + Tailwind research console for the VOIDSIGNAL
+Decoupled React + TypeScript + Tailwind research console for the CISTRON
 Python backend (ODE solvers, docking, VCF, Graph ML, AI Scientist).
 
 Design tokens and layout contracts live in [`DESIGN.md`](./DESIGN.md).

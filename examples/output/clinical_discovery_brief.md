@@ -1,6 +1,6 @@
 # Clinical Discovery Brief — Multi-Hit Oncology Benchmark
 
-**VOIDSIGNAL** `0.11.0` · patient `CLIN_MULTIHIT_01`
+**CISTRON** `0.11.0` · patient `CLIN_MULTIHIT_01`
 
 ## Clinical profile
 
@@ -24,7 +24,7 @@
 
 ---
 
-# VOIDSIGNAL Autonomous Research Brief
+# CISTRON Autonomous Research Brief
 
 **Generated:** 2026-07-20 06:59 UTC  
 **Agent:** BiologicalAgentPlanner  
@@ -35,7 +35,7 @@
 
 ## Abstract
 
-We tasked an autonomous VOIDSIGNAL agent with the objective: *"Find a two-drug combination that halts ERK over-activation in a mutated EGFR background without exceeding the toxicity threshold"*. Working in a `cancer` phenotype with oncogene background **EGFR**, the planner selected **agent:MEK (C0=2.5), agent:RAF (C0=2.125)** to modulate readout **ERK**. Homeostatic Shift Index (treated vs baseline) reached **HSI=0.353**, Literature Alignment Score **LAS=0.521**, and the stated safety / efficacy objective was **satisfied**.
+We tasked an autonomous CISTRON agent with the objective: *"Find a two-drug combination that halts ERK over-activation in a mutated EGFR background without exceeding the toxicity threshold"*. Working in a `cancer` phenotype with oncogene background **EGFR**, the planner selected **agent:MEK (C0=2.5), agent:RAF (C0=2.125)** to modulate readout **ERK**. Homeostatic Shift Index (treated vs baseline) reached **HSI=0.353**, Literature Alignment Score **LAS=0.521**, and the stated safety / efficacy objective was **satisfied**.
 
 ## Hypothesis
 
@@ -212,7 +212,7 @@ LAS=0.521 (moderate literature concordance). Top simulated targets [TP53, EGFR, 
 
 ### Supporting evidence
 
-- (VOIDSIGNAL:topology) Simulation topology edge TP53→ERK (inhibition).
+- (CISTRON:topology) Simulation topology edge TP53→ERK (inhibition).
 - (UniProt:P00533) EGFR is a receptor tyrosine kinase frequently mutated / amplified in cancer; constitutive signalling drives MAPK cascade hyperactivation.
 - (PMID:15118073) EGFR tyrosine kinase inhibitors are clinically validated oncology drugs.
 - (UniProt:P01112) RAS GTPases transmit EGFR signals to RAF; oncogenic RAS locks GTP-bound state.

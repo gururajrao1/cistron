@@ -1,5 +1,5 @@
 /**
- * Plain-language metric glossary — keep in sync with voidsignal/ui/translator.py
+ * Plain-language metric glossary — keep in sync with cistron/ui/translator.py
  */
 
 export type BadgeTone =

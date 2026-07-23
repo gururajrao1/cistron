@@ -6,19 +6,19 @@ import time
 
 import pytest
 
-from voidsignal.data.resolver import resolve_condition_network
-from voidsignal.engine import HillCubeConfig, HillCubeEngine
-from voidsignal.math.topology import (
+from cistron.data.resolver import resolve_condition_network
+from cistron.engine import HillCubeConfig, HillCubeEngine
+from cistron.math.topology import (
     analyze_topology_vulnerabilities,
     betweenness_centrality,
     detect_feedback_loops,
 )
-from voidsignal.serialization import scrub_simulation
+from cistron.serialization import scrub_simulation
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from voidsignal.api.app import create_app
+from cistron.api.app import create_app
 
 
 def _hypoxia():

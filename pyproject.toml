@@ -3,13 +3,13 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "voidsignal"
+name = "cistron"
 version = "0.21.0"
 description = "Research-grade computational biology platform — stabilized UI, encyclopedia, causal canvas"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "VOIDSIGNAL Contributors" }]
+authors = [{ name = "CISTRON Contributors" }]
 keywords = [
     "systems-biology",
     "boolean-networks",
@@ -42,17 +42,17 @@ dependencies = [
 dev = ["pytest>=7.0"]
 ui = ["streamlit>=1.28", "plotly>=5.18"]
 api = ["fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.27"]
-all = ["voidsignal[dev,ui,api]"]
+all = ["cistron[dev,ui,api]"]
 
 [project.scripts]
-voidsignal-api = "voidsignal.api.__main__:main"
-voidsignal-run = "voidsignal.lifecycle:main"
-voidsignal-lab = "voidsignal.ui.__main__:main"
+cistron-api = "cistron.api.__main__:main"
+cistron-run = "cistron.lifecycle:main"
+cistron-lab = "cistron.ui.__main__:main"
 [tool.setuptools.packages.find]
-include = ["voidsignal*"]
+include = ["cistron*"]
 
 [tool.setuptools.package-data]
-voidsignal = ["assets/**/*.kgml", "assets/**/*.xml"]
+cistron = ["assets/**/*.kgml", "assets/**/*.xml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

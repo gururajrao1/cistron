@@ -6,17 +6,17 @@ import time
 
 import pytest
 
-from voidsignal.ai.scientist import generate_scientist_reasoning, snapshot_state_summary
-from voidsignal.ai.xai import compute_xai_attributions
-from voidsignal.ai import prioritize
-from voidsignal.data.resolver import resolve_condition_network
-from voidsignal.engine import HillCubeConfig, HillCubeEngine
-from voidsignal.serialization import scrub_simulation
+from cistron.ai.scientist import generate_scientist_reasoning, snapshot_state_summary
+from cistron.ai.xai import compute_xai_attributions
+from cistron.ai import prioritize
+from cistron.data.resolver import resolve_condition_network
+from cistron.engine import HillCubeConfig, HillCubeEngine
+from cistron.serialization import scrub_simulation
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from voidsignal.api.app import create_app
+from cistron.api.app import create_app
 
 
 def _hypoxia_run():

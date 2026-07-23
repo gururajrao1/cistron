@@ -7,9 +7,9 @@ import sys
 
 # Windows consoles: prefer UTF-8 if available
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-os.environ["VOIDSIGNAL_HEADLESS"] = "1"
+os.environ["CISTRON_HEADLESS"] = "1"
 
-from voidsignal import (
+from cistron import (
     DashboardControls,
     DashboardSession,
     DoseResponseCurve,
@@ -23,12 +23,12 @@ from voidsignal import (
     synergy_heatmap_figure,
     trajectory_comparison_figure,
 )
-from voidsignal.hpc_runner import aggregate_ensemble
-from voidsignal.visualization.plots import ensemble_band_figure
+from cistron.hpc_runner import aggregate_ensemble
+from cistron.visualization.plots import ensemble_band_figure
 
 
 def main() -> None:
-    print(f"VOIDSIGNAL {__version__} — Phase 9 visualization smoke demo")
+    print(f"CISTRON {__version__} — Phase 9 visualization smoke demo")
     print("=" * 60)
 
     net, ids = build_demo_mapk()

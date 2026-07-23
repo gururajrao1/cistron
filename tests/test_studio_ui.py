@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import math
 
-from voidsignal import __version__
-from voidsignal.agent.causal_reasoner import _pct_change
-from voidsignal.components import ClinicalAnnotation, DrugAssociation, Protein
-from voidsignal.simulation import SimulatorBackend, TrajectoryResult
-from voidsignal.topology import InteractionType, SignalingNetwork
-from voidsignal.ui.studio_cards import (
+from cistron import __version__
+from cistron.agent.causal_reasoner import _pct_change
+from cistron.components import ClinicalAnnotation, DrugAssociation, Protein
+from cistron.simulation import SimulatorBackend, TrajectoryResult
+from cistron.topology import InteractionType, SignalingNetwork
+from cistron.ui.studio_cards import (
     build_causal_payload,
     crosstalk_viewport_payload,
     demo_rich_mapk_entities,

@@ -1,8 +1,8 @@
-"""Live smoke demos for VOIDSIGNAL Phases 1–8."""
+"""Live smoke demos for CISTRON Phases 1–8."""
 
 from __future__ import annotations
 
-from voidsignal import (
+from cistron import (
     CancerSignalingConfig,
     CentralDogmaEngine,
     CompartmentTier,
@@ -92,7 +92,7 @@ def mapk(name: str = "mapk") -> tuple[SignalingNetwork, dict[str, str]]:
 
 def main() -> None:
     print("=" * 64)
-    print(f"VOIDSIGNAL v{__version__} — Phases 1-8 live smoke demos")
+    print(f"CISTRON v{__version__} — Phases 1-8 live smoke demos")
     print("=" * 64)
 
     # Phase 1

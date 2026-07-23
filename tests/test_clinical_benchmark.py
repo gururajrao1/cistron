@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from voidsignal import __version__
-from voidsignal.benchmarks.clinical_data import (
+from cistron import __version__
+from cistron.benchmarks.clinical_data import (
     ClinicalIngestionEngine,
     clinical_specs_to_vcf_text,
     default_expression_panel,
@@ -60,7 +60,7 @@ def test_clinical_ingestion_demo_baseline(tmp_path: Path) -> None:
 
 
 def test_vendored_baseline_loads() -> None:
-    from voidsignal.benchmarks.clinical_data import build_clinical_baseline
+    from cistron.benchmarks.clinical_data import build_clinical_baseline
 
     net, ids, warnings = build_clinical_baseline(prefer_vendored=True, fallback_demo=False)
     assert len(net.nodes()) >= 6

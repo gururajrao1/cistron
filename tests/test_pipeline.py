@@ -1,4 +1,4 @@
-"""End-to-end VoidSignalPipeline integration tests (<100 ms warm)."""
+"""End-to-end CistronPipeline integration tests (<100 ms warm)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from voidsignal.lifecycle import (
-    VoidSignalPipeline,
-    VoidSignalPipelineConfig,
+from cistron.lifecycle import (
+    CistronPipeline,
+    CistronPipelineConfig,
     build_arg_parser,
     config_from_args,
     main,
@@ -21,17 +21,17 @@ LATENCY_BUDGET_MS = 100.0
 
 
 @pytest.fixture(scope="module")
-def warmed_pipeline() -> VoidSignalPipeline:
+def warmed_pipeline() -> CistronPipeline:
     """Prime SciPy / NumPy so latency asserts measure orchestration work."""
-    VoidSignalPipeline(
-        VoidSignalPipelineConfig(
+    CistronPipeline(
+        CistronPipelineConfig(
             preset="hypoxia",
             clamps={"O2": 0.0},
             simulation_id="warmup",
         )
     ).run()
-    return VoidSignalPipeline(
-        VoidSignalPipelineConfig(
+    return CistronPipeline(
+        CistronPipelineConfig(
             preset="hypoxia",
             clamps={"O2": 0.0},
             source_node="O2",
@@ -41,7 +41,7 @@ def warmed_pipeline() -> VoidSignalPipeline:
     )
 
 
-def test_full_cycle_under_100ms(warmed_pipeline: VoidSignalPipeline) -> None:
+def test_full_cycle_under_100ms(warmed_pipeline: CistronPipeline) -> None:
     t0 = time.perf_counter()
     result = warmed_pipeline.run()
     elapsed = (time.perf_counter() - t0) * 1000.0
@@ -66,7 +66,7 @@ def test_full_cycle_under_100ms(warmed_pipeline: VoidSignalPipeline) -> None:
     assert restored.scrubber.simulation_id == "e2e_hypoxia"
 
 
-def test_cli_args_to_brief_under_100ms(tmp_path: Path, warmed_pipeline: VoidSignalPipeline) -> None:
+def test_cli_args_to_brief_under_100ms(tmp_path: Path, warmed_pipeline: CistronPipeline) -> None:
     # Reuse module warm-up from fixture
     _ = warmed_pipeline
     out = tmp_path / "report.md"
@@ -92,7 +92,7 @@ def test_cli_args_to_brief_under_100ms(tmp_path: Path, warmed_pipeline: VoidSign
     assert rc == 0
     assert elapsed < LATENCY_BUDGET_MS, f"CLI cycle took {elapsed:.2f} ms"
     text = out.read_text(encoding="utf-8")
-    assert "VoidSignal Discovery Report" in text
+    assert "Cistron Discovery Report" in text
     assert "O2" in text and "VEGFA" in text
     assert "Discovery brief" in text
 
@@ -118,7 +118,7 @@ def test_cli_json_and_perturbations() -> None:
     assert cfg.knockouts == ["MTOR"]
     assert cfg.drugs[0].target == "HIF1A"
 
-    result = VoidSignalPipeline(cfg).run()
+    result = CistronPipeline(cfg).run()
     data = json.loads(render_export(result, "json"))
     assert data["preset"] == "hypoxia"
     assert data["scrubber"]["nodes"]["MTOR"][-1] == 0.0

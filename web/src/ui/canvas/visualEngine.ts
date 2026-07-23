@@ -1,6 +1,6 @@
 /**
  * Client-side visual translator — builds animated frames from trajectory series.
- * Mirrors voidsignal/ui/visual_translator.py for offline mock / browser use.
+ * Mirrors cistron/ui/visual_translator.py for offline mock / browser use.
  */
 
 import type { PatientNetwork, TrajectorySeries } from "../api/types";

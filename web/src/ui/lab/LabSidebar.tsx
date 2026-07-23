@@ -49,7 +49,7 @@ export function LabSidebar({ stage, onStageChange, footer }: LabSidebarProps) {
     >
       <div className="border-b border-[rgba(148,163,184,0.12)] px-4 py-4">
         <p className="font-mono text-[10px] tracking-[0.18em] text-[#64748B] uppercase">
-          VOIDSIGNAL V1
+          CISTRON V1
         </p>
         <h1 className="mt-1 text-[15px] font-semibold tracking-tight text-[#F8FAFC]">
           Virtual Cell Lab

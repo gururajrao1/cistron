@@ -1,12 +1,12 @@
-# VoidSignal Laboratory Frontend
+# Cistron Laboratory Frontend
 
-Visualization shell for the VoidSignal FastAPI backend. **No ODE, GAT, or BioReasoner math runs in the browser** — the UI only renders API payloads and lerps scrubber keyframes.
+Visualization shell for the Cistron FastAPI backend. **No ODE, GAT, or BioReasoner math runs in the browser** — the UI only renders API payloads and lerps scrubber keyframes.
 
 ## Run
 
 ```bash
 # Terminal 1
-uvicorn voidsignal.api.app:app --reload --port 8000
+uvicorn cistron.api.app:app --reload --port 8000
 
 # Terminal 2
 cd frontend

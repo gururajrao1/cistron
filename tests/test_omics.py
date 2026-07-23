@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from voidsignal import (
+from cistron import (
     DualEngineSimulator,
     InteractionType,
     KineticParameters,
@@ -15,7 +15,7 @@ from voidsignal import (
     SimulationConfig,
     __version__,
 )
-from voidsignal.omics import (
+from cistron.omics import (
     EpigenomicTransformer,
     MethylationRecord,
     MultiOmicsBridge,
@@ -37,8 +37,8 @@ from voidsignal.omics import (
     parse_psi_matrix,
     solve_fba,
 )
-from voidsignal.omics.splicing import IsoformRecord
-from voidsignal.patient_profile import PatientSignalingNetwork
+from cistron.omics.splicing import IsoformRecord
+from cistron.patient_profile import PatientSignalingNetwork
 
 
 def _mapk() -> tuple[SignalingNetwork, dict[str, str]]:
@@ -168,7 +168,7 @@ def test_michaelis_menten_multiplier() -> None:
 def test_metabolic_coupling_changes_vmax() -> None:
     net, ids = _mapk()
     mek0 = net.registry.get(ids["MEK"]).kinetics.vmax
-    from voidsignal.omics import MetabolicCoupler
+    from cistron.omics import MetabolicCoupler
 
     fba, states = MetabolicCoupler().apply(net, make_demo_metabolomic_profile())
     assert fba.residual_norm < 5e-2

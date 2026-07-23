@@ -1480,7 +1480,7 @@ const BRIEF = `# Clinical Discovery Brief — Multi-Hit Oncology
 
 
 
-**VOIDSIGNAL** Research Studio · patient \`CLIN_MULTIHIT_01\`
+**CISTRON** Research Studio · patient \`CLIN_MULTIHIT_01\`
 
 
 
