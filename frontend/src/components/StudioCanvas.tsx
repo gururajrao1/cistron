@@ -1,22 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import cytoscape, { type Core, type EventObject } from 'cytoscape'
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts'
 import { Loader2 } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import type { PresetDetail, ScrubberPayload } from '../api/types'
 import { FOCUS_SERIES } from '../api/types'
 import { lerpAtTime } from '../api/client'
 import { useLab } from '../lab/LabContext'
+import { resolveOmicsProvenance } from '../api/types'
+import { TrajectoryChart } from './studio/TrajectoryChart'
 
 /**
  * Hard cap — never hand Cytoscape a huge graph.
@@ -100,14 +91,20 @@ function omicsHeatColor(log2Fc: number | null | undefined): string {
 }
 
 /** Floating top-left legend for the omics heatmap overlay (avoids bottom-edge clip). */
-function OmicsHeatmapLegend({ profileName }: { profileName: string }) {
+function OmicsHeatmapLegend({
+  profileName,
+  provenance,
+}: {
+  profileName: string
+  provenance: string
+}) {
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-20 w-[176px] rounded-lg border border-orange-500/35 bg-obsidian/95 px-2.5 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.45)] backdrop-blur-md">
-      <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-md border border-orange-500/40 bg-orange-950/55 px-1.5 py-0.5">
-        <span className="shrink-0 text-[8px] font-bold uppercase tracking-[0.12em] text-orange-300">
-          Active
+    <div className="pointer-events-none absolute left-2 top-2 z-20 w-[188px] rounded-lg border border-orange-500/35 bg-obsidian/95 px-2.5 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.45)] backdrop-blur-md">
+      <div className="mb-1.5 flex min-w-0 flex-col gap-1">
+        <span className="inline-flex max-w-full items-center truncate rounded-md border border-orange-500/45 bg-orange-950/55 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-orange-100">
+          {provenance}
         </span>
-        <span className="lab-mono truncate text-[10px] font-semibold text-orange-50">
+        <span className="truncate text-[9px] font-medium text-slate-500" title={profileName}>
           {profileName}
         </span>
       </div>
@@ -230,12 +227,17 @@ function spacingForN(n: number): { nodeSep: number; rankSep: number; padding: nu
 }
 
 function sliceGraphForCanvas(graph: PresetDetail, maxNodes = MAX_CANVAS_NODES): PresetDetail {
-  const ids = Object.keys(graph.nodes)
-  if (ids.length <= maxNodes) return graph
+  const nodesIn = graph.nodes && typeof graph.nodes === 'object' ? graph.nodes : {}
+  const edgesIn = Array.isArray(graph.edges) ? graph.edges : []
+  const ids = Object.keys(nodesIn)
+  if (ids.length <= maxNodes) {
+    return { ...graph, nodes: nodesIn, edges: edgesIn }
+  }
 
   const degree: Record<string, number> = {}
   for (const id of ids) degree[id] = 0
-  for (const e of graph.edges) {
+  for (const e of edgesIn) {
+    if (!e?.source || !e?.target) continue
     degree[e.source] = (degree[e.source] ?? 0) + 1
     degree[e.target] = (degree[e.target] ?? 0) + 1
   }
@@ -246,13 +248,15 @@ function sliceGraphForCanvas(graph: PresetDetail, maxNodes = MAX_CANVAS_NODES): 
   )
   const nodes: PresetDetail['nodes'] = {}
   for (const id of keep) {
-    const n = graph.nodes[id]
+    const n = nodesIn[id]
     if (n) nodes[id] = n
   }
   return {
     ...graph,
     nodes,
-    edges: graph.edges.filter((e) => keep.has(e.source) && keep.has(e.target)),
+    edges: edgesIn.filter(
+      (e) => e?.source && e?.target && keep.has(e.source) && keep.has(e.target),
+    ),
   }
 }
 
@@ -267,6 +271,7 @@ export function StudioCanvas({
   selectedNode,
   onNodeSelect,
   knockouts = [],
+  perturbations = {},
   onToggleKnockout,
   loading = false,
 }: {
@@ -280,10 +285,12 @@ export function StudioCanvas({
   selectedNode?: string | null
   onNodeSelect?: (nodeId: string) => void
   knockouts?: string[]
+  /** Interactive clamps / titrations; keys present → visual KO/dose marker. */
+  perturbations?: Record<string, number>
   onToggleKnockout?: (nodeId: string) => void
   loading?: boolean
 }) {
-  const { activeOmicsProfile } = useLab()
+  const { activeOmicsProfile, untreatedRun, treatedRun } = useLab()
   const cyRef = useRef<HTMLDivElement>(null)
   const cyInstance = useRef<Core | null>(null)
   const styleRafRef = useRef<number | null>(null)
@@ -315,37 +322,62 @@ export function StudioCanvas({
 
   const graphSig = useMemo(() => {
     if (!displayGraph) return ''
-    const n = Object.keys(displayGraph.nodes).length
-    const e = displayGraph.edges.length
+    const n = Object.keys(displayGraph.nodes ?? {}).length
+    const e = Array.isArray(displayGraph.edges) ? displayGraph.edges.length : 0
     const id = displayGraph.id || displayGraph.name || 'g'
     return `${id}|${n}|${e}`
   }, [displayGraph])
 
   const { nodes: nodeY, edges: edgeF } = useMemo(() => {
-    if (!payload) return { nodes: {} as Record<string, number>, edges: {} as Record<string, number> }
-    return lerpAtTime(payload, scrubT)
+    if (!payload?.nodes || !payload?.time_steps?.length) {
+      return { nodes: {} as Record<string, number>, edges: {} as Record<string, number> }
+    }
+    try {
+      return lerpAtTime(payload, scrubT)
+    } catch (err) {
+      console.warn('lerpAtTime failed', err)
+      return { nodes: {} as Record<string, number>, edges: {} as Record<string, number> }
+    }
   }, [payload, scrubT])
 
   const focus = useMemo(() => {
     const series = FOCUS_SERIES[preset]
-    if (series?.length) return series
+    if (series?.length) return series.filter(Boolean)
     return Object.keys(payload?.nodes ?? {}).slice(0, 5)
   }, [preset, payload])
 
-  const pathKey = useMemo(() => pathNodes.join('\0'), [pathNodes])
-  const pathSet = useMemo(() => new Set(pathNodes), [pathKey])
-  const koSet = useMemo(() => new Set(knockouts), [knockouts])
-
-  const chartData = useMemo(() => {
-    if (!payload) return []
-    return payload.time_steps.map((t, i) => {
-      const row: Record<string, number> = { t }
-      for (const sym of focus) {
-        row[sym] = payload.nodes[sym]?.[i] ?? 0
-      }
-      return row
-    })
-  }, [payload, focus])
+  const pathKey = useMemo(
+    () => (Array.isArray(pathNodes) ? pathNodes : []).join('\0'),
+    [pathNodes],
+  )
+  const pathSet = useMemo(
+    () => new Set(Array.isArray(pathNodes) ? pathNodes : []),
+    [pathKey],
+  )
+  const koSet = useMemo(
+    () => new Set(Array.isArray(knockouts) ? knockouts : []),
+    [knockouts],
+  )
+  const pertEntries = useMemo(
+    () => Object.entries(perturbations),
+    [perturbations],
+  )
+  const pertMap = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const [k, v] of pertEntries) {
+      m[k] = v
+      m[k.toUpperCase()] = v
+    }
+    return m
+  }, [pertEntries])
+  const pertKey = useMemo(
+    () =>
+      pertEntries
+        .map(([k, v]) => `${k}:${v.toFixed(2)}`)
+        .sort()
+        .join('|'),
+    [pertEntries],
+  )
 
   const maxFlux = useMemo(
     () => (Object.values(edgeF).length ? Math.max(...Object.values(edgeF)) : 0),
@@ -373,29 +405,39 @@ export function StudioCanvas({
         cyInstance.current?.destroy()
         cyInstance.current = null
 
-        const nodeIds = Object.keys(displayGraph.nodes)
+        const nodeIds = Object.keys(displayGraph.nodes ?? {})
         if (!nodeIds.length) {
           setLayoutReady(true)
           return
         }
-        const layers = assignLayers(nodeIds, displayGraph.edges)
+        const safeEdges = (Array.isArray(displayGraph.edges) ? displayGraph.edges : []).filter(
+          (e) =>
+            e?.source &&
+            e?.target &&
+            nodeIds.includes(e.source) &&
+            nodeIds.includes(e.target),
+        )
+        const layers = assignLayers(nodeIds, safeEdges)
         const { nodeSep, rankSep, padding } = spacingForN(nodeIds.length)
 
         const elements = [
           ...nodeIds.map((id) => ({
             data: { id, label: id, layer: layers.get(id) ?? 1 },
           })),
-          ...displayGraph.edges.map((e, i) => ({
-            data: {
-              id: `e${i}-${e.source}-${e.target}`,
-              source: e.source,
-              target: e.target,
-              sign: e.sign,
-              key: `${e.source}->${e.target}`,
-              inhibitory: e.sign < 0,
-            },
-            classes: e.sign < 0 ? 'inhibitory' : 'stimulatory',
-          })),
+          ...safeEdges.map((e, i) => {
+            const sign = typeof e.sign === 'number' ? e.sign : e.is_inhibition ? -1 : 1
+            return {
+              data: {
+                id: `e${i}-${e.source}-${e.target}`,
+                source: e.source,
+                target: e.target,
+                sign,
+                key: `${e.source}->${e.target}`,
+                inhibitory: sign < 0,
+              },
+              classes: sign < 0 ? 'inhibitory' : 'stimulatory',
+            }
+          }),
         ]
 
         const cy = cytoscape({
@@ -439,6 +481,15 @@ export function StudioCanvas({
                 'border-color': '#FF5252',
                 'border-width': 3,
                 'background-opacity': 0.35,
+              },
+            },
+            {
+              selector: 'node.perturbed',
+              style: {
+                'border-style': 'dashed',
+                'border-color': '#FB7185',
+                'border-width': 3.5,
+                'background-opacity': 0.45,
               },
             },
             {
@@ -584,7 +635,10 @@ export function StudioCanvas({
       cy.batch(() => {
         cy.nodes().forEach((n) => {
           const id = n.id()
-          const y = koSet.has(id) ? 0 : (nodeY[id] ?? 0)
+          const pertVal = pertMap[id] ?? pertMap[id.toUpperCase()]
+          const isPert = pertVal != null
+          const isKo = koSet.has(id) || (isPert && pertVal <= 1e-6)
+          const y = isKo ? 0 : (nodeY[id] ?? 0)
           const onPath = pathSet.has(id)
           const selected = selectedNode === id
           const lfc = omicsLfcByNode[id] ?? omicsLfcByNode[id.toUpperCase()]
@@ -600,45 +654,73 @@ export function StudioCanvas({
           const glow = mapped ? 6 + Math.min(10, Math.abs(lfc ?? 0) * 2) : 2 + y * 14
           const inHover = !hoveredNode || focusIds.has(id)
           const fade = inHover ? 1 : 0.15
-          n.toggleClass('knocked-out', koSet.has(id))
+          n.toggleClass('knocked-out', isKo)
+          n.toggleClass('perturbed', Boolean(isPert && !isKo))
           n.toggleClass('omics-mapped', Boolean(mapped))
+          const label = isKo
+            ? `${id} 🚫`
+            : isPert
+              ? `${id} ·${pertVal!.toFixed(1)}`
+              : mapped
+                ? `${id} ●`
+                : id
           n.style({
             'background-color': fill,
-            width: 18 + 30 * Math.max(y, koSet.has(id) ? 0.15 : 0),
-            height: 18 + 30 * Math.max(y, koSet.has(id) ? 0.15 : 0),
-            opacity: (0.35 + 0.65 * Math.max(y, 0.2)) * fade,
+            width: 18 + 30 * Math.max(y, isKo ? 0.15 : 0),
+            height: 18 + 30 * Math.max(y, isKo ? 0.15 : 0),
+            opacity:
+              (isKo ? 0.28 : isPert ? 0.4 + 0.35 * y : 0.35 + 0.65 * Math.max(y, 0.2)) *
+              fade,
             'border-color': selected
               ? '#FBBF24'
-              : koSet.has(id)
+              : isKo
                 ? '#FF5252'
-                : onPath
-                  ? '#10B981'
-                  : mapped
-                    ? heat
-                    : omicsActive
-                      ? '#475569'
-                      : mixHex('#1E293B', paletteBase, y * 0.5),
+                : isPert
+                  ? '#FB7185'
+                  : onPath
+                    ? '#10B981'
+                    : mapped
+                      ? heat
+                      : omicsActive
+                        ? '#475569'
+                        : mixHex('#1E293B', paletteBase, y * 0.5),
             'border-width': selected
               ? 4
-              : koSet.has(id)
-                ? 3
+              : isKo || isPert
+                ? 3.5
                 : onPath
                   ? 3.5
                   : mapped
                     ? 3
                     : 1.5 + y,
-            'border-style': koSet.has(id) ? 'dashed' : 'solid',
-            'underlay-color': mapped ? heat : omicsActive ? OMICS_NEUTRAL : paletteBase,
-            'underlay-padding': glow,
-            'underlay-opacity': mapped
+            'border-style': isKo || isPert ? 'dashed' : 'solid',
+            'underlay-color': isKo
+              ? '#FF5252'
+              : isPert
+                ? '#FB7185'
+                : mapped
+                  ? heat
+                  : omicsActive
+                    ? OMICS_NEUTRAL
+                    : paletteBase,
+            'underlay-padding': isKo || isPert ? 8 : glow,
+            'underlay-opacity': isKo
               ? inHover
-                ? 0.35 + 0.25 * Math.min(1, Math.abs(lfc ?? 0) / OMICS_LFC_ABS_MAX)
-                : 0.12
-              : inHover
-                ? 0.12 + 0.55 * y
-                : 0.04,
-            'font-size': onPath || selected || mapped ? 12 : 10,
-            label: koSet.has(id) ? `${id} ⊖` : mapped ? `${id} ●` : id,
+                ? 0.35
+                : 0.18
+              : isPert
+                ? inHover
+                  ? 0.28
+                  : 0.12
+                : mapped
+                  ? inHover
+                    ? 0.35 + 0.25 * Math.min(1, Math.abs(lfc ?? 0) / OMICS_LFC_ABS_MAX)
+                    : 0.12
+                  : inHover
+                    ? 0.12 + 0.55 * y
+                    : 0.04,
+            'font-size': onPath || selected || mapped || isPert ? 12 : 10,
+            label,
           })
         })
         cy.edges().forEach((e) => {
@@ -674,7 +756,7 @@ export function StudioCanvas({
         styleRafRef.current = null
       }
     }
-  }, [nodeY, edgeF, pathKey, pathSet, selectedNode, koSet, hoveredNode, layoutReady, omicsActive, omicsLfcByNode])
+  }, [nodeY, edgeF, pathKey, pathSet, selectedNode, koSet, hoveredNode, layoutReady, omicsActive, omicsLfcByNode, pertKey, pertMap])
 
   useEffect(() => {
     const cy = cyInstance.current
@@ -738,7 +820,7 @@ export function StudioCanvas({
         <div className="mt-1.5 flex justify-between gap-2 text-[0.65rem] text-slate-600">
           <span>Click · inspect · Shift/Right-click · knockout wᵢ=0</span>
           <span>
-            {pathNodes.length ? `Cascade: ${pathNodes.join(' → ')}` : 'Hover to trace Nᵢₙ / Nₒᵤₜ'}
+            {pathNodes.length ? `Cascade: ${(Array.isArray(pathNodes) ? pathNodes : []).join(' → ')}` : 'Hover to trace Nᵢₙ / Nₒᵤₜ'}
           </span>
         </div>
       </GlassCard>
@@ -755,6 +837,7 @@ export function StudioCanvas({
         <div className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-xl border border-slate-800/80 lab-grid-panel">
           <div
             ref={cyRef}
+            data-cistron-export="topology"
             className="absolute inset-0 h-full w-full"
             style={{ touchAction: 'none' }}
           />
@@ -776,6 +859,7 @@ export function StudioCanvas({
                 activeOmicsProfile.sample_name ||
                 activeOmicsProfile.profile_id
               }
+              provenance={resolveOmicsProvenance(activeOmicsProfile)}
             />
           ) : null}
           <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-slate-500">
@@ -788,73 +872,22 @@ export function StudioCanvas({
             <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-violet-hub" /> Hub
             </span>
+            {pertKey ? (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-coral-action/40 bg-coral-action/10 px-1.5 py-0.5 text-red-200 backdrop-blur-sm">
+                🚫 Perturbed
+              </span>
+            ) : null}
           </div>
         </div>
       </GlassCard>
 
-      <GlassCard
-        title="Activation trajectories"
-        hint="Multi-protein yᵢ(t) · playhead locked to scrubber"
-        className="h-[200px] shrink-0 overflow-hidden"
-      >
-        {payload ? (
-          <div className="h-[135px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#1E293B" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="t"
-                  stroke="#64748B"
-                  tick={{ fill: '#64748B', fontSize: 11 }}
-                  label={{
-                    value: 'min',
-                    position: 'insideBottomRight',
-                    fill: '#64748B',
-                    offset: -2,
-                  }}
-                />
-                <YAxis
-                  domain={[0, 1.05]}
-                  stroke="#64748B"
-                  tick={{ fill: '#64748B', fontSize: 11 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#0F172A',
-                    border: '1px solid #1E293B',
-                    borderRadius: 10,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <ReferenceLine
-                  x={scrubT}
-                  stroke="#10B981"
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  label={`t=${scrubT}`}
-                />
-                {focus.map((sym) => (
-                  <Line
-                    key={sym}
-                    type="monotone"
-                    dataKey={sym}
-                    stroke={NODE_COLORS[sym] ?? '#94A3B8'}
-                    dot={false}
-                    strokeWidth={2.3}
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="flex h-[120px] items-center justify-center gap-2 text-sm text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-            Computing activation curves…
-          </div>
-        )}
-      </GlassCard>
+      <TrajectoryChart
+        untreatedRun={untreatedRun}
+        treatedRun={treatedRun}
+        focus={focus}
+        scrubT={scrubT}
+        loading={loading}
+      />
     </div>
   )
 }

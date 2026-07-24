@@ -20,7 +20,14 @@ from cistron.models.prioritization import (
 )
 from cistron.models.reasoner import CausalContextPayload, CausalPathContext
 from cistron.models.serialization import ScrubberPayload
-from cistron.models.omics import OmicsFeature, OmicsProfile, calculate_alignment_score
+from cistron.models.omics import (
+    OmicsFeature,
+    OmicsProfile,
+    calculate_alignment_score,
+    compute_omics_provenance,
+    normalize_omics_label,
+    slugify,
+)
 
 __all__ = [
     "DDG_ACTIVITY_SLOPE",
@@ -43,4 +50,7 @@ __all__ = [
     "OmicsFeature",
     "OmicsProfile",
     "calculate_alignment_score",
+    "compute_omics_provenance",
+    "normalize_omics_label",
+    "slugify",
 ]

@@ -1,7 +1,7 @@
 import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { SidebarNav } from './SidebarNav'
-import { HeaderBar } from './HeaderBar'
+import { Header } from '../components/studio/Header'
 import { NodeBiophysicsInspector } from '../components/NodeBiophysicsInspector'
 import { useLab } from '../lab/LabContext'
 
@@ -23,8 +23,13 @@ class StudioErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-sm text-red-200">
-          <div>Studio render error: {this.state.error.message}</div>
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-sm text-red-200">
+          <div className="max-w-lg text-center">
+            Studio render error: {this.state.error.message}
+          </div>
+          <pre className="max-h-40 max-w-lg overflow-auto rounded-lg border border-slate-800 bg-slate-950/80 p-2 text-[10px] text-slate-500">
+            {this.state.error.stack?.split('\n').slice(0, 8).join('\n')}
+          </pre>
           <button
             type="button"
             className="rounded-lg border border-slate-700 px-3 py-1 text-slate-300 hover:bg-slate-800"
@@ -48,7 +53,7 @@ export function AppShell() {
     <div className="flex h-full min-h-0 overflow-hidden bg-obsidian">
       <SidebarNav collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <HeaderBar />
+        <Header />
         <main className="relative min-h-0 flex-1 overflow-hidden">
           <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-40" />
           {/* No opacity animation — framer initial:0 was blanking Studio after load. */}

@@ -159,6 +159,10 @@ class SearchAndSimulateRequest(BaseModel):
             "Off by default so Studio stays interactive; enable from Combinations."
         ),
     )
+    sl_candidate_nodes: List[str] = Field(
+        default_factory=list,
+        description="Preferred nodes for dual-target SL permutation (e.g. selected KOs)",
+    )
     @model_validator(mode="after")
     def _merge_drug_aliases(self) -> "SearchAndSimulateRequest":
         if self.drug_perturbations:
@@ -195,6 +199,10 @@ class SearchAndSimulateResponse(BaseModel):
         ge=0.0,
         le=100.0,
         description="Omics Fit Score (%) — agreement of y(t₆₀) vs mapped y₀",
+    )
+    omics_provenance: Optional[str] = Field(
+        default=None,
+        description="Dynamic key e.g. cistron-hypoxia from sample/condition metadata",
     )
 
 
@@ -267,6 +275,10 @@ class OmicsSimulateRequest(BaseModel):
     profile: OmicsProfile
     t_end: float = Field(default=60.0, gt=0.0)
     knockouts: List[str] = Field(default_factory=list)
+    perturbations: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Interactive node clamps / titrations y∈[0,1]; 0 = knockout",
+    )
     drugs: List[DrugDoseRequest] = Field(default_factory=list)
     dense_output_points: int = Field(default=61, ge=2, le=501)
     source_node: Optional[str] = None
@@ -284,3 +296,72 @@ class OmicsSimulateRequest(BaseModel):
         description="Default y₀ for network nodes missing from the profile",
     )
     previous_state_summary: Optional[PreviousStateSummary] = None
+    include_synthetic_lethality: bool = Field(
+        default=False,
+        description="Enable pairwise synthetic-lethality scan (slow)",
+    )
+    sl_candidate_nodes: List[str] = Field(
+        default_factory=list,
+        description="Preferred dual-screen targets for SL permutation",
+    )
+
+    @model_validator(mode="after")
+    def _clip_perturbations(self) -> "OmicsSimulateRequest":
+        if not self.perturbations:
+            return self
+        clipped = {
+            str(k).strip().upper(): max(0.0, min(1.0, float(v)))
+            for k, v in self.perturbations.items()
+            if str(k).strip()
+        }
+        object.__setattr__(self, "perturbations", clipped)
+        return self
+
+
+class DynamicTopologyNode(BaseModel):
+    """Client-built Cytoscape node from Reactome / STRING."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(..., min_length=1)
+    symbol: Optional[str] = None
+    y0: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class DynamicTopologyEdge(BaseModel):
+    """Client-built Cytoscape edge (STRING weight + activation/inhibition)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: str = Field(..., min_length=1)
+    target: str = Field(..., min_length=1)
+    weight: float = Field(default=0.5, ge=0.0)
+    type: str = Field(default="activation", description="activation | inhibition")
+
+
+class DynamicGraphSimulateRequest(BaseModel):
+    """Simulate a browser-built Reactome+STRING interactome (t₀→t₆₀ Hill-cube)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(..., min_length=1)
+    pathway_id: Optional[str] = None
+    pathway_name: Optional[str] = None
+    profile_id: str = Field(
+        ...,
+        min_length=1,
+        description="Dynamic provenance e.g. cistron-alzheimer-disease",
+    )
+    nodes: List[DynamicTopologyNode] = Field(..., min_length=2)
+    edges: List[DynamicTopologyEdge] = Field(default_factory=list)
+    custom_knockouts: List[str] = Field(default_factory=list)
+    custom_clamps: Dict[str, float] = Field(default_factory=dict)
+    drugs: List[DrugDoseRequest] = Field(default_factory=list)
+    previous_state_summary: Optional[PreviousStateSummary] = None
+    t_end: float = Field(default=60.0, gt=0.0)
+    dense_output_points: int = Field(default=61, ge=2, le=501)
+    source_node: Optional[str] = None
+    target_node: Optional[str] = None
+    simulation_id: Optional[str] = None
+    include_synthetic_lethality: bool = False
+    sl_candidate_nodes: List[str] = Field(default_factory=list)

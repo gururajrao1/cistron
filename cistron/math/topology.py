@@ -352,12 +352,14 @@ def analyze_topology_vulnerabilities(
     run_synthetic_lethality: bool = False,
     t_end: float = 60.0,
     sl_time_budget_ms: float = 0.0,
+    sl_candidate_nodes: Optional[Sequence[str]] = None,
 ) -> TopologicalAnalysis:
     """
     Full topological vulnerability pass on a causal activity graph.
 
     When ``payload`` is provided, pairwise synthetic lethality is evaluated on
     the highest-centrality non-output nodes (budgeted for interactive latency).
+    Prefer ``sl_candidate_nodes`` when Dual Screen selects explicit targets.
     """
     t0 = time.perf_counter()
     nodes, succ, signs = _adjacency(graph)
@@ -391,13 +393,23 @@ def analyze_topology_vulnerabilities(
         outputs = set(resolve_output_nodes(graph, output_nodes=output_nodes))
         clamps = set(_payload_clamps(payload).keys())
         kos = set(_payload_knockouts(payload))
-        candidates = [
+        preferred = [
+            str(n).strip().upper()
+            for n in (sl_candidate_nodes or [])
+            if str(n).strip().upper() in graph.nodes
+        ]
+        ranked_pool = [
             n
             for n in ranked_nodes
             if n not in outputs and n not in clamps and n not in kos
         ]
-        if len(candidates) < 2:
-            candidates = [n for n in ranked_nodes if n not in kos]
+        if len(ranked_pool) < 2:
+            ranked_pool = [n for n in ranked_nodes if n not in kos]
+        # Prefer selected Dual Screen targets, then fill with centrality ranks.
+        candidates: List[str] = []
+        for n in preferred + ranked_pool:
+            if n not in candidates:
+                candidates.append(n)
         remaining_ms = max(
             50.0,
             sl_time_budget_ms - (time.perf_counter() - t0) * 1000.0,
@@ -405,7 +417,7 @@ def analyze_topology_vulnerabilities(
         sl_pairs = evaluate_synthetic_lethality(
             graph,
             payload,
-            candidate_nodes=candidates[:max_sl_candidates],
+            candidate_nodes=candidates[: max(2, max_sl_candidates)],
             output_nodes=output_nodes,
             t_end=t_end,
             dense_output_points=9,

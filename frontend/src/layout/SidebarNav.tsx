@@ -2,15 +2,16 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import {
   BarChart3,
+  Box,
   ChevronLeft,
   ChevronRight,
   Dna,
   FileText,
   FlaskConical,
   GitBranch,
+  Network,
   Pill,
   Search,
-  Sparkles,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { MetaLabel } from '../components/ui'
@@ -36,12 +37,20 @@ export const PRIMARY_NAV: NavItem[] = [
     shortcut: '1',
   },
   {
+    id: 'pathways',
+    path: '/pathways',
+    label: 'Disease Pathways',
+    shortLabel: 'Pathways',
+    icon: Network,
+    shortcut: '2',
+  },
+  {
     id: 'explorer',
     path: '/explorer',
     label: 'Network Builder',
     shortLabel: 'Explorer',
     icon: Search,
-    shortcut: '2',
+    shortcut: '3',
   },
   {
     id: 'xai',
@@ -49,7 +58,7 @@ export const PRIMARY_NAV: NavItem[] = [
     label: 'XAI & Prioritization',
     shortLabel: 'XAI',
     icon: BarChart3,
-    shortcut: '3',
+    shortcut: '4',
   },
   {
     id: 'pharmacology',
@@ -57,7 +66,7 @@ export const PRIMARY_NAV: NavItem[] = [
     label: 'Pharmacology Lab',
     shortLabel: 'Pharma',
     icon: Pill,
-    shortcut: '4',
+    shortcut: '5',
   },
   {
     id: 'briefs',
@@ -65,7 +74,7 @@ export const PRIMARY_NAV: NavItem[] = [
     label: 'Research Briefs',
     shortLabel: 'Briefs',
     icon: FileText,
-    shortcut: '5',
+    shortcut: '6',
   },
   {
     id: 'combinations',
@@ -73,7 +82,7 @@ export const PRIMARY_NAV: NavItem[] = [
     label: 'Combination Therapy',
     shortLabel: 'Combos',
     icon: GitBranch,
-    shortcut: '6',
+    shortcut: '7',
   },
   {
     id: 'omics',
@@ -81,21 +90,19 @@ export const PRIMARY_NAV: NavItem[] = [
     label: 'VCF & Multi-Omics',
     shortLabel: 'Omics',
     icon: Dna,
-    shortcut: '7',
+    shortcut: '8',
   },
-]
-
-export const FUTURE_NAV: NavItem[] = [
   {
     id: 'biophysics',
     path: '/biophysics',
-    label: 'AlphaFold Biophysics',
+    label: '3D Structure',
     shortLabel: '3D',
-    icon: Sparkles,
-    comingSoon: true,
-    phase: 4,
+    icon: Box,
+    shortcut: '9',
   },
 ]
+
+export const FUTURE_NAV: NavItem[] = []
 
 export function SidebarNav({
   collapsed,
@@ -148,11 +155,15 @@ export function SidebarNav({
           <NavButton key={item.id} item={item} collapsed={collapsed} />
         ))}
 
-        <div className="my-2.5 border-t border-slate-800/80" />
-        <SectionLabel collapsed={collapsed}>Roadmap</SectionLabel>
-        {FUTURE_NAV.map((item) => (
-          <NavButton key={item.id} item={item} collapsed={collapsed} />
-        ))}
+        {FUTURE_NAV.length > 0 ? (
+          <>
+            <div className="my-2.5 border-t border-slate-800/80" />
+            <SectionLabel collapsed={collapsed}>Roadmap</SectionLabel>
+            {FUTURE_NAV.map((item) => (
+              <NavButton key={item.id} item={item} collapsed={collapsed} />
+            ))}
+          </>
+        ) : null}
       </nav>
 
       <button

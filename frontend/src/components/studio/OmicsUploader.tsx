@@ -10,12 +10,13 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { GlassCard } from '../GlassCard'
-import { GeneBadge, MetaLabel } from '../ui'
+import { GeneBadge, MetaLabel, OmicsProvenanceBadge } from '../ui'
 import { uploadOmicsCsv } from '../../api/client'
 import {
   EXAMPLE_CONTROL_RNASEQ_CSV,
   EXAMPLE_HYPOXIA_RNASEQ_CSV,
   mapLog2FcToY0,
+  resolveOmicsProvenance,
   type OmicsFeature,
   type OmicsProfile,
 } from '../../api/types'
@@ -338,6 +339,10 @@ export function OmicsUploader() {
           {active ? (
             <div className="space-y-3">
               <dl className="grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-1.5 text-[12px]">
+                <dt className="text-slate-500">Provenance</dt>
+                <dd>
+                  <OmicsProvenanceBadge provenance={resolveOmicsProvenance(active)} />
+                </dd>
                 <dt className="text-slate-500">Profile ID</dt>
                 <dd className="lab-mono truncate text-emerald-300">{active.profile_id}</dd>
                 <dt className="text-slate-500">Mapped</dt>

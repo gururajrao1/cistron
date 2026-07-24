@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import {
   Line,
   LineChart,
@@ -19,7 +19,24 @@ function occupancy(c: number, ki: number): number {
 
 export function PharmacologyView() {
   const lab = useLab()
-  const { controls, nodes, clampOptions } = lab
+  const { controls, nodes, clampOptions, profileId } = lab
+
+  // Keep drug / clamp targets inside the active scenario topology.
+  useEffect(() => {
+    if (!nodes.length) return
+    const patch: Partial<typeof controls> = {}
+    if (!nodes.includes(controls.drugTarget)) {
+      patch.drugTarget = nodes.includes(controls.targetNode)
+        ? controls.targetNode
+        : nodes[0]!
+    }
+    if (controls.clampNode && !nodes.includes(controls.clampNode)) {
+      patch.clampNode = nodes.includes(controls.sourceNode)
+        ? controls.sourceNode
+        : nodes[0]!
+    }
+    if (Object.keys(patch).length) lab.patchControls(patch)
+  }, [nodes, controls.drugTarget, controls.clampNode, controls.targetNode, controls.sourceNode])
 
   const doseCurve = useMemo(() => {
     const ki = Math.max(0.05, controls.ki)
@@ -37,7 +54,7 @@ export function PharmacologyView() {
 
   const multiTargets = useMemo(() => {
     const pool = nodes.length ? nodes : [controls.drugTarget]
-    return pool.slice(0, 8)
+    return pool.slice(0, 12)
   }, [nodes, controls.drugTarget])
 
   const applyAndRun = () => lab.runSimulation()
@@ -51,6 +68,14 @@ export function PharmacologyView() {
           </h1>
           <p className="text-sm text-slate-500">
             Dose–response θ = C/(C+Kᵢ) · knockouts wᵢ=0 · environmental clamps
+          </p>
+          <p className="mt-1 font-mono text-[11px] text-emerald-300/90">
+            Scenario · {controls.conditionQuery || '—'} · profile{' '}
+            <span className="rounded-md border border-violet-hub/40 bg-violet-950/40 px-1.5 py-0.5 text-violet-200">
+              {profileId || '—'}
+            </span>
+            {' · '}
+            {nodes.length} nodes
           </p>
         </div>
         <button

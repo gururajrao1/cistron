@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, ArrowRight, Loader2, Sparkles, Zap } from 'lucide-react'
 import type { ScientistReasoning } from '../api/types'
+import type { CausalHypothesis } from '../services/aiCausalEngine'
+import { HypothesisCardList } from './studio/HypothesisCard'
 import { GeneBadge } from './ui'
 
 function formatDelta(v: number): string {
@@ -18,19 +20,25 @@ function sentimentLabel(s: string): string {
 /** Soft-highlight gene symbols and math tokens inside the brief. */
 function BriefText({ text, className }: { text: string; className?: string }) {
   const parts = useMemo(() => {
+    const src = typeof text === 'string' ? text : String(text ?? '')
     const re =
       /(\b[A-Z][A-Z0-9_]{1,14}\b|Σy₆₀|Σy|Δy₆₀|Δy|Δα|αᵢⱼ|yᵢ\(t\)|y₆₀)/g
     const out: Array<{ t: string; kind: 'plain' | 'gene' | 'math' }> = []
     let last = 0
     let m: RegExpExecArray | null
-    while ((m = re.exec(text)) !== null) {
-      if (m.index > last) out.push({ t: text.slice(last, m.index), kind: 'plain' })
+    let guard = 0
+    while ((m = re.exec(src)) !== null && guard++ < 5000) {
+      if (m[0].length === 0) {
+        re.lastIndex += 1
+        continue
+      }
+      if (m.index > last) out.push({ t: src.slice(last, m.index), kind: 'plain' })
       const token = m[0]
       const isMath = /[ΣΔαy₆₀ᵢⱼ()]/.test(token) || token.startsWith('Σ') || token.startsWith('Δ')
       out.push({ t: token, kind: isMath ? 'math' : 'gene' })
       last = m.index + token.length
     }
-    if (last < text.length) out.push({ t: text.slice(last), kind: 'plain' })
+    if (last < src.length) out.push({ t: src.slice(last), kind: 'plain' })
     return out
   }, [text])
 
@@ -64,10 +72,15 @@ export function ScientistPanel({
   scientist,
   loading,
   compact = false,
+  hypotheses,
+  hypothesesLoading,
 }: {
   scientist: ScientistReasoning | null
   loading?: boolean
   compact?: boolean
+  /** Dual-KO / synthetic-lethality Hypothesis Cards */
+  hypotheses?: CausalHypothesis[]
+  hypothesesLoading?: boolean
 }) {
   const [pulse, setPulse] = useState(false)
   useEffect(() => {
@@ -153,12 +166,12 @@ export function ScientistPanel({
               </div>
             ) : null}
           </div>
-          {scientist ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-900/70 px-1.5 py-1 font-mono text-[0.62rem] text-slate-400">
-              <Zap className="h-3 w-3 text-emerald-400/80" />
-              {scientist.elapsed_ms.toFixed(1)} ms
-            </span>
-          ) : null}
+              {scientist ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-900/70 px-1.5 py-1 font-mono text-[0.62rem] text-slate-400">
+                  <Zap className="h-3 w-3 text-emerald-400/80" />
+                  {Number(scientist.elapsed_ms ?? 0).toFixed(1)} ms
+                </span>
+              ) : null}
         </div>
 
         {scientist?.brief ? (
@@ -237,6 +250,15 @@ export function ScientistPanel({
         ) : (
           <p className="text-sm text-slate-500">Run a condition to hear the AI Scientist.</p>
         )}
+
+        {!compact && (hypotheses?.length || hypothesesLoading) ? (
+          <div className="mt-3 border-t border-slate-800/80 pt-3">
+            <HypothesisCardList
+              hypotheses={hypotheses ?? []}
+              loading={hypothesesLoading}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   )

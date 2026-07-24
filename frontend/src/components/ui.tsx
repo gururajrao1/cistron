@@ -34,12 +34,13 @@ export function GeneBadge({
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-xs font-semibold tracking-tight',
+        'inline-flex max-w-full items-center rounded-full border px-2 py-0.5 font-mono text-xs font-semibold tracking-tight',
         tones[tone],
         className,
       )}
+      title={name}
     >
-      {name}
+      <span className="truncate">{name}</span>
     </span>
   )
 }
@@ -95,6 +96,27 @@ export function MetricChip({
     >
       {children}
     </div>
+  )
+}
+
+/** Dynamic omics provenance key badge — renders `cistron-{slug}` from profile metadata. */
+export function OmicsProvenanceBadge({
+  provenance,
+  className = '',
+}: {
+  provenance: string
+  className?: string
+}) {
+  return (
+    <span
+      title={provenance}
+      className={clsx(
+        'inline-flex max-w-[14rem] items-center truncate rounded-md border border-orange-500/45 bg-orange-950/55 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-tight text-orange-100 shadow-[0_0_12px_rgba(249,115,22,0.15)]',
+        className,
+      )}
+    >
+      {provenance}
+    </span>
   )
 }
 

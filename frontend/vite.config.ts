@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    include: ['3dmol/build/3Dmol.js'],
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -24,6 +27,19 @@ export default defineConfig({
       '/simulate': {
         target: 'http://127.0.0.1:8001',
         changeOrigin: true,
+      },
+      // CORS bypass for live Reactome / STRING interactome construction
+      '/reactome': {
+        target: 'https://reactome.org',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/reactome/, ''),
+      },
+      '/string-db': {
+        target: 'https://string-db.org',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/string-db/, ''),
       },
     },
   },

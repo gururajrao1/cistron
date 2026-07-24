@@ -29,11 +29,16 @@ from cistron.data.multisource import (
     list_source_situations,
 )
 from cistron.data.omics_parser import parse_omics_csv
-from cistron.data.resolver import list_condition_suggestions
+from cistron.data.resolver import list_condition_suggestions, resolve_condition_network
 
 from cistron.engine import DrugDose, HillCubeConfig, HillCubeEngine
 from cistron.integrations.offline_data import OFFLINE_UNIPROT
-from cistron.models.graph import CausalActivityGraph
+from cistron.models.graph import (
+    ActivityFlowEdge,
+    CausalActivityGraph,
+    GraphNode,
+    MechanismKind,
+)
 from cistron.models.omics import OmicsProfile, calculate_alignment_score
 from cistron.reasoner import (
     build_causal_context,
@@ -44,6 +49,7 @@ from cistron.serialization import scrub_simulation
 
 from cistron.api.schemas import (
     ConditionSuggestion,
+    DynamicGraphSimulateRequest,
     HealthResponse,
     NodeInspectorResponse,
     OmicsSimulateRequest,
@@ -216,7 +222,8 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
     """Hypoxia preset + omics-mapped y₀ baselines → full lab response."""
     t0 = time.perf_counter()
     stages: List[str] = []
-    profile = req.profile
+    # Re-validate so sample/condition are normalized and provenance is dynamic.
+    profile = OmicsProfile.model_validate(req.profile.model_dump())
 
     stages.append("Resolving local hypoxia preset graph")
     graph = hypoxia_network_preset()
@@ -236,6 +243,14 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
         for sym in profile.features
         if sym in baselines and sym in graph.nodes
     }
+    # Interactive UI perturbations override omics clamps (0 = CRISPR KO).
+    knockouts = list(req.knockouts)
+    for sym, val in (req.perturbations or {}).items():
+        if sym not in graph.nodes:
+            continue
+        clamps[sym] = float(val)
+        if val <= 1e-6 and sym not in knockouts:
+            knockouts.append(sym)
 
     source = req.source_node if req.source_node in graph.nodes else next(iter(graph.nodes), "O2")
     if "O2" in graph.nodes and req.source_node is None:
@@ -248,7 +263,7 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
     payload = _run_engine(
         graph,
         clamps=clamps,
-        knockouts=list(req.knockouts),
+        knockouts=knockouts,
         drugs=list(req.drugs),
         t_end=float(req.t_end),
         dense_output_points=int(req.dense_output_points),
@@ -258,9 +273,11 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
             "omics_profile_id": profile.profile_id,
             "sample_name": profile.sample_name,
             "condition": profile.condition,
+            "omics_provenance": profile.provenance,
             "graph_id": graph_id,
             "n_omics_features": len(profile.features),
             "n_omics_clamps": len(clamps),
+            "perturbations": dict(req.perturbations or {}),
         },
         y0=baselines,
     )
@@ -303,7 +320,8 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
             "omics_profile_id": profile.profile_id,
             "condition": profile.condition,
             "sample_name": profile.sample_name,
-            "knockouts": list(req.knockouts),
+            "knockouts": knockouts,
+            "perturbations": dict(req.perturbations or {}),
             "clamps": clamps,
             "baselines": baselines,
             "drugs": [
@@ -315,23 +333,26 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
     state_summary = snapshot_state_summary(
         payload,
         prio,
-        knockouts=req.knockouts,
+        knockouts=knockouts,
         clamps=clamps,
         condition_query=f"omics:{profile.condition}:{profile.sample_name}",
         scientist_brief=scientist.brief,
     )
 
-    # Skip synthetic lethality — keep omics path interactive.
+    # Skip synthetic lethality unless Dual Screen requested.
     stages.append("Topological vulnerability analysis")
+    want_sl = bool(getattr(req, "include_synthetic_lethality", False))
+    focus = [str(s).strip().upper() for s in (req.sl_candidate_nodes or []) if str(s).strip()]
     topo = analyze_topology_vulnerabilities(
         graph,
         payload=payload,
         output_nodes=[target] if target in graph.nodes else None,
         top_bottlenecks=5,
-        max_sl_candidates=0,
-        run_synthetic_lethality=False,
+        max_sl_candidates=6 if want_sl else 0,
+        run_synthetic_lethality=want_sl,
         t_end=float(req.t_end),
-        sl_time_budget_ms=0.0,
+        sl_time_budget_ms=450.0 if want_sl else 0.0,
+        sl_candidate_nodes=focus or None,
     )
 
     stages.append("Scoring omics alignment (y₆₀ vs y₀)")
@@ -364,9 +385,16 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
         elapsed_ms=(time.perf_counter() - t0) * 1000.0,
         stages=stages,
         alignment_score=float(align["alignment_score"]),
+        omics_provenance=profile.provenance,
         metadata={
             "graph_id": graph_id,
-            "provenance": {"source": "omics_profile", "condition": profile.condition},
+            "omics_provenance": profile.provenance,
+            "provenance": {
+                "source": "omics_profile",
+                "key": profile.provenance,
+                "condition": profile.condition,
+                "sample_name": profile.sample_name,
+            },
             "n_nodes": len(graph.nodes),
             "n_edges": len(graph.edges),
             "n_omics_features": len(profile.features),
@@ -384,31 +412,61 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
     t0 = time.perf_counter()
     stages: List[str] = []
 
-    stages.append("Resolving local hypoxia preset graph")
-    graph = hypoxia_network_preset()
-    graph_id = f"preset_hypoxia_{abs(hash(req.condition_query)) % 10_000_000}"
+    stages.append("Resolving condition network from query")
+    # Interactive path: local curated profiles first; optional OmniPath enrich.
+    use_omni = bool(getattr(req, "use_omnipath", True))
+    # Offline-first when client only asked for local sources.
+    sources = [str(s).lower() for s in (req.selected_sources or [])]
+    if sources and "omnipath" not in sources and "signor" not in sources:
+        use_omni = False
+    resolved = resolve_condition_network(
+        req.condition_query,
+        use_omnipath=use_omni,
+        omnipath_timeout=0.6,
+    )
+    graph = resolved.graph
+    profile_id = resolved.profile_id
+    graph_id = f"preset_{profile_id}_{abs(hash(req.condition_query)) % 10_000_000}"
     _DYNAMIC_GRAPHS[graph_id] = graph
 
-    clamps = {"O2": 0.0}
+    clamps = dict(resolved.default_clamps)
     if req.custom_clamps:
         clamps.update({k: float(v) for k, v in req.custom_clamps.items() if k in graph.nodes})
 
-    source = req.source_node if req.source_node in graph.nodes else "O2"
-    target = req.target_node if req.target_node in graph.nodes else "VEGFA"
+    # Drop clamps / KOs that are not in this scenario's topology.
+    clamps = {k: v for k, v in clamps.items() if k in graph.nodes}
+    knockouts = [k for k in req.custom_knockouts if k in graph.nodes]
 
-    stages.append("Solving Hill-cube ODEs")
+    source = (
+        req.source_node
+        if req.source_node and req.source_node in graph.nodes
+        else resolved.source_node
+    )
+    target = (
+        req.target_node
+        if req.target_node and req.target_node in graph.nodes
+        else resolved.target_node
+    )
+    if source not in graph.nodes:
+        source = next(iter(graph.nodes), resolved.source_node)
+    if target not in graph.nodes:
+        target = next(reversed(list(graph.nodes.keys())), resolved.target_node)
+
+    stages.append(f"Solving Hill-cube ODEs ({profile_id})")
     payload = _run_engine(
         graph,
         clamps=clamps,
-        knockouts=list(req.custom_knockouts),
-        drugs=list(req.drugs),
+        knockouts=knockouts,
+        drugs=[d for d in req.drugs if d.target in graph.nodes],
         t_end=float(req.t_end),
         dense_output_points=int(req.dense_output_points),
-        simulation_id=req.simulation_id or "search_hypoxia",
+        simulation_id=req.simulation_id or f"search_{profile_id}",
         meta_extra={
             "condition_query": req.condition_query,
-            "profile_id": "hypoxia",
+            "profile_id": profile_id,
             "graph_id": graph_id,
+            "resolve_ms": resolved.resolve_ms,
+            "provenance": dict(resolved.provenance or {}),
         },
     )
 
@@ -448,10 +506,13 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
         payload,
         perturbation_delta={
             "condition_query": req.condition_query,
-            "knockouts": list(req.custom_knockouts),
+            "profile_id": profile_id,
+            "knockouts": knockouts,
             "clamps": clamps,
             "drugs": [
-                {"target": d.target, "c_drug": d.c_drug, "ki": d.ki} for d in req.drugs
+                {"target": d.target, "c_drug": d.c_drug, "ki": d.ki}
+                for d in req.drugs
+                if d.target in graph.nodes
             ],
         },
         prioritization=prio,
@@ -459,7 +520,7 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
     state_summary = snapshot_state_summary(
         payload,
         prio,
-        knockouts=req.custom_knockouts,
+        knockouts=knockouts,
         clamps=clamps,
         condition_query=req.condition_query,
         scientist_brief=scientist.brief,
@@ -467,20 +528,26 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
 
     stages.append("Topological vulnerability analysis")
     want_sl = bool(getattr(req, "include_synthetic_lethality", False))
+    focus = [
+        str(s).strip().upper()
+        for s in (req.sl_candidate_nodes or [])
+        if str(s).strip() and str(s).strip().upper() in graph.nodes
+    ]
     topo = analyze_topology_vulnerabilities(
         graph,
         payload=payload,
         output_nodes=[target] if target in graph.nodes else None,
         top_bottlenecks=5,
-        max_sl_candidates=5 if want_sl else 0,
+        max_sl_candidates=6 if want_sl else 0,
         run_synthetic_lethality=want_sl,
         t_end=float(req.t_end),
-        sl_time_budget_ms=300.0 if want_sl else 0.0,
+        sl_time_budget_ms=450.0 if want_sl else 0.0,
+        sl_candidate_nodes=focus or None,
     )
 
     return SearchAndSimulateResponse(
         query=req.condition_query,
-        profile_id="hypoxia",
+        profile_id=profile_id,
         resolved_graph=_graph_to_detail(graph, graph_id=graph_id),
         scrubber_payload=payload,
         prioritization=prio,
@@ -492,17 +559,259 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
         default_clamps=clamps,
         source_node=source,
         target_node=target,
-        resolve_ms=1.0,
+        resolve_ms=float(resolved.resolve_ms),
         elapsed_ms=(time.perf_counter() - t0) * 1000.0,
         stages=stages,
         metadata={
             "graph_id": graph_id,
-            "provenance": {"source": "local_preset"},
+            "profile_id": profile_id,
+            "provenance": dict(resolved.provenance or {"source": "condition_resolver"}),
             "n_nodes": len(graph.nodes),
             "n_edges": len(graph.edges),
             "xai_ms": xai.elapsed_ms,
             "scientist_ms": scientist.elapsed_ms,
             "topology_ms": topo.elapsed_ms,
+        },
+    )
+
+
+def _topology_to_causal(req: DynamicGraphSimulateRequest) -> CausalActivityGraph:
+    """Convert Reactome+STRING Cytoscape payload → CausalActivityGraph."""
+    nodes: Dict[str, GraphNode] = {}
+    for n in req.nodes:
+        sym = str(n.symbol or n.id).strip().upper()
+        if not sym or sym in nodes:
+            continue
+        nodes[sym] = GraphNode(
+            gene_symbol=sym,
+            tau_min=1.0,
+            activity_weight=1.0,
+            initial_concentration=float(n.y0),
+            metadata={"source": "reactome_string"},
+        )
+
+    edges: List[ActivityFlowEdge] = []
+    seen: set[tuple[str, str, int]] = set()
+    for e in req.edges:
+        src = str(e.source).strip().upper()
+        tgt = str(e.target).strip().upper()
+        if not src or not tgt or src == tgt:
+            continue
+        if src not in nodes or tgt not in nodes:
+            continue
+        et = str(e.type or "activation").strip().lower()
+        inhib = et in {"inhibition", "inhibitory", "repression", "negative"}
+        sign = -1 if inhib else 1
+        key = (src, tgt, sign)
+        if key in seen:
+            continue
+        seen.add(key)
+        w = float(e.weight)
+        if w > 1.0:
+            w = w / 1000.0
+        w = max(0.0, min(1.0, w))
+        edges.append(
+            ActivityFlowEdge(
+                source=src,
+                target=tgt,
+                sign=sign,  # type: ignore[arg-type]
+                is_stimulation=not inhib,
+                is_inhibition=inhib,
+                mechanism=MechanismKind.ENZYMATIC,
+                sources=["STRING", "Reactome"],
+                datasets=["string-db", "reactome"],
+                evidence_score=w,
+                metadata={"string_weight": w, "edge_type": et},
+            )
+        )
+
+    if len(nodes) < 2:
+        raise ValueError("Dynamic topology needs at least 2 nodes")
+    if not edges:
+        # Fully disconnected — add a soft chain so the ODE still has structure.
+        ordered = list(nodes.keys())
+        for i in range(len(ordered) - 1):
+            edges.append(
+                ActivityFlowEdge(
+                    source=ordered[i],
+                    target=ordered[i + 1],
+                    sign=1,
+                    is_stimulation=True,
+                    is_inhibition=False,
+                    mechanism=MechanismKind.ENZYMATIC,
+                    sources=["synthetic"],
+                    evidence_score=0.4,
+                )
+            )
+
+    profile = str(req.profile_id).strip() or "cistron-dynamic"
+    return CausalActivityGraph(
+        name=str(req.pathway_name or req.query).strip() or profile,
+        organism_id=9606,
+        nodes=nodes,
+        edges=edges,
+        provenance={
+            "source": "reactome_string_dynamic",
+            "profile_id": profile,
+            "pathway_id": req.pathway_id,
+            "pathway_name": req.pathway_name,
+            "query": req.query,
+            "n_nodes": len(nodes),
+            "n_edges": len(edges),
+        },
+    )
+
+
+def _execute_dynamic_graph_pipeline(req: DynamicGraphSimulateRequest) -> SearchAndSimulateResponse:
+    """Hill-cube + GAT/XAI/BioReasoner for a client-built Reactome/STRING graph."""
+    t0 = time.perf_counter()
+    stages: List[str] = ["Constructing dynamic interactome from Reactome & STRING-DB"]
+
+    graph = _topology_to_causal(req)
+    profile_id = str(req.profile_id).strip() or "cistron-dynamic"
+    graph_id = f"dynamic_{profile_id}_{abs(hash(req.query)) % 10_000_000}"
+    _DYNAMIC_GRAPHS[graph_id] = graph
+
+    # Soft y₀ from client nodes; optional clamps / KOs.
+    y0 = {
+        sym: float(n.initial_concentration)
+        for sym, n in graph.nodes.items()
+    }
+    clamps = {
+        k: float(v)
+        for k, v in (req.custom_clamps or {}).items()
+        if k in graph.nodes
+    }
+    knockouts = [k for k in req.custom_knockouts if k in graph.nodes]
+
+    symbols = list(graph.nodes.keys())
+    source = (
+        req.source_node
+        if req.source_node and req.source_node in graph.nodes
+        else symbols[0]
+    )
+    target = (
+        req.target_node
+        if req.target_node and req.target_node in graph.nodes
+        else symbols[-1]
+    )
+
+    stages.append(f"Solving Hill-cube ODEs ({profile_id})")
+    payload = _run_engine(
+        graph,
+        clamps=clamps,
+        knockouts=knockouts,
+        drugs=[d for d in req.drugs if d.target in graph.nodes],
+        t_end=float(req.t_end),
+        dense_output_points=int(req.dense_output_points),
+        simulation_id=req.simulation_id or f"dyn_{profile_id}",
+        y0=y0,
+        meta_extra={
+            "condition_query": req.query,
+            "profile_id": profile_id,
+            "graph_id": graph_id,
+            "pathway_id": req.pathway_id,
+            "provenance": dict(graph.provenance or {}),
+        },
+    )
+
+    stages.append("Calculating GAT Attention")
+    prio = prioritize(graph, payload)
+
+    stages.append("Computing XAI attributions")
+    xai = compute_xai_attributions(
+        graph,
+        payload,
+        prio,
+        output_nodes=[target] if target in graph.nodes else None,
+    )
+
+    stages.append("Building BioReasoner Brief")
+    context = build_causal_context(
+        graph,
+        payload,
+        source_node=source,
+        target_node=target,
+        k=3,
+        prioritization=prio,
+    )
+    causal = ReasonResponse(
+        context=context,
+        brief=synthesize_deterministic_brief(context),
+        prompt=generate_discovery_brief_prompt(context),
+        prioritization=None,
+        elapsed_ms=0.0,
+    )
+
+    stages.append("AI Scientist reasoning")
+    scientist = generate_scientist_reasoning(
+        req.previous_state_summary,
+        payload,
+        perturbation_delta={
+            "condition_query": req.query,
+            "profile_id": profile_id,
+            "pathway_id": req.pathway_id,
+            "knockouts": knockouts,
+            "clamps": clamps,
+        },
+        prioritization=prio,
+    )
+    state_summary = snapshot_state_summary(
+        payload,
+        prio,
+        knockouts=knockouts,
+        clamps=clamps,
+        condition_query=req.query,
+        scientist_brief=scientist.brief,
+    )
+
+    stages.append("Topological vulnerability analysis")
+    want_sl = bool(req.include_synthetic_lethality)
+    focus = [
+        str(s).strip().upper()
+        for s in (req.sl_candidate_nodes or [])
+        if str(s).strip() and str(s).strip().upper() in graph.nodes
+    ]
+    topo = analyze_topology_vulnerabilities(
+        graph,
+        payload=payload,
+        output_nodes=[target] if target in graph.nodes else None,
+        top_bottlenecks=5,
+        max_sl_candidates=6 if want_sl else 0,
+        run_synthetic_lethality=want_sl,
+        t_end=float(req.t_end),
+        sl_time_budget_ms=450.0 if want_sl else 0.0,
+        sl_candidate_nodes=focus or None,
+    )
+
+    return SearchAndSimulateResponse(
+        query=req.query,
+        profile_id=profile_id,
+        resolved_graph=_graph_to_detail(graph, graph_id=graph_id),
+        scrubber_payload=payload,
+        prioritization=prio,
+        causal_brief=causal,
+        xai_attributions=xai,
+        scientist_reasoning=scientist,
+        state_summary=state_summary,
+        topological_analysis=topo,
+        default_clamps=clamps or {source: float(y0.get(source, 0.5))},
+        source_node=source,
+        target_node=target,
+        resolve_ms=0.0,
+        elapsed_ms=(time.perf_counter() - t0) * 1000.0,
+        stages=stages,
+        metadata={
+            "graph_id": graph_id,
+            "profile_id": profile_id,
+            "provenance": dict(graph.provenance or {}),
+            "pathway_id": req.pathway_id,
+            "n_nodes": len(graph.nodes),
+            "n_edges": len(graph.edges),
+            "xai_ms": xai.elapsed_ms,
+            "scientist_ms": scientist.elapsed_ms,
+            "topology_ms": topo.elapsed_ms,
+            "source": "reactome_string_dynamic",
         },
     )
 
@@ -575,6 +884,36 @@ def _register_routes(router: APIRouter) -> None:
             ) from exc
 
     @router.post(
+        "/simulate-dynamic-graph",
+        response_model=SearchAndSimulateResponse,
+        tags=["search"],
+        summary="Simulate a Reactome+STRING interactome built in the browser",
+    )
+    async def simulate_dynamic_graph(
+        req: DynamicGraphSimulateRequest,
+    ) -> SearchAndSimulateResponse:
+        if len(req.nodes) < 2:
+            raise HTTPException(status_code=422, detail="Need at least 2 topology nodes")
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(_execute_dynamic_graph_pipeline, req),
+                timeout=8.0,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail="Dynamic graph simulation timed out",
+            ) from None
+        except Exception as exc:
+            logger.exception("simulate-dynamic-graph failed")
+            raise HTTPException(
+                status_code=500,
+                detail=f"simulate-dynamic-graph failed ({type(exc).__name__}): {exc}",
+            ) from exc
+
+    @router.post(
         "/omics/upload",
         response_model=OmicsProfile,
         tags=["omics"],
@@ -589,6 +928,7 @@ def _register_routes(router: APIRouter) -> None:
         if not raw:
             raise HTTPException(status_code=422, detail="Uploaded file is empty")
         try:
+            # OmicsProfile validators normalize labels + compute cistron-{slug} provenance.
             return parse_omics_csv(raw, sample_name=sample_name, condition=condition)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc

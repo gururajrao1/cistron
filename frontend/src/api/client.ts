@@ -191,7 +191,22 @@ export async function searchAndSimulate(
   body: import('./types').SearchAndSimulateRequest,
 ): Promise<import('./types').SearchAndSimulateResponse> {
   return withApiErrors(async () => {
-    const { data } = await api.post(`${v1}/search-and-simulate`, body)
+    const { data } = await api.post(`${v1}/search-and-simulate`, body, {
+      timeout: 60_000,
+    })
+    return data
+  })
+}
+
+/** POST /api/v1/simulate-dynamic-graph — Reactome+STRING topology → Hill-cube t₀→t₆₀. */
+export async function simulateDynamicGraph(
+  body: import('./types').DynamicGraphSimulateRequest,
+): Promise<import('./types').SearchAndSimulateResponse> {
+  return withApiErrors(async () => {
+    await ensureApiBase()
+    const { data } = await api.post(`${v1}/simulate-dynamic-graph`, body, {
+      timeout: 90_000,
+    })
     return data
   })
 }
@@ -289,6 +304,7 @@ export async function simulateOmicsProfile(
       profile,
       t_end: params.t_end ?? 60,
       knockouts: params.knockouts ?? [],
+      perturbations: params.perturbations ?? {},
       drugs: params.drugs ?? [],
       dense_output_points: params.dense_output_points ?? 61,
       source_node: params.source_node,
@@ -297,6 +313,8 @@ export async function simulateOmicsProfile(
       scaling_factor: params.scaling_factor ?? 1.0,
       baseline_y0: params.baseline_y0 ?? 0.5,
       previous_state_summary: params.previous_state_summary ?? null,
+      include_synthetic_lethality: params.include_synthetic_lethality ?? false,
+      sl_candidate_nodes: params.sl_candidate_nodes ?? [],
     })
     return data
   })

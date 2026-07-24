@@ -221,6 +221,34 @@ export interface SearchAndSimulateRequest {
   use_omnipath?: boolean
   selected_sources?: string[]
   include_synthetic_lethality?: boolean
+  /** Preferred Dual Screen / SL permutation targets. */
+  sl_candidate_nodes?: string[]
+}
+
+/** Browser-built Reactome + STRING topology for /simulate-dynamic-graph. */
+export interface DynamicGraphSimulateRequest {
+  query: string
+  pathway_id?: string | null
+  pathway_name?: string | null
+  profile_id: string
+  nodes: Array<{ id: string; symbol?: string; y0?: number }>
+  edges: Array<{
+    source: string
+    target: string
+    weight?: number
+    type?: 'activation' | 'inhibition' | string
+  }>
+  custom_knockouts?: string[]
+  custom_clamps?: Record<string, number>
+  drugs?: Array<{ target: string; c_drug?: number; concentration?: number; ki: number }>
+  previous_state_summary?: PreviousStateSummary | null
+  t_end?: number
+  dense_output_points?: number
+  source_node?: string
+  target_node?: string
+  simulation_id?: string
+  include_synthetic_lethality?: boolean
+  sl_candidate_nodes?: string[]
 }
 
 export interface TopologicalAnalysis {
@@ -270,6 +298,8 @@ export interface SearchAndSimulateResponse {
   metadata: Record<string, unknown>
   /** Omics Fit Score (%) when response came from /omics/simulate. */
   alignment_score?: number | null
+  /** Dynamic key e.g. cistron-hypoxia from sample/condition metadata. */
+  omics_provenance?: string | null
 }
 
 /** Differential-omics feature (matches cistron.models.omics.OmicsFeature). */
@@ -287,13 +317,44 @@ export interface OmicsProfile {
   profile_id: string
   sample_name: string
   condition: string
+  /** Dynamic key e.g. cistron-hypoxia / cistron-alzheimers-cortex. */
+  provenance?: string
   features: Record<string, OmicsFeature>
+}
+
+/** Lowercase kebab-case slug for provenance keys. */
+export function slugifyOmicsLabel(raw: string): string {
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  return s || 'profile'
+}
+
+/** `cistron-{slugify(condition || sample_name)}` — prefers server-provided provenance. */
+export function resolveOmicsProvenance(
+  profile: Pick<OmicsProfile, 'condition' | 'sample_name' | 'provenance'>,
+): string {
+  if (profile.provenance && /^cistron-[a-z0-9-]+$/.test(profile.provenance)) {
+    return profile.provenance
+  }
+  const label = (profile.condition || profile.sample_name || 'profile').trim()
+  return `cistron-${slugifyOmicsLabel(label)}`
+}
+
+/** Ensure profile carries a dynamic provenance key before library / simulate use. */
+export function withOmicsProvenance(profile: OmicsProfile): OmicsProfile {
+  return { ...profile, provenance: resolveOmicsProvenance(profile) }
 }
 
 /** Optional knobs for POST /api/v1/omics/simulate. */
 export interface OmicsSimulateParams {
   t_end?: number
   knockouts?: string[]
+  /** Interactive node clamps / titrations y∈[0,1]; 0 = knockout. */
+  perturbations?: Record<string, number>
   drugs?: Array<{ target: string; c_drug?: number; concentration?: number; ki: number }>
   dense_output_points?: number
   source_node?: string
@@ -302,6 +363,8 @@ export interface OmicsSimulateParams {
   scaling_factor?: number
   baseline_y0?: number
   previous_state_summary?: PreviousStateSummary | null
+  include_synthetic_lethality?: boolean
+  sl_candidate_nodes?: string[]
 }
 
 /** Soft y₀ bounds used by the backend sigmoid mapper. */

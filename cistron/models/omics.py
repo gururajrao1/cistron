@@ -8,14 +8,48 @@ Maps differential-expression style features onto Hill-cube initial activities
 from __future__ import annotations
 
 import math
+import re
 import uuid
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Soft bounds so ODE states never sit exactly at 0 or 1.
 Y0_MIN = 0.01
 Y0_MAX = 0.99
+
+_SPECIAL_CHARS = re.compile(r"[^\w\s\-]", flags=re.UNICODE)
+_MULTI_SPACE = re.compile(r"\s+")
+_NON_ALNUM = re.compile(r"[^a-z0-9]+")
+_MULTI_DASH = re.compile(r"-+")
+
+
+def normalize_omics_label(value: str) -> str:
+    """Strip special characters and collapse whitespace in sample/condition labels."""
+    s = str(value).strip()
+    s = _SPECIAL_CHARS.sub("", s)
+    s = _MULTI_SPACE.sub(" ", s).strip()
+    if not s:
+        raise ValueError("label must be non-empty after normalization")
+    return s
+
+
+def slugify(value: str) -> str:
+    """Lowercase kebab-case slug for provenance keys (e.g. ``alzheimers-cortex``)."""
+    s = str(value).strip().lower()
+    s = _NON_ALNUM.sub("-", s)
+    s = _MULTI_DASH.sub("-", s).strip("-")
+    return s or "profile"
+
+
+def compute_omics_provenance(condition: str, sample_name: str) -> str:
+    """
+    Dynamic provenance key from active profile metadata.
+
+    ``cistron-{slugify(condition or sample_name)}``
+    """
+    label = (condition or sample_name or "profile").strip()
+    return f"cistron-{slugify(label)}"
 
 
 class OmicsFeature(BaseModel):
@@ -66,6 +100,10 @@ class OmicsProfile(BaseModel):
     )
     sample_name: str = Field(..., min_length=1)
     condition: str = Field(..., min_length=1, description="Biological condition label")
+    provenance: str = Field(
+        default="",
+        description="Dynamic key e.g. cistron-hypoxia / cistron-alzheimers-cortex",
+    )
     features: Dict[str, OmicsFeature] = Field(
         default_factory=dict,
         description="Features keyed by uppercase gene symbol",
@@ -73,11 +111,15 @@ class OmicsProfile(BaseModel):
 
     @field_validator("sample_name", "condition")
     @classmethod
-    def _strip_label(cls, v: str) -> str:
-        s = v.strip()
-        if not s:
-            raise ValueError("label must be non-empty")
-        return s
+    def _normalize_label(cls, v: str) -> str:
+        return normalize_omics_label(v)
+
+    @model_validator(mode="after")
+    def _ensure_provenance(self) -> "OmicsProfile":
+        key = compute_omics_provenance(self.condition, self.sample_name)
+        if self.provenance != key:
+            object.__setattr__(self, "provenance", key)
+        return self
 
     def map_to_initial_states(
         self,
@@ -202,6 +244,9 @@ def _clip_y0(y: float) -> float:
 __all__ = [
     "Y0_MIN",
     "Y0_MAX",
+    "normalize_omics_label",
+    "slugify",
+    "compute_omics_provenance",
     "OmicsFeature",
     "OmicsProfile",
     "calculate_alignment_score",

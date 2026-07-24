@@ -60,10 +60,9 @@ export function ExplorerView() {
     const sources = lab.controls.selectedSources.includes(sit.source)
       ? lab.controls.selectedSources
       : [...lab.controls.selectedSources, sit.source]
-    lab.patchControls({
-      conditionQuery: sit.query,
-      selectedSources: sources.includes('local') ? sources : ['local', ...sources],
-    })
+    const nextSources = sources.includes('local') ? sources : ['local', ...sources]
+    // Must re-resolve the cascade — patching the label alone left Studio on hypoxia.
+    lab.runQuery(sit.query, { selectedSources: nextSources })
   }
 
   const situationPlaceholder = situationsQ.isLoading
@@ -156,6 +155,15 @@ export function ExplorerView() {
               <span>{selectedSituation.description}</span>
             </p>
           ) : null}
+          {lab.busy ? (
+            <p className="mt-2 text-[11px] text-amber-200/90">
+              Resolving «{lab.controls.conditionQuery}» → live topology…
+            </p>
+          ) : lab.profileId ? (
+            <p className="mt-2 font-mono text-[11px] text-emerald-300/90">
+              Active profile: {lab.profileId} · {lab.nodes.length} nodes
+            </p>
+          ) : null}
         </div>
       </GlassCard>
 
@@ -198,7 +206,7 @@ export function ExplorerView() {
           <button
             type="button"
             disabled={!lab.engineLive || lab.busy}
-            onClick={() => lab.runSimulation()}
+            onClick={() => lab.runQuery(lab.controls.conditionQuery)}
             className="inline-flex items-center gap-2 rounded-xl bg-coral-action px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
           >
             <Play className="h-4 w-4" /> Resolve

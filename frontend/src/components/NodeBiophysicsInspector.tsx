@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState } from 'react'
-import { Ban, Crosshair, Loader2, X } from 'lucide-react'
+import { Ban, Box, Crosshair, Loader2, X } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import { GeneBadge, MetaLabel, SparkBar } from './ui'
 import { fetchProteinMeta } from '../api/client'
@@ -14,6 +14,7 @@ import type {
 } from '../api/types'
 import { ProvenanceBadge } from './ProvenanceBadge'
 import { useLab } from '../lab/LabContext'
+import { useNavigate } from 'react-router-dom'
 
 /** Map scrubber minutes → discrete trajectory keyframe index. */
 function frameIndexAt(payload: ScrubberPayload | null, scrubT: number): number {
@@ -170,6 +171,7 @@ export function NodeBiophysicsInspector({
   onClamp: (node: string) => void
 }) {
   const activeNode = nodeId
+  const navigate = useNavigate()
 
   const [meta, setMeta] = useState<ProteinMeta | null>(null)
   const [loadingMeta, setLoadingMeta] = useState(false)
@@ -347,7 +349,7 @@ export function NodeBiophysicsInspector({
           xai={xai}
         />
 
-        <GlassCard title="Quick Actions" hint="Instant virtual perturbations">
+        <GlassCard title="Quick Actions" hint="Instant virtual perturbations · 3D structure">
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -364,6 +366,16 @@ export function NodeBiophysicsInspector({
             >
               <Crosshair className="h-3.5 w-3.5" />
               Clamp expression
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                navigate(`/biophysics?symbol=${encodeURIComponent(activeNode)}`)
+              }
+              className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-flux/40 bg-cyan-950/40 px-3 py-2 text-[11px] font-semibold text-cyan-100 shadow-[0_0_14px_rgba(6,182,212,0.15)] hover:bg-cyan-900/40"
+            >
+              <Box className="h-3.5 w-3.5" />
+              Open 3D Structure
             </button>
           </div>
         </GlassCard>
