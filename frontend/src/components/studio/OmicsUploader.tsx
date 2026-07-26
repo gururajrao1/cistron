@@ -159,7 +159,7 @@ export function OmicsUploader() {
   )
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 lg:p-6">
+    <div className="mx-auto flex max-w-[88rem] flex-col gap-4 p-4 lg:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="mb-1 flex items-center gap-2">

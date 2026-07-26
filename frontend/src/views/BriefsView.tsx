@@ -105,7 +105,7 @@ h1{font-size:22px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #cbd
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
+    <div className="mx-auto flex max-w-[76rem] flex-col gap-4 p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-extrabold tracking-tight text-slate-50">

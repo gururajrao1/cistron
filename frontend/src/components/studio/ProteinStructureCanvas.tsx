@@ -47,9 +47,8 @@ export type StructureResidueHighlight = {
 }
 
 async function load3Dmol(): Promise<MolModule> {
-  const mod = await import('3dmol/build/3Dmol.js')
-  const $3Dmol = (mod as { default?: MolModule } & MolModule).default ?? (mod as MolModule)
-  return $3Dmol
+  const mod = (await import('3dmol/build/3Dmol.js')) as unknown as { default?: MolModule } & MolModule
+  return mod.default ?? mod
 }
 
 /**

@@ -128,7 +128,7 @@ export function PathwaysView() {
   const buildTarget = selected ?? recommended
 
   return (
-    <div className="mx-auto flex h-full max-w-5xl flex-col gap-4 overflow-y-auto p-4">
+    <div className="mx-auto flex h-full max-w-[88rem] flex-col gap-4 overflow-y-auto p-4">
       <div>
         <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
           Disease Pathways

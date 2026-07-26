@@ -74,7 +74,7 @@ export function ExplorerView() {
         : 'Enable a source to see situations'
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
+    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4">
       <div>
         <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
           Dynamic Query & Network Builder

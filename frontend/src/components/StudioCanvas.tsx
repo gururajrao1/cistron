@@ -8,6 +8,9 @@ import { lerpAtTime } from '../api/client'
 import { useLab } from '../lab/LabContext'
 import { resolveOmicsProvenance } from '../api/types'
 import { TrajectoryChart } from './studio/TrajectoryChart'
+import { classifyEdgeKind, type EdgeKind } from '../engine/edgeClassification'
+import { nodeRingDataUri } from '../engine/nodeRing'
+import { stepHif1aTranslocation } from './studio/OrganelleCompartments'
 
 /**
  * Hard cap — never hand Cytoscape a huge graph.
@@ -343,11 +346,37 @@ export function StudioCanvas({
     }
   }, [payload, scrubT])
 
-  const focus = useMemo(() => {
-    const series = FOCUS_SERIES[preset]
-    if (series?.length) return series.filter(Boolean)
-    return Object.keys(payload?.nodes ?? {}).slice(0, 5)
-  }, [preset, payload])
+  /** Pre-perturbation baseline activities — drives the dim arc of the node ring. */
+  const { nodes: baselineNodeY } = useMemo(() => {
+    const source = untreatedRun ?? payload
+    if (!source?.nodes || !source?.time_steps?.length) {
+      return { nodes: {} as Record<string, number> }
+    }
+    try {
+      return lerpAtTime(source, scrubT)
+    } catch (err) {
+      console.warn('lerpAtTime (baseline) failed', err)
+      return { nodes: {} as Record<string, number> }
+    }
+  }, [untreatedRun, payload, scrubT])
+
+  /**
+   * HIF1A → ARNT nuclear translocation "flux" for the one synthetic edge we
+   * draw — real value from the same compartment step the Organelle dock tab
+   * uses, not fabricated per-edge data.
+   */
+  const translocationFraction = useMemo(() => {
+    const hif1aY = nodeY['HIF1A']
+    if (hif1aY == null) return null
+    const o2 = nodeY['O2'] ?? 0.35
+    const state = { cytoplasm: hif1aY * 0.55, nucleus: hif1aY * 0.35, mitochondria: hif1aY * 0.1 }
+    // Fixed settling window, not scrubT: nodeY already varies with scrubT via
+    // the lerp above, so reusing scrubT as the Euler dt here would saturate
+    // the step within the first few scrub-minutes and flatten the rest of
+    // the 0-60 range.
+    const { next } = stepHif1aTranslocation(state, o2, 6)
+    return next.nucleus
+  }, [nodeY])
 
   const pathKey = useMemo(
     () => (Array.isArray(pathNodes) ? pathNodes : []).join('\0'),
@@ -423,24 +452,56 @@ export function StudioCanvas({
         const layers = assignLayers(nodeIds, safeEdges)
         const { nodeSep, rankSep, padding } = spacingForN(nodeIds.length)
 
+        const edgeKindClass: Record<EdgeKind, string> = {
+          inhibition: 'inhibitory',
+          phosphorylation: 'phospho',
+          activation: 'stimulatory',
+        }
+
         const elements = [
           ...nodeIds.map((id) => ({
             data: { id, label: id, layer: layers.get(id) ?? 1 },
           })),
           ...safeEdges.map((e, i) => {
             const sign = typeof e.sign === 'number' ? e.sign : e.is_inhibition ? -1 : 1
+            const kind = classifyEdgeKind(e, KINASE)
             return {
               data: {
                 id: `e${i}-${e.source}-${e.target}`,
                 source: e.source,
                 target: e.target,
                 sign,
+                kind,
                 key: `${e.source}->${e.target}`,
                 inhibitory: sign < 0,
               },
-              classes: sign < 0 ? 'inhibitory' : 'stimulatory',
+              classes: edgeKindClass[kind],
             }
           }),
+          // Real translocation flux (HIF1A nuclear import) from the compartment
+          // engine — only drawn when both dimer-partner nodes are on canvas
+          // and no real fetched edge already connects them.
+          ...(nodeIds.includes('HIF1A') &&
+          nodeIds.includes('ARNT') &&
+          !safeEdges.some(
+            (e) =>
+              (e.source === 'HIF1A' && e.target === 'ARNT') ||
+              (e.source === 'ARNT' && e.target === 'HIF1A'),
+          )
+            ? [
+                {
+                  data: {
+                    id: 'e-translocation-HIF1A-ARNT',
+                    source: 'HIF1A',
+                    target: 'ARNT',
+                    kind: 'translocation' as const,
+                    key: 'HIF1A=>ARNT',
+                    inhibitory: false,
+                  },
+                  classes: 'translocation',
+                },
+              ]
+            : []),
         ]
 
         const cy = cytoscape({
@@ -499,9 +560,9 @@ export function StudioCanvas({
               selector: 'edge.stimulatory',
               style: {
                 width: 2,
-                'line-color': '#06B6D4',
+                'line-color': '#22C55E',
                 'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#06B6D4',
+                'target-arrow-color': '#22C55E',
                 'curve-style': 'bezier',
                 'line-style': 'solid',
                 opacity: 0.75,
@@ -519,6 +580,33 @@ export function StudioCanvas({
                 'curve-style': 'bezier',
                 'line-style': 'dashed',
                 'line-dash-pattern': [4, 8],
+                opacity: 0.75,
+              },
+            },
+            {
+              selector: 'edge.phospho',
+              style: {
+                width: 2,
+                'line-color': '#3B82F6',
+                'target-arrow-shape': 'triangle',
+                'target-arrow-color': '#3B82F6',
+                'curve-style': 'bezier',
+                'line-style': 'dashed',
+                'line-dash-pattern': [7, 5],
+                opacity: 0.75,
+              },
+            },
+            {
+              selector: 'edge.translocation',
+              style: {
+                width: 2,
+                'line-color': '#C084FC',
+                'target-arrow-shape': 'triangle',
+                'target-arrow-color': '#C084FC',
+                'source-arrow-shape': 'triangle',
+                'source-arrow-color': '#C084FC',
+                'curve-style': 'bezier',
+                'line-style': 'solid',
                 opacity: 0.75,
               },
             },
@@ -724,28 +812,61 @@ export function StudioCanvas({
                     : 0.04,
             'font-size': onPath || selected || mapped || isPert ? 12 : 10,
             label,
+            // Progress ring: dim arc = pre-perturbation baseline, bright arc =
+            // live/perturbed value — both real trajectory reads, not a fake glow.
+            'background-image': nodeRingDataUri(baselineNodeY[id] ?? baselineNodeY[id.toUpperCase()] ?? y, y),
+            'background-clip': 'none',
+            'background-width': '165%',
+            'background-height': '165%',
+            'background-position-x': '50%',
+            'background-position-y': '50%',
+            // Not `fade` — Cytoscape multiplies this by the node's own
+            // `opacity` (already fade-scaled above), so re-applying fade here
+            // would compound it (0.15 * 0.15) and make the ring vanish on hover.
+            'background-image-opacity': 1,
           })
         })
         cy.edges().forEach((e) => {
           const key = String(e.data('key'))
-          const flux = edgeF[key] ?? 0
-          const inhibitory = Boolean(e.data('inhibitory'))
+          const kind = (e.data('kind') as EdgeKind | 'translocation' | undefined) ?? 'activation'
+          const isTranslocation = kind === 'translocation'
+          const inhibitory = kind === 'inhibition'
+          const flux = isTranslocation ? (translocationFraction ?? 0) : (edgeF[key] ?? 0)
           const src = e.source().id()
           const tgt = e.target().id()
           const onPath = pathSet.has(src) && pathSet.has(tgt)
           const edgeInFocus = !hoveredNode || focusEdgeIds.has(e.id())
           const fade = edgeInFocus ? 1 : 0.15
-          const color = onPath ? '#10B981' : inhibitory ? '#EF4444' : '#06B6D4'
+          const color = onPath
+            ? '#10B981'
+            : inhibitory
+              ? '#EF4444'
+              : kind === 'phosphorylation'
+                ? '#3B82F6'
+                : isTranslocation
+                  ? '#C084FC'
+                  : '#22C55E'
           e.style({
             width: 1.0 + 8.5 * flux,
             'line-color': color,
             'target-arrow-color': color,
+            ...(isTranslocation ? { 'source-arrow-color': color } : {}),
             'target-arrow-shape': inhibitory ? 'tee' : 'triangle',
-            'line-style': flux > 0.12 ? 'dashed' : inhibitory ? 'dashed' : 'solid',
+            'line-style':
+              kind === 'phosphorylation'
+                ? 'dashed'
+                : flux > 0.12
+                  ? 'dashed'
+                  : inhibitory
+                    ? 'dashed'
+                    : 'solid',
             opacity: (0.18 + 0.82 * flux) * fade,
-            'line-dash-pattern': inhibitory
-              ? [3, 7]
-              : [5, Math.max(3, 10 - Math.min(7, flux * 8))],
+            'line-dash-pattern':
+              kind === 'phosphorylation'
+                ? [7, 5]
+                : inhibitory
+                  ? [3, 7]
+                  : [5, Math.max(3, 10 - Math.min(7, flux * 8))],
             'overlay-opacity': flux > 0.35 && fade > 0.5 ? 0.08 + flux * 0.12 : 0,
             'overlay-color': color,
             'overlay-padding': 2 + flux * 4,
@@ -759,7 +880,22 @@ export function StudioCanvas({
         styleRafRef.current = null
       }
     }
-  }, [nodeY, edgeF, pathKey, pathSet, selectedNode, koSet, hoveredNode, layoutReady, omicsActive, omicsLfcByNode, pertKey, pertMap])
+  }, [
+    nodeY,
+    edgeF,
+    baselineNodeY,
+    translocationFraction,
+    pathKey,
+    pathSet,
+    selectedNode,
+    koSet,
+    hoveredNode,
+    layoutReady,
+    omicsActive,
+    omicsLfcByNode,
+    pertKey,
+    pertMap,
+  ])
 
   useEffect(() => {
     const cy = cyInstance.current

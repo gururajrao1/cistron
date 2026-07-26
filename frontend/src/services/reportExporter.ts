@@ -13,6 +13,8 @@ import {
   type ReportBundle,
 } from '../utils/scientificReport'
 
+export type { ReportBundle }
+
 export type PublicationReportOptions = {
   includeSpatial?: boolean
   includeMethodology?: boolean
