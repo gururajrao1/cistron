@@ -26,3 +26,6 @@ frontend/.vite/
 .idea/
 .vscode/
 Thumbs.db
+
+# Transient design zip extract
+_ui_import/

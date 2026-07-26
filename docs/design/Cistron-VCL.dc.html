@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #07111D; color: #E6EDF5; font-family: "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  a { color: #7DA6D9; text-decoration: none; }
+  a:hover { color: #A9C8EC; }
+  @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.72); } }
+  @keyframes sweep { from { opacity: .25; } to { opacity: .7; } }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: #0A1520; }
+  ::-webkit-scrollbar-thumb { background: #233042; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #33455C; }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 3px; background: #233042; border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #E6EDF5; border: 2px solid #07111D; cursor: ew-resize; }
+  select { font-family: "IBM Plex Sans", sans-serif; }
+  input, button, select { font-family: inherit; }
+</style>
+</helmet>
+
+<div style="width: 100vw; height: 100vh; display: flex; flex-direction: column; background: #07111D; font-size: 12px;">
+
+  <div style="height: 46px; flex: 0 0 46px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #0A1520; border-bottom: 1px solid #233042; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 9px; padding-right: 12px; border-right: 1px solid #233042; height: 100%;">
+      <div style="width: 20px; height: 20px; border-radius: 5px; background: #101A28; border: 1px solid #33455C; display: grid; place-items: center;">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: #22C55E;"></div>
+      </div>
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: .09em;">CISTRON<span style="color: #7C8DA3;">·VCL</span></div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #7C8DA3; border: 1px solid #233042; border-radius: 4px; padding: 1px 4px;">v4.2</div>
+    </div>
+
+    <button onClick="{{ openPalette }}" style="display: flex; align-items: center; gap: 8px; flex: 0 1 320px; min-width: 108px; height: 28px; padding: 0 8px; background: #101A28; border: 1px solid #233042; border-radius: 6px; color: #7C8DA3; font-size: 11.5px; cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden;" style-hover="border-color: #33455C; color: #A9B8C9;">
+      <span style="font-family: 'IBM Plex Mono', monospace; color: #4E6479;">⌕</span>
+      <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;">Search targets, pathways, commands…</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #7C8DA3; background: #16212F; border: 1px solid #233042; border-radius: 3px; padding: 1px 5px;">{{ modKey }} K</span>
+    </button>
+
+    <div style="display: flex; align-items: center; gap: 7px; flex: 0 1 auto; min-width: 0;">
+      <span style="font-size: 10px; letter-spacing: .1em; color: #4E6479; white-space: nowrap;">SCENARIO</span>
+      <select value="{{ scenario }}" onChange="{{ onScenario }}" style="height: 28px; min-width: 0; max-width: 280px; background: #101A28; color: #E6EDF5; border: 1px solid #233042; border-radius: 6px; padding: 0 8px; font-size: 11.5px; cursor: pointer;">
+        <option value="hypoxia">Hypoxia-Induced Angiogenesis · 1.5% O₂</option>
+        <option value="ischemic">Ischemic Core · 0.5% O₂</option>
+        <option value="normoxia">Normoxic Baseline · 21% O₂</option>
+        <option value="pseudo">Pseudohypoxia · VHL-null</option>
+      </select>
+    </div>
+
+    <div style="flex: 1;"></div>
+
+    <button onClick="{{ toggleRun }}" style="display: flex; align-items: center; gap: 7px; flex: 0 0 auto; white-space: nowrap; height: 28px; padding: 0 11px; background: #14361F; border: 1px solid #22C55E; border-radius: 6px; color: #6EE7A0; font-size: 11px; font-weight: 600; letter-spacing: .05em; cursor: pointer;" style-hover="background: #174425;">
+      <span style="font-family: 'IBM Plex Mono', monospace;">{{ runGlyph }}</span>{{ runLabel }}
+    </button>
+
+    <div style="display: flex; align-items: center; gap: 7px; flex: 0 0 auto; white-space: nowrap; height: 28px; padding: 0 10px; background: #101A28; border: 1px solid #233042; border-radius: 6px;">
+      <div style="width: 6px; height: 6px; border-radius: 50%; background: #22C55E; animation: pulseDot 1.6s ease-in-out infinite;"></div>
+      <span style="font-size: 10px; font-weight: 600; letter-spacing: .09em; color: #A9B8C9;">ENGINE LIVE</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4E6479;">{{ solverMs }}ms</span>
+    </div>
+
+    <button onClick="{{ exportReport }}" style="flex: 0 0 auto; white-space: nowrap; height: 28px; padding: 0 11px; background: transparent; border: 1px solid #233042; border-radius: 6px; color: #A9B8C9; font-size: 11px; font-weight: 500; letter-spacing: .05em; cursor: pointer;" style-hover="border-color: #33455C; color: #E6EDF5;">EXPORT REPORT (PDF)</button>
+  </div>
+
+  <div style="flex: 1; display: flex; min-height: 0;">
+
+    <div style="width: 54px; flex: 0 0 54px; background: #0A1520; border-right: 1px solid #233042; display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;">
+      <sc-for list="{{ rail }}" as="w" hint-placeholder-count="9">
+        <div onClick="{{ w.go }}" title="{{ w.title }}" style="position: relative; width: 38px; height: 34px; display: grid; place-items: center; border-radius: 7px; cursor: pointer; background: {{ w.bg }};">
+          <div style="position: absolute; left: -8px; top: 9px; width: 2px; height: 16px; border-radius: 2px; background: {{ w.mark }};"></div>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: {{ w.fg }};">{{ w.code }}</span>
+        </div>
+      </sc-for>
+      <div style="flex: 1;"></div>
+      <div style="width: 26px; height: 26px; border-radius: 50%; background: #16212F; border: 1px solid #33455C; display: grid; place-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #A9B8C9;">AV</div>
+    </div>
+
+    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+
+      <div ref="{{ stageRef }}" style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: #07111D;">
+
+        <sc-if value="{{ isStudio }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Studio" style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+            <div style="height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-bottom: 1px solid #233042; background: #0A1520; overflow: hidden;">
+              <div style="display: flex; flex: 0 0 auto; white-space: nowrap; background: #101A28; border: 1px solid #233042; border-radius: 6px; padding: 2px; gap: 2px;">
+                <div onClick="{{ showGraph }}" style="padding: 3px 9px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500; background: {{ tabGraphBg }}; color: {{ tabGraphFg }};">◍ Network Graph Topology</div>
+                <div onClick="{{ showSpatial }}" style="padding: 3px 9px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500; background: {{ tabSpatialBg }}; color: {{ tabSpatialFg }};">▦ Spatial Microenvironment Mesh</div>
+              </div>
+              <sc-if value="{{ showMeta }}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto; white-space: nowrap; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">
+                  <div style="width: 1px; height: 16px; background: #233042;"></div>
+                  <span>11 nodes · 11 edges</span>
+                  <span>t = {{ tLabel }} h</span>
+                  <span style="color: {{ perturbColor }};">{{ perturbCount }} perturbations</span>
+                </div>
+              </sc-if>
+              <div style="flex: 1 1 8px; min-width: 8px;"></div>
+              <sc-if value="{{ showLegend }}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; align-items: center; gap: 11px; flex: 0 0 auto; white-space: nowrap;">
+                  <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+                    <div style="display: flex; align-items: center; gap: 5px; flex: 0 0 auto;">
+                      <div style="width: 16px; height: 2px; flex: 0 0 16px; background: {{ l.color }};"></div>
+                      <span style="font-size: 10px; color: #7C8DA3;">{{ l.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ isGraph }}" hint-placeholder-val="{{ true }}">
+              <div style="flex: 1; min-height: 0; position: relative; overflow: auto; background: radial-gradient(circle at 50% 40%, #0B1724 0%, #07111D 70%);">
+               <div ref="{{ graphRef }}" style="position: relative; width: 100%; height: 100%; min-width: 860px; min-height: 500px;">
+                <svg viewBox="0 0 920 560" preserveAspectRatio="xMidYMid meet" style="position: absolute; inset: 0; width: 100%; height: 100%;">
+                  <defs>
+                    <marker id="mk-act" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,1.5 L9,5 L0,8.5 z" fill="#22C55E"></path></marker>
+                    <marker id="mk-inh" viewBox="0 0 10 10" refX="4" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto"><path d="M4,0.5 L4,9.5" stroke="#EF4444" strokeWidth="2.4"></path></marker>
+                    <marker id="mk-pho" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,1.5 L9,5 L0,8.5 z" fill="#3B82F6"></path></marker>
+                    <marker id="mk-loc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,1.5 L9,5 L0,8.5 z" fill="#C084FC"></path></marker>
+                    <marker id="mk-loc-b" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M10,1.5 L1,5 L10,8.5 z" fill="#C084FC"></path></marker>
+                  </defs>
+                  <g opacity="0.5">
+                    <sc-for list="{{ grid }}" as="g" hint-placeholder-count="0">
+                      <line x1="{{ g.x1 }}" y1="{{ g.y1 }}" x2="{{ g.x2 }}" y2="{{ g.y2 }}" stroke="#101C2A" strokeWidth="1"></line>
+                    </sc-for>
+                  </g>
+                  <g>
+                    <sc-for list="{{ edges }}" as="e" hint-placeholder-count="11">
+                      <path d="{{ e.d }}" fill="none" stroke="{{ e.color }}" strokeWidth="{{ e.w }}" strokeDasharray="{{ e.dash }}" markerEnd="{{ e.marker }}" markerStart="{{ e.markerStart }}" opacity="{{ e.op }}" strokeLinecap="round"></path>
+                    </sc-for>
+                  </g>
+                  <sc-for list="{{ nodes }}" as="n" hint-placeholder-count="11">
+                    <g transform="{{ n.tf }}" onClick="{{ n.go }}" style="cursor: pointer;">
+                      <circle r="{{ n.halo }}" fill="none" stroke="#E6EDF5" strokeWidth="1" opacity="{{ n.haloOp }}"></circle>
+                      <circle r="25" fill="none" stroke="#1B2836" strokeWidth="3.5"></circle>
+                      <circle r="25" fill="none" stroke="#4E6479" strokeWidth="3.5" strokeDasharray="{{ n.baseDash }}" transform="rotate(-90)" opacity="{{ n.baseOp }}" strokeLinecap="butt"></circle>
+                      <circle r="25" fill="none" stroke="{{ n.ring }}" strokeWidth="3.5" strokeDasharray="{{ n.dash }}" transform="rotate(-90)" strokeLinecap="butt"></circle>
+                      <circle r="19.5" fill="#101A28" stroke="{{ n.stroke }}" strokeWidth="1"></circle>
+                    </g>
+                  </sc-for>
+                </svg>
+                <div style="position: absolute; inset: 0; pointer-events: none;">
+                  <sc-for list="{{ glabels }}" as="l" hint-placeholder-count="0">
+                    <div style="position: absolute; left: {{ l.left }}px; top: {{ l.top }}px; transform: translate(-50%, -50%); white-space: nowrap; font-family: {{ l.fam }}; font-size: {{ l.fs }}px; font-weight: {{ l.fw }}; color: {{ l.color }};">{{ l.text }}</div>
+                  </sc-for>
+                  <sc-for list="{{ koBadges }}" as="k" hint-placeholder-count="0">
+                    <div style="position: absolute; left: {{ k.left }}px; top: {{ k.top }}px; transform: translate(-50%, -50%); padding: 1px 4px; border-radius: 3px; background: #3A1418; border: 1px solid #EF4444; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: #F87171; font-size: {{ k.fs }}px;">KO</div>
+                  </sc-for>
+                </div>
+                <div style="position: absolute; right: 10px; top: 10px; display: flex; gap: 6px; align-items: center; background: rgba(16,26,40,.9); border: 1px solid #233042; border-radius: 6px; padding: 5px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3; pointer-events: none;">
+                  <span>edge width ∝ V_max</span><span style="color: #233042;">|</span><span>ring = perturbed vs baseline</span>
+                </div>
+               </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isSpatial }}" hint-placeholder-val="{{ false }}">
+              <div style="flex: 1; min-height: 0; display: flex;">
+                <div style="flex: 1; min-width: 0; position: relative; display: grid; place-items: center; padding: 14px;">
+                  <svg viewBox="0 0 720 420" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%;">
+                    <sc-for list="{{ mesh }}" as="c" hint-placeholder-count="0">
+                      <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" fill="{{ c.fill }}"></rect>
+                    </sc-for>
+                    <sc-for list="{{ vessels }}" as="v" hint-placeholder-count="0">
+                      <circle cx="{{ v.x }}" cy="{{ v.y }}" r="{{ v.r }}" fill="none" stroke="#EF4444" strokeWidth="1.4" opacity="0.75"></circle>
+                    </sc-for>
+                    <rect x="0.5" y="0.5" width="719" height="419" fill="none" stroke="#233042"></rect>
+                  </svg>
+                  <div style="position: absolute; left: 20px; top: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">O₂ / VEGF-A REACTION–DIFFUSION FIELD · 36 × 21 · Δx = 25 µm</div>
+                </div>
+                <div style="width: 236px; flex: 0 0 236px; border-left: 1px solid #233042; background: #0A1520; padding: 10px; display: flex; flex-direction: column; gap: 12px; overflow: auto;">
+                  <div>
+                    <div style="font-size: 10px; letter-spacing: .1em; color: #4E6479; margin-bottom: 7px;">HISTOLOGY MASK</div>
+                    <div style="border: 1px dashed #33455C; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 7px; align-items: flex-start;">
+                      <svg viewBox="0 0 200 56" style="width: 100%; height: 42px;">
+                        <defs><pattern id="stripe" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#101A28"></rect><line x1="0" y1="0" x2="0" y2="8" stroke="#1B2836" strokeWidth="4"></line></pattern></defs>
+                        <rect width="200" height="56" rx="4" fill="url(#stripe)"></rect>
+                      </svg>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #7C8DA3; line-height: 1.5;">drop 10x Visium / H&amp;E tile<br />.tiff · .h5 · spatial/</div>
+                      <button style="height: 24px; padding: 0 9px; background: #16212F; border: 1px solid #33455C; border-radius: 5px; color: #E6EDF5; font-size: 10.5px; cursor: pointer;" style-hover="border-color: #7C8DA3;">Load mask</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div style="font-size: 10px; letter-spacing: .1em; color: #4E6479; margin-bottom: 7px;">BBB PERMEABILITY</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                      <div>
+                        <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #A9B8C9; margin-bottom: 4px;"><span>MW</span><span>{{ bbbMW }} Da</span></div>
+                        <input type="range" min="120" max="700" step="1" value="{{ bbbMW }}" onChange="{{ onMW }}" style="width: 100%;" />
+                      </div>
+                      <div>
+                        <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #A9B8C9; margin-bottom: 4px;"><span>logP</span><span>{{ bbbLogPLabel }}</span></div>
+                        <input type="range" min="-10" max="70" step="1" value="{{ bbbLogPRaw }}" onChange="{{ onLogP }}" style="width: 100%;" />
+                      </div>
+                      <div style="background: #101A28; border: 1px solid #233042; border-radius: 6px; padding: 9px;">
+                        <div style="font-size: 10px; color: #7C8DA3;">Predicted logBB</div>
+                        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; color: {{ logBBColor }};">{{ logBB }}</div>
+                        <div style="font-size: 10px; color: #7C8DA3; margin-top: 2px;">{{ bbbVerdict }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="{{ routeTitle }}" style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+            <div style="height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid #233042; background: #0A1520;">
+              <span style="font-size: 12px; font-weight: 600; color: #E6EDF5;">{{ routeTitle }}</span>
+              <span style="font-size: 11px; color: #7C8DA3;">{{ routeSub }}</span>
+              <div style="flex: 1;"></div>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4E6479;">{{ scenLabel }} · t = {{ tLabel }} h</span>
+            </div>
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 12px 14px 18px;">
+
+              <sc-if value="{{ isPathways }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="display: grid; grid-template-columns: 116px 1fr 56px 84px 1fr 78px 66px; gap: 12px; padding: 0 6px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                    <div>ACCESSION</div><div>MODULE</div><div style="text-align: right;">NODES</div><div style="text-align: right;">p-ADJ</div><div>COVERAGE</div><div style="text-align: right;">SCORE</div><div></div>
+                  </div>
+                  <sc-for list="{{ pathways }}" as="p" hint-placeholder-count="8">
+                    <div style="display: grid; grid-template-columns: 116px 1fr 56px 84px 1fr 78px 66px; gap: 12px; align-items: center; padding: 7px 6px; border-bottom: 1px solid #16212F;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #A9C8EC;">{{ p.id }}</div>
+                      <div style="font-size: 11.5px; color: #E6EDF5;">{{ p.name }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #A9B8C9;">{{ p.n }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ p.p }}</div>
+                      <div style="height: 6px; background: #16212F; border-radius: 3px; overflow: hidden;"><div style="height: 6px; width: {{ p.w }}%; background: {{ p.color }};"></div></div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: {{ p.color }};">{{ p.score }}</div>
+                      <div onClick="{{ p.load }}" style="font-size: 10.5px; color: #7C8DA3; text-align: right; cursor: pointer;" style-hover="color: #E6EDF5;">load →</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isExplorer }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                    <input value="{{ exq }}" onChange="{{ onExq }}" placeholder="Filter by target, parameter, or source…" style="width: 300px; height: 26px; background: #101A28; border: 1px solid #233042; border-radius: 6px; color: #E6EDF5; padding: 0 9px; font-size: 11.5px; outline: none;" />
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4E6479;">registry · curated + Cistron-fitted constants</span>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 84px 148px 74px 62px 118px 1fr 130px; gap: 12px; padding: 0 6px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                    <div>TARGET</div><div>PARAMETER</div><div style="text-align: right;">VALUE</div><div>UNIT</div><div>METHOD</div><div>SOURCE</div><div>CONFIDENCE</div>
+                  </div>
+                  <sc-for list="{{ kinetics }}" as="k" hint-placeholder-count="12">
+                    <div onClick="{{ k.go }}" style="display: grid; grid-template-columns: 84px 148px 74px 62px 118px 1fr 130px; gap: 12px; align-items: center; padding: 5px 6px; border-bottom: 1px solid #16212F; cursor: pointer;" style-hover="background: #0D1723;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5;">{{ k.t }}</div>
+                      <div style="font-size: 11px; color: #A9B8C9;">{{ k.p }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-align: right; color: #E6EDF5;">{{ k.v }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #7C8DA3;">{{ k.u }}</div>
+                      <div style="font-size: 10.5px; color: #7C8DA3;">{{ k.m }}</div>
+                      <div style="font-size: 10.5px; color: #7C8DA3;">{{ k.src }}</div>
+                      <div style="display: flex; align-items: center; gap: 7px;"><div style="flex: 1; height: 5px; background: #16212F; border-radius: 3px; overflow: hidden;"><div style="height: 5px; width: {{ k.cw }}%; background: {{ k.cColor }};"></div></div><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: {{ k.cColor }};">{{ k.c }}</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isXai }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="font-size: 11px; color: #7C8DA3; margin-bottom: 10px;">Variance decomposition of <span style="font-family: 'IBM Plex Mono', monospace; color: #E6EDF5;">VEGFA</span> output over ±40% dose perturbation of each target. S₁ = first-order, S_T = total effect; the gap is interaction with HIF1A.</div>
+                  <div style="display: grid; grid-template-columns: 92px 1fr 74px 74px 84px; gap: 12px; padding: 0 6px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                    <div>PARAMETER</div><div>FIRST-ORDER S₁</div><div style="text-align: right;">S₁</div><div style="text-align: right;">S_T</div><div style="text-align: right;">INTERACTION</div>
+                  </div>
+                  <sc-for list="{{ sobol }}" as="o" hint-placeholder-count="10">
+                    <div onClick="{{ o.go }}" style="display: grid; grid-template-columns: 92px 1fr 74px 74px 84px; gap: 12px; align-items: center; padding: 6px; border-bottom: 1px solid #16212F; cursor: pointer;" style-hover="background: #0D1723;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5;">{{ o.id }}</div>
+                      <div style="height: 9px; background: #16212F; border-radius: 3px; overflow: hidden; position: relative;">
+                        <div style="position: absolute; left: 0; top: 0; height: 9px; width: {{ o.wt }}%; background: #1E2C3D;"></div>
+                        <div style="position: absolute; left: 0; top: 0; height: 9px; width: {{ o.w1 }}%; background: {{ o.color }};"></div>
+                      </div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-align: right; color: #E6EDF5;">{{ o.s1 }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-align: right; color: #A9B8C9;">{{ o.st }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ o.inter }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isPharma }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="display: grid; grid-template-columns: 84px 1fr 74px 74px 60px 56px 1fr 92px; gap: 12px; padding: 0 6px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                    <div>ID</div><div>CHEMOTYPE</div><div>TARGET</div><div style="text-align: right;">MW</div><div style="text-align: right;">logP</div><div style="text-align: right;">TPSA</div><div>BBB logBB</div><div style="text-align: right;">CALL</div>
+                  </div>
+                  <sc-for list="{{ compounds }}" as="c" hint-placeholder-count="7">
+                    <div onClick="{{ c.go }}" style="display: grid; grid-template-columns: 84px 1fr 74px 74px 60px 56px 1fr 92px; gap: 12px; align-items: center; padding: 6px; border-bottom: 1px solid #16212F; cursor: pointer;" style-hover="background: #0D1723;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #A9C8EC;">{{ c.id }}</div>
+                      <div style="font-size: 11.5px; color: #E6EDF5;">{{ c.name }}<span style="color: #4E6479; font-size: 10.5px;"> · {{ c.mode }}</span></div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A9B8C9;">{{ c.target }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ c.mw }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ c.logp }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ c.tpsa }}</div>
+                      <div style="display: flex; align-items: center; gap: 7px;"><div style="flex: 1; height: 5px; background: #16212F; border-radius: 3px; overflow: hidden;"><div style="height: 5px; width: {{ c.w }}%; background: {{ c.color }};"></div></div><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: {{ c.color }};">{{ c.logbb }}</span></div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: {{ c.color }};">{{ c.verdict }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isBriefs }}" hint-placeholder-val="{{ false }}">
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 10px;">
+                  <sc-for list="{{ briefs }}" as="b" hint-placeholder-count="4">
+                    <div style="background: #101A28; border: 1px solid #233042; border-radius: 8px; padding: 11px 12px; display: flex; flex-direction: column; gap: 8px;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #A9C8EC;">{{ b.id }}</span>
+                        <span style="font-size: 9.5px; letter-spacing: .07em; color: #7C8DA3; border: 1px solid #233042; border-radius: 3px; padding: 1px 5px;">{{ b.tag }}</span>
+                        <div style="flex: 1;"></div>
+                        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4E6479;">{{ b.when }}</span>
+                      </div>
+                      <div style="font-size: 12.5px; line-height: 1.45; color: #E6EDF5; text-wrap: pretty;">{{ b.title }}</div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4E6479; flex: 1;">{{ b.pages }} pages</span>
+                        <button onClick="{{ b.open }}" style="height: 23px; padding: 0 9px; background: #16212F; border: 1px solid #233042; border-radius: 5px; color: #A9B8C9; font-size: 10.5px; cursor: pointer;" style-hover="border-color: #33455C; color: #E6EDF5;">Open</button>
+                        <button onClick="{{ b.pdf }}" style="height: 23px; padding: 0 9px; background: transparent; border: 1px solid #233042; border-radius: 5px; color: #7C8DA3; font-size: 10.5px; cursor: pointer;" style-hover="border-color: #33455C; color: #E6EDF5;">PDF</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isCombos }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 18px; align-items: flex-start;">
+                  <div>
+                    <div style="font-size: 11px; color: #7C8DA3; margin-bottom: 10px;">VEGFA suppression under dual CRISPR knockout · diagonal = single KO · purple outline = Bliss synergy &gt; 0.12. Click a cell to apply it in Studio.</div>
+                    <div style="display: flex;">
+                      <div style="width: 62px;"></div>
+                      <sc-for list="{{ comboIds }}" as="c" hint-placeholder-count="10">
+                        <div style="width: 42px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #7C8DA3; text-align: center; padding-bottom: 4px;">{{ c }}</div>
+                      </sc-for>
+                    </div>
+                    <sc-for list="{{ comboRows }}" as="row" hint-placeholder-count="10">
+                      <div style="display: flex; align-items: center;">
+                        <div style="width: 62px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #A9B8C9; text-align: right; padding-right: 8px;">{{ row.id }}</div>
+                        <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="10">
+                          <div onClick="{{ cell.apply }}" title="{{ cell.title }}" style="width: 40px; height: 30px; margin: 1px; border: 1px solid {{ cell.border }}; border-radius: 3px; background: {{ cell.fill }}; display: grid; place-items: center; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: {{ cell.fg }};">{{ cell.label }}</div>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="width: 168px; background: #101A28; border: 1px solid #233042; border-radius: 8px; padding: 11px;">
+                    <div style="font-size: 10px; letter-spacing: .09em; color: #4E6479; margin-bottom: 8px;">SUPPRESSION SCALE</div>
+                    <div style="height: 10px; border-radius: 3px; background: linear-gradient(90deg, rgb(16,26,40), rgb(38,200,30));"></div>
+                    <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #7C8DA3; margin-top: 4px;"><span>0.00</span><span>1.00</span></div>
+                    <div style="height: 1px; background: #233042; margin: 11px 0;"></div>
+                    <div style="font-size: 10.5px; color: #7C8DA3; line-height: 1.6;">10 × 10 matrix · 100 model integrations recomputed per scenario change. Values are fractional VEGFA loss vs wild type at steady state.</div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isOmics }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: #101A28; border: 1px solid #233042; border-radius: 7px;">
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #A9C8EC;">proteinGroups.txt</span>
+                    <span style="font-size: 10.5px; color: #7C8DA3;">MaxQuant 2.4 · LC-MS/MS · TMT-10plex · 4 812 protein groups · FDR 0.01</span>
+                    <div style="flex: 1;"></div>
+                    <button style="height: 23px; padding: 0 9px; background: #16212F; border: 1px solid #33455C; border-radius: 5px; color: #E6EDF5; font-size: 10.5px; cursor: pointer;" style-hover="border-color: #7C8DA3;">Load CSV</button>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 88px 66px 1fr 78px 78px 1fr 54px; gap: 12px; padding: 0 6px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                    <div>GENE</div><div style="text-align: right;">PEPTIDES</div><div>log₂ FC (sim vs baseline)</div><div style="text-align: right;">log₂ FC</div><div style="text-align: right;">−log₁₀ p</div><div>log₁₀ INTENSITY</div><div style="text-align: right;">CALL</div>
+                  </div>
+                  <sc-for list="{{ omics }}" as="o" hint-placeholder-count="10">
+                    <div onClick="{{ o.go }}" style="display: grid; grid-template-columns: 88px 66px 1fr 78px 78px 1fr 54px; gap: 12px; align-items: center; padding: 6px; border-bottom: 1px solid #16212F; cursor: pointer;" style-hover="background: #0D1723;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5;">{{ o.g }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ o.pep }}</div>
+                      <div style="position: relative; height: 8px; background: #16212F; border-radius: 2px;">
+                        <div style="position: absolute; left: 50%; top: -2px; width: 1px; height: 12px; background: #33455C;"></div>
+                        <div style="position: absolute; top: 0; height: 8px; left: {{ o.left }}%; width: {{ o.w }}%; background: {{ o.color }}; border-radius: 2px;"></div>
+                      </div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-align: right; color: {{ o.color }};">{{ o.l2 }}</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #A9B8C9;">{{ o.pv }}</div>
+                      <div style="display: flex; align-items: center; gap: 7px;"><div style="height: 5px; background: #3B82F6; border-radius: 3px; width: {{ o.intW }}px; opacity: .8;"></div><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">{{ o.int }}</span></div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-align: right; color: {{ o.sigColor }};">{{ o.sig }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isThreed }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap;">
+                  <div style="flex: 1 1 420px; min-width: 340px; background: #101A28; border: 1px solid #233042; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-bottom: 1px solid #233042;">
+                      <span style="font-size: 11.5px; font-weight: 600; color: #E6EDF5;">{{ sel3 }}</span>
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #A9C8EC;">{{ af3 }}</span>
+                      <div style="flex: 1;"></div>
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">MOL* · cartoon · pLDDT colouring</span>
+                    </div>
+                    <div style="position: relative; height: 258px;">
+                      <svg viewBox="0 0 620 300" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+                        <defs><pattern id="ribbon" width="10" height="10" patternTransform="rotate(38)" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#0C1622"></rect><line x1="0" y1="0" x2="0" y2="10" stroke="#16212F" strokeWidth="5"></line></pattern></defs>
+                        <rect width="620" height="300" fill="url(#ribbon)"></rect>
+                      </svg>
+                      <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; pointer-events: none;">
+                        <div style="font-size: 11.5px; letter-spacing: .08em; color: #4E6479;">3D STRUCTURE VIEWPORT</div>
+                        <div style="font-size: 10px; color: #33455C;">drop {{ af3 }}.cif / .pdb to mount Mol*</div>
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 8px 11px; border-top: 1px solid #233042;">
+                      <span style="font-size: 10px; letter-spacing: .08em; color: #4E6479;">pLDDT</span>
+                      <svg viewBox="0 0 620 44" preserveAspectRatio="none" style="flex: 1; height: 36px;">
+                        <sc-for list="{{ plddt }}" as="b" hint-placeholder-count="0">
+                          <rect x="{{ b.x }}" y="{{ b.y }}" width="8.2" height="{{ b.h }}" rx="1.5" fill="{{ b.fill }}"></rect>
+                        </sc-for>
+                      </svg>
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5;">{{ plddt3 }}</span>
+                    </div>
+                  </div>
+                  <div style="flex: 1 1 300px; min-width: 268px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="background: #101A28; border: 1px solid #233042; border-radius: 8px; padding: 11px 12px;">
+                      <div style="font-size: 10px; letter-spacing: .09em; color: #4E6479; margin-bottom: 8px;">UNIFIED TARGET CARD</div>
+                      <div style="display: grid; grid-template-columns: 92px 1fr; gap: 6px 12px; font-size: 11.5px;">
+                        <div style="color: #7C8DA3;">UniProt</div><div style="font-family: 'IBM Plex Mono', monospace; color: #A9C8EC;">{{ up3 }}</div>
+                        <div style="color: #7C8DA3;">Family</div><div style="color: #E6EDF5;">{{ fam3 }}</div>
+                        <div style="color: #7C8DA3;">Length</div><div style="font-family: 'IBM Plex Mono', monospace; color: #E6EDF5;">{{ len3 }} aa</div>
+                        <div style="color: #7C8DA3;">Mass</div><div style="font-family: 'IBM Plex Mono', monospace; color: #E6EDF5;">{{ mass3 }}</div>
+                        <div style="color: #7C8DA3;">Role</div><div style="color: #E6EDF5;">{{ sub3 }}</div>
+                        <div style="color: #7C8DA3;">Activity t={{ tLabel }}h</div><div style="font-family: 'IBM Plex Mono', monospace; color: #E6EDF5;">{{ act3 }} <span style="color: #4E6479;">/ base {{ base3 }}</span></div>
+                      </div>
+                    </div>
+                    <div style="background: #101A28; border: 1px solid #233042; border-radius: 8px; padding: 11px 12px;">
+                      <div style="font-size: 10px; letter-spacing: .09em; color: #4E6479; margin-bottom: 8px;">ANNOTATED RESIDUE SITES</div>
+                      <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <sc-for list="{{ sites }}" as="x" hint-placeholder-count="6">
+                          <div style="display: flex; align-items: center; gap: 9px; padding: 5px 0; border-bottom: 1px solid #16212F;">
+                            <div style="width: 6px; height: 6px; border-radius: 50%; background: {{ x.color }};"></div>
+                            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5; width: 84px;">{{ x.r }}</div>
+                            <div style="flex: 1; font-size: 10.5px; color: #7C8DA3;">{{ x.fn }}</div>
+                            <div style="font-size: 10px; color: {{ x.color }};">{{ x.conf }}</div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+
+      <div onPointerDown="{{ dragBottom }}" style="height: 5px; flex: 0 0 5px; cursor: ns-resize; background: #0A1520; border-top: 1px solid #233042; border-bottom: 1px solid #233042; display: grid; place-items: center;" style-hover="background: #16212F;">
+        <div style="width: 34px; height: 1px; background: #33455C;"></div>
+      </div>
+
+      <div style="height: {{ bottomH }}px; flex: 0 0 {{ bottomH }}px; background: #0A1520; display: flex; flex-direction: column; min-height: 0;">
+        <div style="height: 32px; flex: 0 0 32px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-bottom: 1px solid #233042; overflow: hidden;">
+          <sc-for list="{{ dockTabs }}" as="tb" hint-placeholder-count="3">
+            <div onClick="{{ tb.go }}" style="height: 31px; flex: 0 0 auto; min-width: 0; white-space: nowrap; display: flex; align-items: center; padding: 0 10px; font-size: 11.5px; font-weight: 500; cursor: pointer; color: {{ tb.fg }}; border-bottom: 2px solid {{ tb.bar }};">{{ tb.label }}</div>
+          </sc-for>
+          <div style="flex: 1 1 8px; min-width: 8px;"></div>
+          <div style="display: flex; align-items: center; gap: 8px; flex: 0 0 auto; white-space: nowrap;">
+            <sc-if value="{{ showScrubLabel }}" hint-placeholder-val="{{ true }}">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">t₀ → t_final</span>
+            </sc-if>
+            <input type="range" min="0" max="48" step="1" value="{{ t }}" onChange="{{ onT }}" style="width: {{ scrubW }}px; flex: 0 0 auto;" />
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #E6EDF5; width: 46px; flex: 0 0 46px; text-align: right;">{{ tLabel }} h</span>
+          </div>
+        </div>
+
+        <div style="flex: 1; min-height: 0; overflow: auto; padding: 10px 12px;">
+          <sc-if value="{{ isTraj }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; gap: 14px; height: 100%; min-height: 0;">
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 120px;">
+                <div style="flex: 1; min-height: 0; display: flex;">
+                  <div style="width: 32px; flex: 0 0 32px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-right: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #4E6479;">
+                    <sc-for list="{{ yLabels }}" as="y" hint-placeholder-count="5">
+                      <div>{{ y.label }}</div>
+                    </sc-for>
+                  </div>
+                  <svg viewBox="0 0 600 140" preserveAspectRatio="none" style="flex: 1; min-width: 0; height: 100%;">
+                    <sc-for list="{{ yTicks }}" as="y" hint-placeholder-count="5">
+                      <line x1="0" y1="{{ y.y }}" x2="600" y2="{{ y.y }}" stroke="#16212F" strokeWidth="1"></line>
+                    </sc-for>
+                    <sc-for list="{{ series }}" as="s" hint-placeholder-count="4">
+                      <path d="{{ s.d }}" fill="none" stroke="{{ s.color }}" strokeWidth="1.8" opacity="{{ s.op }}" vectorEffect="non-scaling-stroke"></path>
+                    </sc-for>
+                    <line x1="{{ cursorX }}" y1="0" x2="{{ cursorX }}" y2="136" stroke="#E6EDF5" strokeWidth="1" opacity="0.45" strokeDasharray="2 3" vectorEffect="non-scaling-stroke"></line>
+                    <line x1="0" y1="136" x2="600" y2="136" stroke="#233042" strokeWidth="1" vectorEffect="non-scaling-stroke"></line>
+                  </svg>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 3px 0 0 32px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #4E6479;">
+                  <sc-for list="{{ xLabels }}" as="x" hint-placeholder-count="5">
+                    <div>{{ x.label }}</div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="width: 210px; flex: 0 0 210px; display: flex; flex-direction: column; gap: 5px;">
+                <sc-for list="{{ series }}" as="s" hint-placeholder-count="4">
+                  <div onClick="{{ s.go }}" style="display: flex; align-items: center; gap: 8px; padding: 5px 7px; border: 1px solid #233042; border-radius: 5px; background: #101A28; cursor: pointer;" style-hover="border-color: #33455C;">
+                    <div style="width: 9px; height: 9px; border-radius: 2px; background: {{ s.color }};"></div>
+                    <div style="flex: 1; font-size: 11px; color: #E6EDF5;">{{ s.label }}</div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5;">{{ s.now }}</div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; width: 44px; text-align: right; color: {{ s.deltaColor }};">{{ s.delta }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isOrg }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 0;">
+              <div style="display: grid; grid-template-columns: 132px 1fr 1fr 1fr 64px; gap: 10px; padding: 0 4px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                <div>SPECIES</div><div>CYTOPLASM</div><div>NUCLEUS</div><div>MITOCHONDRIA</div><div style="text-align: right;">Δ NUC</div>
+              </div>
+              <sc-for list="{{ compartments }}" as="c" hint-placeholder-count="5">
+                <div style="display: grid; grid-template-columns: 132px 1fr 1fr 1fr 64px; gap: 10px; align-items: center; padding: 6px 4px; border-bottom: 1px solid #16212F;">
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5;">{{ c.name }}</div>
+                  <div style="display: flex; align-items: center; gap: 6px;"><div style="height: 6px; border-radius: 3px; background: #3B82F6; width: {{ c.cytoW }}%;"></div><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">{{ c.cyto }}%</span></div>
+                  <div style="display: flex; align-items: center; gap: 6px;"><div style="height: 6px; border-radius: 3px; background: #C084FC; width: {{ c.nucW }}%;"></div><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">{{ c.nuc }}%</span></div>
+                  <div style="display: flex; align-items: center; gap: 6px;"><div style="height: 6px; border-radius: 3px; background: #F59E0B; width: {{ c.mitoW }}%;"></div><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">{{ c.mito }}%</span></div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: {{ c.dColor }};">{{ c.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isFlux }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; gap: 14px; align-items: flex-start;">
+              <div style="display: flex; flex-direction: column; gap: 7px; width: 176px; flex: 0 0 176px;">
+                <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="3">
+                  <div style="background: #101A28; border: 1px solid #233042; border-radius: 6px; padding: 8px 9px;">
+                    <div style="font-size: 10px; letter-spacing: .08em; color: #7C8DA3;">{{ k.label }}</div>
+                    <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 2px;">
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 19px; font-weight: 600; color: #E6EDF5;">{{ k.value }}</span>
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #7C8DA3;">{{ k.unit }}</span>
+                      <span style="flex: 1;"></span>
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: {{ k.dColor }};">{{ k.delta }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: grid; grid-template-columns: 108px 1fr 74px 74px 1fr 70px; gap: 10px; padding: 0 4px 6px; font-size: 10px; letter-spacing: .09em; color: #4E6479; border-bottom: 1px solid #233042;">
+                  <div>REACTION</div><div>ENZYME / TRANSPORT</div><div style="text-align: right;">V_max</div><div style="text-align: right;">FLUX</div><div>SATURATION</div><div style="text-align: right;">Δ vs BASE</div>
+                </div>
+                <sc-for list="{{ fluxRows }}" as="r" hint-placeholder-count="6">
+                  <div style="display: grid; grid-template-columns: 108px 1fr 74px 74px 1fr 70px; gap: 10px; align-items: center; padding: 5px 4px; border-bottom: 1px solid #16212F;">
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #A9C8EC;">{{ r.id }}</div>
+                    <div style="font-size: 11px; color: #E6EDF5;">{{ r.name }}</div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #7C8DA3;">{{ r.vmax }}</div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: #E6EDF5;">{{ r.flux }}</div>
+                    <div style="height: 6px; background: #16212F; border-radius: 3px; overflow: hidden;"><div style="height: 6px; background: {{ r.color }}; width: {{ r.pct }}%;"></div></div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-align: right; color: {{ r.dColor }};">{{ r.delta }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div onPointerDown="{{ dragDock }}" style="width: 5px; flex: 0 0 5px; cursor: ew-resize; background: #0A1520; border-left: 1px solid #233042; border-right: 1px solid #233042; display: grid; place-items: center;" style-hover="background: #16212F;">
+      <div style="width: 1px; height: 34px; background: #33455C;"></div>
+    </div>
+
+    <div style="width: {{ dockW }}px; flex: 0 0 {{ dockW }}px; background: #0A1520; display: flex; flex-direction: column; min-height: 0;">
+      <div style="height: 32px; flex: 0 0 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #233042;">
+        <span style="font-size: 10px; letter-spacing: .1em; color: #A9B8C9;">TARGET PERTURBATIONS</span>
+        <span onClick="{{ resetPert }}" style="font-size: 10.5px; color: #7C8DA3; cursor: pointer;" style-hover="color: #E6EDF5;">reset</span>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: auto;">
+        <sc-for list="{{ targets }}" as="p" hint-placeholder-count="10">
+          <div onClick="{{ p.go }}" style="padding: 7px 10px; border-bottom: 1px solid #16212F; background: {{ p.bg }}; cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 7px;">
+              <div style="width: 6px; height: 6px; border-radius: 50%; background: {{ p.dot }};"></div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 600; color: #E6EDF5;">{{ p.id }}</div>
+              <div style="font-size: 10px; color: #4E6479; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">{{ p.sub }}</div>
+              <button onClick="{{ p.toggleKO }}" style="height: 19px; padding: 0 7px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; font-weight: 600; cursor: pointer; background: {{ p.koBg }}; border: 1px solid {{ p.koBorder }}; color: {{ p.koFg }};">CRISPR KO</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px; padding-left: 13px;">
+              <input type="range" min="0" max="200" step="5" value="{{ p.dose }}" onChange="{{ p.onDose }}" style="flex: 1;" />
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #A9B8C9; width: 52px; text-align: right;">{{ p.doseLabel }}</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; width: 46px; text-align: right; color: {{ p.actColor }};">{{ p.act }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex: 0 0 auto; border-top: 1px solid #233042; padding: 9px 10px; display: flex; flex-direction: column; gap: 8px; max-height: 47%; overflow: auto;">
+        <div style="font-size: 10px; letter-spacing: .1em; color: #A9B8C9;">IMPACT · vs BASELINE</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px;">
+          <sc-for list="{{ impacts }}" as="i" hint-placeholder-count="4">
+            <div style="background: #101A28; border: 1px solid #233042; border-radius: 6px; padding: 7px 8px;">
+              <div style="font-size: 10px; color: #7C8DA3;">{{ i.label }}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; color: {{ i.color }};">{{ i.value }}</div>
+              <div style="height: 4px; background: #16212F; border-radius: 2px; margin-top: 4px; overflow: hidden;"><div style="height: 4px; width: {{ i.w }}%; background: {{ i.color }};"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size: 10px; letter-spacing: .1em; color: #A9B8C9; margin-top: 2px;">SYNERGY · TOP DUAL KO</div>
+        <sc-for list="{{ synergy }}" as="s" hint-placeholder-count="3">
+          <div onClick="{{ s.apply }}" style="display: flex; align-items: center; gap: 8px; background: #101A28; border: 1px solid #233042; border-radius: 6px; padding: 7px 8px; cursor: pointer;" style-hover="border-color: #33455C;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E6EDF5; flex: 1;">{{ s.pair }}</div>
+            <div style="height: 5px; width: 62px; background: #16212F; border-radius: 3px; overflow: hidden;"><div style="height: 5px; width: {{ s.w }}%; background: {{ s.color }};"></div></div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{ s.color }}; width: 40px; text-align: right;">{{ s.score }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ paletteOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closePalette }}" style="position: fixed; inset: 0; background: rgba(4,9,15,.62); display: flex; align-items: flex-start; justify-content: center; padding-top: 96px; z-index: 60;">
+      <div onClick="{{ stop }}" style="width: 604px; background: #101A28; border: 1px solid #33455C; border-radius: 10px; box-shadow: 0 24px 64px rgba(0,0,0,.55); overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-bottom: 1px solid #233042;">
+          <span style="font-family: 'IBM Plex Mono', monospace; color: #4E6479;">⌕</span>
+          <input value="{{ q }}" onChange="{{ onQ }}" ref="{{ inputRef }}" placeholder="Jump to workspace, search target, run command…" style="flex: 1; background: transparent; border: none; outline: none; color: #E6EDF5; font-size: 14px;" />
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #7C8DA3; border: 1px solid #233042; border-radius: 3px; padding: 1px 5px;">ESC</span>
+        </div>
+        <div style="max-height: 348px; overflow: auto; padding: 6px;">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="6">
+            <div onClick="{{ r.run }}" onMouseEnter="{{ r.hover }}" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; background: {{ r.bg }};">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: #16212F; border: 1px solid #233042; display: grid; place-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #A9B8C9;">{{ r.code }}</div>
+              <div style="flex: 1;">
+                <div style="font-size: 12.5px; color: #E6EDF5;">{{ r.label }}</div>
+                <div style="font-size: 10.5px; color: #7C8DA3;">{{ r.sub }}</div>
+              </div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #4E6479;">{{ r.group }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid #233042; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #4E6479;">
+          <span>↑↓ navigate</span><span>↵ open</span><span>{{ modKey }}K toggle</span><span style="flex: 1;"></span><span>{{ resultCount }} results</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; right: 16px; bottom: 16px; z-index: 70; display: flex; align-items: center; gap: 9px; background: #101A28; border: 1px solid #33455C; border-radius: 7px; padding: 9px 12px; box-shadow: 0 14px 34px rgba(0,0,0,.5);">
+      <div style="width: 6px; height: 6px; border-radius: 50%; background: #22C55E;"></div>
+      <span style="font-size: 11.5px; color: #E6EDF5;">{{ toast }}</span>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFluxWeights&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Graph&quot;},&quot;showBaselineRings&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Graph&quot;},&quot;edgeCurvature&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:18,&quot;min&quot;:0,&quot;max&quot;:48,&quot;step&quot;:2,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Graph&quot;}}">
+class Component extends DCLogic {
+  NODES = [
+    { id: 'PO2', label: 'pO₂', sub: 'O₂ tension', x: 78, y: 300, kind: 'env' },
+    { id: 'MTOR', label: 'MTOR', sub: 'kinase', x: 96, y: 108 },
+    { id: 'EGLN1', label: 'EGLN1', sub: 'PHD2', x: 250, y: 208 },
+    { id: 'VHL', label: 'VHL', sub: 'E3 ligase', x: 250, y: 412 },
+    { id: 'HIF1A', label: 'HIF1A', sub: 'TF · O₂-labile', x: 434, y: 300 },
+    { id: 'ARNT', label: 'ARNT', sub: 'HIF1B · nuclear', x: 434, y: 122 },
+    { id: 'VEGFA', label: 'VEGFA', sub: 'secreted', x: 664, y: 96 },
+    { id: 'GLUT1', label: 'GLUT1', sub: 'SLC2A1', x: 700, y: 230 },
+    { id: 'LDHA', label: 'LDHA', sub: 'EC 1.1.1.27', x: 664, y: 364 },
+    { id: 'PDK1', label: 'PDK1', sub: 'PDHK', x: 600, y: 482 },
+    { id: 'PDH', label: 'PDH', sub: 'TCA entry', x: 812, y: 482 }
+  ];
+  EDGES = [
+    { s: 'PO2', t: 'EGLN1', k: 'act' },
+    { s: 'MTOR', t: 'HIF1A', k: 'pho' },
+    { s: 'EGLN1', t: 'HIF1A', k: 'inh' },
+    { s: 'VHL', t: 'HIF1A', k: 'inh' },
+    { s: 'HIF1A', t: 'ARNT', k: 'loc' },
+    { s: 'ARNT', t: 'VEGFA', k: 'act' },
+    { s: 'HIF1A', t: 'GLUT1', k: 'act' },
+    { s: 'HIF1A', t: 'LDHA', k: 'act' },
+    { s: 'HIF1A', t: 'PDK1', k: 'act' },
+    { s: 'HIF1A', t: 'VEGFA', k: 'act' },
+    { s: 'PDK1', t: 'PDH', k: 'inh' }
+  ];
+  TARGETS = ['HIF1A', 'EGLN1', 'VHL', 'ARNT', 'MTOR', 'VEGFA', 'GLUT1', 'LDHA', 'PDK1', 'PDH'];
+  SUBS = { HIF1A: 'hypoxia-inducible factor 1α', EGLN1: 'prolyl hydroxylase 2', VHL: 'von Hippel–Lindau E3', ARNT: 'HIF-1β dimer partner', MTOR: 'mTORC1 translation', VEGFA: 'angiogenic ligand', GLUT1: 'glucose transporter 1', LDHA: 'lactate dehydrogenase A', PDK1: 'pyruvate DH kinase', PDH: 'pyruvate dehydrogenase' };
+  ROUTES = [
+    { id: 'studio', code: 'ST', title: 'Studio', sub: 'Interactive perturbation workspace' },
+    { id: 'pathways', code: 'PW', title: 'Pathways', sub: 'Curated network modules & enrichment' },
+    { id: 'explorer', code: 'EX', title: 'Explorer', sub: 'Kinetic constant registry' },
+    { id: 'xai', code: 'XA', title: 'XAI', sub: 'Sobol global sensitivity decomposition' },
+    { id: 'pharma', code: 'PH', title: 'Pharma', sub: 'Compound library & BBB triage' },
+    { id: 'briefs', code: 'BR', title: 'Briefs', sub: 'Generated experiment reports' },
+    { id: 'combos', code: 'CB', title: 'Combos', sub: 'N × N dual-knockout synergy matrix' },
+    { id: 'omics', code: 'OM', title: 'Omics', sub: 'MaxQuant LC-MS/MS proteome deltas' },
+    { id: 'threed', code: '3D', title: '3D', sub: 'Mol* structural viewer & residue map' }
+  ];
+  SCEN = {
+    hypoxia: { o2: 1.5, label: 'Hypoxia-Induced Angiogenesis' },
+    ischemic: { o2: 0.5, label: 'Ischemic Core' },
+    normoxia: { o2: 21, label: 'Normoxic Baseline' },
+    pseudo: { o2: 21, label: 'Pseudohypoxia · VHL-null', vhlNull: true }
+  };
+  TAU = { HIF1A: 2.4, ARNT: 3.1, VEGFA: 7.5, GLUT1: 6.2, LDHA: 8.4, PDK1: 5.6, PDH: 6.8, EGLN1: 1.4, VHL: 1.4, MTOR: 1.4, PO2: 0.6, lactate: 9.2, ocr: 7.1, atp: 6.4, nuc: 3.1 };
+
+  state = {
+    route: 'studio', viewport: 'graph', bottomTab: 'traj', t: 24, running: false,
+    paletteOpen: false, q: '', pi: 0, sel: 'HIF1A', scenario: 'hypoxia',
+    dockW: 344, bottomH: 258, toast: '', bbbMW: 342, bbbLogP: 24, pert: {}, gw: 0, gh: 0
+  };
+
+  stageRef = el => {
+    if (!el || this._stageEl === el) return;
+    this._stageEl = el;
+    const upd = () => this.setState({ tw: el.getBoundingClientRect().width });
+    if (this._sro) this._sro.disconnect();
+    if (typeof ResizeObserver !== 'undefined') { this._sro = new ResizeObserver(upd); this._sro.observe(el); }
+    upd();
+  };
+
+  graphRef = el => {
+    if (!el || this._graphEl === el) return;
+    this._graphEl = el;
+    const upd = () => { const r = el.getBoundingClientRect(); this.setState({ gw: r.width, gh: r.height }); };
+    if (this._ro) this._ro.disconnect();
+    if (typeof ResizeObserver !== 'undefined') { this._ro = new ResizeObserver(upd); this._ro.observe(el); }
+    upd();
+  };
+
+  constructor(props) {
+    super(props);
+    const pert = {};
+    this.TARGETS.forEach(id => { pert[id] = { ko: false, dose: 100 }; });
+    this.state = Object.assign({}, this.state, { pert });
+  }
+
+  componentDidMount() {
+    this.onKey = e => {
+      const k = (e.key || '').toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && k === 'k') { e.preventDefault(); this.setState(s => ({ paletteOpen: !s.paletteOpen, q: '', pi: 0 })); return; }
+      if (this.state.paletteOpen) {
+        const list = this.commands();
+        if (k === 'escape') this.setState({ paletteOpen: false });
+        else if (k === 'arrowdown') { e.preventDefault(); this.setState(s => ({ pi: (s.pi + 1) % Math.max(1, list.length) })); }
+        else if (k === 'arrowup') { e.preventDefault(); this.setState(s => ({ pi: (s.pi - 1 + list.length) % Math.max(1, list.length) })); }
+        else if (k === 'enter') { const c = list[this.state.pi]; if (c) this.exec(c); }
+        return;
+      }
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      if (k === 'r') this.toggleRun();
+    };
+    window.addEventListener('keydown', this.onKey);
+    this.timer = setInterval(() => {
+      if (!this.state.running) return;
+      this.setState(s => (s.t >= 48 ? { t: 48, running: false } : { t: s.t + 1 }));
+    }, 130);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); clearInterval(this.timer); }
+
+  flash(msg) { this.setState({ toast: msg }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: '' }), 2600); }
+  toggleRun() { this.setState(s => ({ running: !s.running, t: s.running ? s.t : (s.t >= 48 ? 0 : s.t) })); }
+
+  o2n(scenario) { const s = this.SCEN[scenario || this.state.scenario]; return Math.max(0.02, s.o2 / 21); }
+  hill(x) { const v = x * x; return v / (v + 0.2025); }
+
+  model(pert, scenario) {
+    const sc = this.SCEN[scenario];
+    const d = id => { const p = pert[id] || { ko: false, dose: 100 }; return p.ko ? 0 : p.dose / 100; };
+    const o2 = this.o2n(scenario);
+    const egln = Math.min(1.4, o2 * d('EGLN1'));
+    const vhl = sc.vhlNull ? 0 : d('VHL');
+    const mtor = d('MTOR');
+    const deg = 0.12 + 2.6 * egln * (0.22 + 0.78 * vhl);
+    const syn = (0.28 + 0.72 * mtor) * d('HIF1A');
+    const hif = syn / (syn + deg + 1e-6);
+    const nuc = hif * (0.32 + 0.68 * d('ARNT'));
+    const drive = this.hill(nuc);
+    const vegfa = drive * d('VEGFA');
+    const glut1 = drive * d('GLUT1');
+    const ldha = drive * d('LDHA');
+    const pdk1 = drive * d('PDK1');
+    const pdh = Math.max(0, (1 - 0.85 * pdk1) * d('PDH'));
+    const lactate = 0.14 + 0.86 * Math.pow(ldha * (0.28 + 0.72 * glut1), 0.7);
+    const ocr = 0.16 + 0.84 * Math.min(1, pdh);
+    const atp = 0.42 * lactate + 0.58 * ocr;
+    return { PO2: o2, MTOR: mtor, EGLN1: Math.min(1, egln), VHL: vhl, HIF1A: hif, ARNT: nuc, VEGFA: vegfa, GLUT1: glut1, LDHA: ldha, PDK1: pdk1, PDH: pdh, lactate, ocr, atp, nuc };
+  }
+  basePert() { const p = {}; this.TARGETS.forEach(id => { p[id] = { ko: false, dose: 100 }; }); return p; }
+  at(base, ss, key, t) { const tau = this.TAU[key] || 5; return base + (ss - base) * (1 - Math.exp(-t / tau)); }
+
+  fmt(v, n) { return (v === undefined || v === null || isNaN(v)) ? '—' : v.toFixed(n === undefined ? 2 : n); }
+  pctDelta(a, b) { if (b < 1e-4) return a < 1e-4 ? '0%' : '+∞'; const p = ((a - b) / b) * 100; return (p >= 0 ? '+' : '') + p.toFixed(0) + '%'; }
+  dcolor(a, b) { const p = a - b; if (Math.abs(p) < 0.015) return '#7C8DA3'; return p > 0 ? '#22C55E' : '#EF4444'; }
+
+  commands() {
+    const q = (this.state.q || '').toLowerCase();
+    const items = [];
+    this.ROUTES.forEach(r => items.push({ code: r.code, label: r.title, sub: r.sub, group: 'workspace', kind: 'route', id: r.id }));
+    ['HIF1A', 'EGLN1', 'GLUT1', 'VEGFA', 'MTOR', 'LDHA', 'PDK1', 'ARNT', 'VHL', 'PDH'].forEach(p => items.push({ code: 'P', label: p, sub: this.SUBS[p] || 'target protein', group: 'target', kind: 'target', id: p }));
+    items.push({ code: '↻', label: 'Run simulation', sub: 't₀ → t_final, 48 h integration', group: 'action', kind: 'run' });
+    items.push({ code: '⌫', label: 'Reset all perturbations', sub: 'restore wild-type dosing', group: 'action', kind: 'reset' });
+    items.push({ code: '⇩', label: 'Export report (PDF)', sub: 'scenario summary + flux tables', group: 'action', kind: 'export' });
+    items.push({ code: '▦', label: 'Toggle spatial microenvironment mesh', sub: 'reaction–diffusion viewport', group: 'action', kind: 'spatial' });
+    return items.filter(i => !q || (i.label + ' ' + i.sub).toLowerCase().includes(q));
+  }
+  exec(c) {
+    this.setState({ paletteOpen: false, q: '', pi: 0 });
+    if (c.kind === 'route') { this.setState({ route: c.id }); this.flash('Workspace → ' + c.label); }
+    else if (c.kind === 'target') { this.setState({ route: 'studio', sel: c.id }); this.flash('Selected ' + c.id); }
+    else if (c.kind === 'run') { this.setState({ running: true, t: 0 }); }
+    else if (c.kind === 'reset') { this.setState({ pert: this.basePert() }); this.flash('Perturbations reset to wild type'); }
+    else if (c.kind === 'export') { this.flash('Report queued · cistron-' + this.state.scenario + '-brief.pdf'); }
+    else if (c.kind === 'spatial') { this.setState({ route: 'studio', viewport: this.state.viewport === 'spatial' ? 'graph' : 'spatial' }); }
+  }
+
+  setDose(id, v) { this.setState(s => { const pert = Object.assign({}, s.pert); pert[id] = { ko: pert[id].ko, dose: v }; return { pert }; }); }
+  toggleKO(id, e) { if (e) e.stopPropagation(); this.setState(s => { const pert = Object.assign({}, s.pert); pert[id] = { ko: !pert[id].ko, dose: pert[id].dose }; return { pert }; }); }
+
+  drag(axis, e) {
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY, w = this.state.dockW, h = this.state.bottomH;
+    const mv = ev => {
+      if (axis === 'x') this.setState({ dockW: Math.max(248, Math.min(560, w - (ev.clientX - sx))) });
+      else this.setState({ bottomH: Math.max(46, Math.min(620, h - (ev.clientY - sy))) });
+    };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  }
+
+  edgeGeom(a, b, curve) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+    const ux = dx / L, uy = dy / L, r = 30;
+    const x1 = a.x + ux * r, y1 = a.y + uy * r, x2 = b.x - ux * r, y2 = b.y - uy * r;
+    const mx = (x1 + x2) / 2 - uy * curve, my = (y1 + y2) / 2 + ux * curve;
+    return { d: 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' Q' + mx.toFixed(1) + ',' + my.toFixed(1) + ' ' + x2.toFixed(1) + ',' + y2.toFixed(1), mx, my };
+  }
+
+  synergyPairs(baseSS) {
+    const ids = this.TARGETS;
+    const out = [];
+    const wt = this.model(this.basePert(), this.state.scenario).VEGFA;
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const pa = this.basePert(); pa[ids[i]] = { ko: true, dose: 0 };
+        const pb = this.basePert(); pb[ids[j]] = { ko: true, dose: 0 };
+        const pab = this.basePert(); pab[ids[i]] = { ko: true, dose: 0 }; pab[ids[j]] = { ko: true, dose: 0 };
+        const fa = this.model(pa, this.state.scenario).VEGFA / (wt + 1e-6);
+        const fb = this.model(pb, this.state.scenario).VEGFA / (wt + 1e-6);
+        const fab = this.model(pab, this.state.scenario).VEGFA / (wt + 1e-6);
+        out.push({ a: ids[i], b: ids[j], syn: fa * fb - fab });
+      }
+    }
+    return out.sort((p, q) => q.syn - p.syn);
+  }
+
+  PATHWAYS = [
+    { id: 'HSA-1234176', name: 'Oxygen-dependent HIF-1α degradation', n: 24, p: '2.4e-18', frac: 0.94, src: 'Reactome' },
+    { id: 'HSA-194138', name: 'Signaling by VEGF', n: 41, p: '7.1e-14', frac: 0.81, src: 'Reactome' },
+    { id: 'KEGG-04066', name: 'HIF-1 signaling pathway', n: 62, p: '3.3e-13', frac: 0.77, src: 'KEGG' },
+    { id: 'GO-0006096', name: 'Glycolytic process', n: 33, p: '1.8e-11', frac: 0.69, src: 'GO-BP' },
+    { id: 'KEGG-04150', name: 'mTOR signaling pathway', n: 58, p: '6.4e-09', frac: 0.52, src: 'KEGG' },
+    { id: 'GO-0001525', name: 'Angiogenesis', n: 77, p: '2.9e-08', frac: 0.48, src: 'GO-BP' },
+    { id: 'HSA-9711123', name: 'Cellular response to hypoxia', n: 19, p: '4.7e-07', frac: 0.41, src: 'Reactome' },
+    { id: 'GO-0006099', name: 'Tricarboxylic acid cycle', n: 28, p: '5.2e-05', frac: 0.22, src: 'GO-BP' }
+  ];
+  KINETICS = [
+    { t: 'EGLN1', p: 'K_m (O₂)', v: '230', u: 'µM', m: 'stopped-flow', src: 'Hirsilä 2003', c: 0.92 },
+    { t: 'EGLN1', p: 'k_cat', v: '0.41', u: 's⁻¹', m: 'HPLC-MS', src: 'Ehrismann 2007', c: 0.86 },
+    { t: 'VHL', p: 'K_d (HIF-1α ODD)', v: '38', u: 'nM', m: 'SPR', src: 'Hon 2002', c: 0.95 },
+    { t: 'HIF1A', p: 't₁/₂ (normoxia)', v: '5.6', u: 'min', m: 'CHX chase', src: 'Berra 2003', c: 0.88 },
+    { t: 'HIF1A', p: 'K_d (ARNT dimer)', v: '12', u: 'nM', m: 'ITC', src: 'Wu 2015', c: 0.9 },
+    { t: 'HIF1A', p: 'Hill n (HRE)', v: '2.0', u: '—', m: 'luciferase', src: 'Cistron fit', c: 0.71 },
+    { t: 'GLUT1', p: 'K_m (glucose)', v: '3.0', u: 'mM', m: 'radiotracer', src: 'Carruthers 2009', c: 0.93 },
+    { t: 'GLUT1', p: 'V_max', u: 'mM/min', v: '8.4', m: 'radiotracer', src: 'Carruthers 2009', c: 0.9 },
+    { t: 'LDHA', p: 'K_m (pyruvate)', v: '0.14', u: 'mM', m: 'spectrophot.', src: 'BRENDA', c: 0.89 },
+    { t: 'LDHA', p: 'k_cat', v: '460', u: 's⁻¹', m: 'spectrophot.', src: 'BRENDA', c: 0.84 },
+    { t: 'PDK1', p: 'IC₅₀ (DCA)', v: '0.9', u: 'mM', m: 'enzyme assay', src: 'Stacpoole 2003', c: 0.66 },
+    { t: 'PDH', p: 'K_m (pyruvate)', v: '0.05', u: 'mM', m: 'coupled assay', src: 'BRENDA', c: 0.91 },
+    { t: 'VEGFA', p: 'k_secretion', v: '2.9', u: 'pg/cell/h', m: 'ELISA', src: 'Cistron fit', c: 0.74 },
+    { t: 'MTOR', p: 'K_m (ATP)', v: '48', u: 'µM', m: 'kinase assay', src: 'Toral-Barza 2005', c: 0.87 }
+  ];
+  COMPOUNDS = [
+    { id: 'CST-0114', name: 'Roxadustat analog', target: 'EGLN1', mw: 352, logp: 2.3, tpsa: 96, mode: 'inhibitor' },
+    { id: 'CST-0207', name: 'PT2385-like HIF-2 blocker', target: 'HIF1A', mw: 466, logp: 4.1, tpsa: 84, mode: 'allosteric' },
+    { id: 'CST-0341', name: 'BAY-876', target: 'GLUT1', mw: 508, logp: 3.6, tpsa: 112, mode: 'inhibitor' },
+    { id: 'CST-0402', name: 'GSK-2837808A', target: 'LDHA', mw: 570, logp: 2.8, tpsa: 138, mode: 'inhibitor' },
+    { id: 'CST-0455', name: 'Dichloroacetate', target: 'PDK1', mw: 129, logp: 0.5, tpsa: 37, mode: 'inhibitor' },
+    { id: 'CST-0512', name: 'Rapalog RAD-001', target: 'MTOR', mw: 958, logp: 5.4, tpsa: 205, mode: 'inhibitor' },
+    { id: 'CST-0630', name: 'Bevacizumab Fab', target: 'VEGFA', mw: 480, logp: -0.8, tpsa: 240, mode: 'sequestrant' }
+  ];
+  BRIEFS = [
+    { id: 'BR-0417', title: 'Dual EGLN1 × VHL knockout drives maximal VEGFA output', tag: 'Scenario brief', when: '2 h ago', pages: 6 },
+    { id: 'BR-0416', title: 'Lactate ceiling under GLUT1 titration (0–200%)', tag: 'Titration sweep', when: 'yesterday', pages: 4 },
+    { id: 'BR-0412', title: 'Sobol decomposition: EGLN1 dominates VEGFA variance', tag: 'XAI export', when: '3 d ago', pages: 9 },
+    { id: 'BR-0408', title: 'BBB triage of 7 hypoxia-axis chemotypes', tag: 'Pharma', when: '6 d ago', pages: 5 }
+  ];
+  OMICS = [
+    { g: 'HIF1A', pep: 24, int: 8.9 }, { g: 'EGLN1', pep: 11, int: 7.2 }, { g: 'VHL', pep: 8, int: 6.8 },
+    { g: 'ARNT', pep: 17, int: 7.9 }, { g: 'VEGFA', pep: 6, int: 6.1 }, { g: 'GLUT1', pep: 19, int: 8.4 },
+    { g: 'LDHA', pep: 33, int: 9.6 }, { g: 'PDK1', pep: 14, int: 7.4 }, { g: 'PDH', pep: 21, int: 8.1 },
+    { g: 'MTOR', pep: 29, int: 8.6 }
+  ];
+  SITES = [
+    { r: 'p-Ser643', conf: 'High', fn: 'CK2 · nuclear retention' },
+    { r: 'p-Thr796', conf: 'High', fn: 'blocks FIH hydroxylation' },
+    { r: 'OH-Pro402', conf: 'High', fn: 'PHD2 · VHL recruitment' },
+    { r: 'OH-Pro564', conf: 'High', fn: 'PHD2 · primary ODD site' },
+    { r: 'Ac-Lys532', conf: 'Medium', fn: 'ARD1 · stability' },
+    { r: 'OH-Asn803', conf: 'Medium', fn: 'FIH · CAD activity' }
+  ];
+
+  sobolRows() {
+    const sc = this.state.scenario;
+    const out = this.TARGETS.map(id => {
+      const lo = this.basePert(), hi = this.basePert();
+      lo[id] = { ko: false, dose: 60 }; hi[id] = { ko: false, dose: 140 };
+      const s1 = Math.pow(this.model(hi, sc).VEGFA - this.model(lo, sc).VEGFA, 2);
+      const lo2 = this.basePert(), hi2 = this.basePert();
+      lo2[id] = { ko: false, dose: 60 }; lo2.HIF1A = { ko: false, dose: 60 };
+      hi2[id] = { ko: false, dose: 140 }; hi2.HIF1A = { ko: false, dose: 60 };
+      const st = Math.max(s1, Math.pow(this.model(hi2, sc).VEGFA - this.model(lo2, sc).VEGFA, 2));
+      return { id, s1, st };
+    });
+    const tot = out.reduce((a, b) => a + b.s1, 0) || 1;
+    const totT = out.reduce((a, b) => a + b.st, 0) || 1;
+    return out.map(o => ({ id: o.id, s1: o.s1 / tot, st: o.st / totT })).sort((a, b) => b.s1 - a.s1);
+  }
+
+  comboMatrix() {
+    const sc = this.state.scenario, ids = this.TARGETS;
+    const wt = this.model(this.basePert(), sc).VEGFA + 1e-6;
+    const single = {};
+    ids.forEach(id => { const p = this.basePert(); p[id] = { ko: true, dose: 0 }; single[id] = this.model(p, sc).VEGFA / wt; });
+    return ids.map(a => ({
+      id: a,
+      cells: ids.map(b => {
+        let f;
+        if (a === b) f = single[a];
+        else { const p = this.basePert(); p[a] = { ko: true, dose: 0 }; p[b] = { ko: true, dose: 0 }; f = this.model(p, sc).VEGFA / wt; }
+        const supp = Math.max(0, Math.min(1, 1 - f));
+        const syn = single[a] * single[b] - f;
+        const g = Math.round(26 + 174 * supp), r = Math.round(16 + 22 * supp), bl = Math.round(40 - 10 * supp);
+        return {
+          fill: 'rgb(' + r + ',' + g + ',' + bl + ')',
+          border: (a !== b && syn > 0.12) ? '#C084FC' : '#0A1520',
+          label: supp > 0.995 ? '1.0' : supp.toFixed(2).slice(1),
+          fg: supp > 0.55 ? '#04180C' : '#7C8DA3',
+          title: a + ' × ' + b + ' · suppression ' + supp.toFixed(2) + ' · synergy ' + syn.toFixed(2),
+          apply: () => { const p = this.basePert(); p[a] = { ko: true, dose: 0 }; if (b !== a) p[b] = { ko: true, dose: 0 }; this.setState({ pert: p, route: 'studio', t: 0, running: true }); this.flash('Applied ' + a + (a === b ? ' single KO' : ' × ' + b + ' dual KO')); }
+        };
+      })
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const props = this.props || {};
+    const showFlux = props.showFluxWeights !== false;
+    const showBase = props.showBaselineRings !== false;
+    const curve = props.edgeCurvature === undefined ? 18 : props.edgeCurvature;
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+    const t = s.t;
+    const ss = this.model(s.pert, s.scenario);
+    const bl = this.model(this.basePert(), s.scenario);
+    const now = {};
+    Object.keys(ss).forEach(k => { now[k] = this.at(bl[k], ss[k], k, t); });
+    const koCount = this.TARGETS.filter(id => s.pert[id].ko).length + this.TARGETS.filter(id => !s.pert[id].ko && s.pert[id].dose !== 100).length;
+    const CIRC = 2 * Math.PI * 25;
+
+    const nodeById = {};
+    this.NODES.forEach(n => { nodeById[n.id] = n; });
+
+    const nodes = this.NODES.map(n => {
+      const v = Math.max(0, Math.min(1.2, now[n.id] === undefined ? 0 : now[n.id]));
+      const b = Math.max(0, Math.min(1.2, bl[n.id] === undefined ? 0 : bl[n.id]));
+      const up = v - b;
+      const ring = Math.abs(up) < 0.02 ? '#7C8DA3' : (up > 0 ? '#22C55E' : '#EF4444');
+      const ko = s.pert[n.id] && s.pert[n.id].ko;
+      const sel = s.sel === n.id;
+      return {
+        id: n.id, label: n.label, sub: n.sub, tf: 'translate(' + n.x + ',' + n.y + ')',
+        val: this.fmt(v, 2), valFg: ko ? '#F87171' : '#E6EDF5',
+        dash: (Math.min(1, v) * CIRC).toFixed(1) + ' ' + CIRC.toFixed(1),
+        baseDash: (Math.min(1, b) * CIRC).toFixed(1) + ' ' + CIRC.toFixed(1),
+        baseOp: showBase ? 0.55 : 0, ring,
+        stroke: sel ? '#E6EDF5' : '#233042',
+        labelFg: sel ? '#FFFFFF' : '#A9B8C9',
+        halo: sel ? 33 : 25, haloOp: sel ? 0.35 : 0,
+        koOp: ko ? 1 : 0,
+        go: () => this.setState({ sel: n.id })
+      };
+    });
+
+    const COL = { act: '#22C55E', inh: '#EF4444', pho: '#3B82F6', loc: '#C084FC' };
+    const MK = { act: 'url(#mk-act)', inh: 'url(#mk-inh)', pho: 'url(#mk-pho)', loc: 'url(#mk-loc)' };
+    const edges = [], fluxLabels = [];
+    this.EDGES.forEach(e => {
+      const a = nodeById[e.s], b = nodeById[e.t];
+      const g = this.edgeGeom(a, b, curve);
+      const flux = Math.max(0, Math.min(1.2, now[e.s] === undefined ? 0.4 : now[e.s]));
+      const w = showFlux ? (1.1 + 4.6 * flux) : 1.8;
+      edges.push({
+        d: g.d, color: COL[e.k], w: Number(w.toFixed(2)),
+        dash: e.k === 'pho' ? '7 5' : 'none',
+        marker: MK[e.k], markerStart: e.k === 'loc' ? 'url(#mk-loc-b)' : 'none',
+        op: 0.35 + 0.6 * Math.min(1, flux)
+      });
+      if (showFlux) fluxLabels.push({ x: g.mx.toFixed(1), y: (g.my - 6).toFixed(1), color: COL[e.k], text: 'V ' + this.fmt(flux, 2) });
+    });
+
+    const grid = [];
+    for (let x = 40; x <= 880; x += 40) grid.push({ x1: x, y1: 0, x2: x, y2: 560 });
+    for (let y = 40; y <= 520; y += 40) grid.push({ x1: 0, y1: y, x2: 920, y2: y });
+
+    const gs = Math.min((s.gw || 0) / 920, (s.gh || 0) / 560);
+    const ox = ((s.gw || 0) - 920 * gs) / 2, oy = ((s.gh || 0) - 560 * gs) / 2;
+    const pxy = (x, y) => ({ left: (ox + x * gs).toFixed(1), top: (oy + y * gs).toFixed(1) });
+    const MONO = "'IBM Plex Mono', monospace", SANS = "'IBM Plex Sans', sans-serif";
+    const glabels = [], koBadges = [];
+    const fsVal = Math.max(9.5, 11 * gs), fsName = Math.max(10, 11.5 * gs), fsSub = Math.max(8, 8.5 * gs);
+    if (gs > 0.02) {
+      this.NODES.forEach((n, i) => {
+        const nd = nodes[i];
+        const p = pxy(n.x, n.y);
+        const cy = Number(p.top), base = cy + 27 * gs + fsName * 0.75;
+        glabels.push({ left: p.left, top: p.top, text: nd.val, fam: MONO, fs: fsVal.toFixed(1), fw: 600, color: nd.valFg });
+        glabels.push({ left: p.left, top: base.toFixed(1), text: nd.label, fam: SANS, fs: fsName.toFixed(1), fw: 600, color: nd.labelFg });
+        if (gs > 0.62) glabels.push({ left: p.left, top: (base + fsName * 0.7 + fsSub * 0.85).toFixed(1), text: nd.sub, fam: MONO, fs: fsSub.toFixed(1), fw: 400, color: '#4E6479' });
+        if (s.pert[n.id] && s.pert[n.id].ko) { const kp = pxy(n.x + 25, n.y - 24); koBadges.push({ left: kp.left, top: kp.top, fs: Math.max(7.5, 7.5 * gs).toFixed(1) }); }
+      });
+      if (gs > 0.52) fluxLabels.forEach(f => { const p = pxy(Number(f.x), Number(f.y)); glabels.push({ left: p.left, top: p.top, text: f.text, fam: MONO, fs: Math.max(8, 9 * gs).toFixed(1), fw: 400, color: f.color }); });
+    }
+    const tw = s.tw === undefined ? 1200 : s.tw;
+
+    const rail = this.ROUTES.map(r => ({
+      code: r.code, title: r.title + ' — ' + r.sub,
+      bg: s.route === r.id ? '#16212F' : 'transparent',
+      fg: s.route === r.id ? '#E6EDF5' : '#7C8DA3',
+      mark: s.route === r.id ? '#22C55E' : 'transparent',
+      go: () => this.setState({ route: r.id })
+    }));
+
+    const targets = this.TARGETS.map(id => {
+      const p = s.pert[id];
+      const v = now[id] === undefined ? 0 : now[id];
+      const b = bl[id] === undefined ? 0 : bl[id];
+      return {
+        id, sub: this.SUBS[id], dose: p.dose, doseLabel: p.ko ? 'KO' : p.dose + '%',
+        act: this.fmt(v, 2), actColor: this.dcolor(v, b),
+        bg: s.sel === id ? '#101A28' : 'transparent',
+        dot: p.ko ? '#EF4444' : (p.dose !== 100 ? '#F59E0B' : '#233042'),
+        koBg: p.ko ? '#3A1418' : '#16212F', koBorder: p.ko ? '#EF4444' : '#233042', koFg: p.ko ? '#F87171' : '#7C8DA3',
+        go: () => this.setState({ sel: id }),
+        toggleKO: e => this.toggleKO(id, e),
+        onDose: e => this.setDose(id, Number(e.target.value))
+      };
+    });
+
+    const impacts = [
+      { label: 'Δ VEGFA', a: now.VEGFA, b: bl.VEGFA },
+      { label: 'Δ HIF1A^nuc', a: now.nuc, b: bl.nuc },
+      { label: 'Δ Lactate', a: now.lactate, b: bl.lactate },
+      { label: 'Δ OCR', a: now.ocr, b: bl.ocr }
+    ].map(i => ({ label: i.label, value: this.pctDelta(i.a, i.b), color: this.dcolor(i.a, i.b), w: Math.min(100, Math.abs(i.a - i.b) * 160).toFixed(0) }));
+
+    const syn = this.synergyPairs().slice(0, 3).map(p => ({
+      pair: p.a + ' × ' + p.b, score: this.fmt(p.syn, 2),
+      w: Math.min(100, Math.abs(p.syn) * 220).toFixed(0),
+      color: p.syn >= 0 ? '#22C55E' : '#EF4444',
+      apply: () => { const pert = this.basePert(); pert[p.a] = { ko: true, dose: 0 }; pert[p.b] = { ko: true, dose: 0 }; this.setState({ pert, t: 0, running: true }); this.flash('Applied dual KO ' + p.a + ' × ' + p.b); }
+    }));
+
+    const SER = [
+      { key: 'nuc', label: 'HIF1A nuclear', color: '#C084FC' },
+      { key: 'VEGFA', label: 'VEGFA mRNA', color: '#22C55E' },
+      { key: 'lactate', label: 'Lactate efflux', color: '#F59E0B' },
+      { key: 'ocr', label: 'OCR', color: '#3B82F6' }
+    ];
+    const series = SER.map(m => {
+      let d = '';
+      for (let k = 0; k <= 48; k++) {
+        const v = this.at(bl[m.key], ss[m.key], m.key, k);
+        const x = (k / 48) * 600, y = 136 - Math.max(0, Math.min(1, v)) * 130;
+        d += (k === 0 ? 'M' : ' L') + x.toFixed(1) + ',' + y.toFixed(1);
+      }
+      return { label: m.label, color: m.color, d, op: 0.95, now: this.fmt(now[m.key], 2), delta: this.pctDelta(now[m.key], bl[m.key]), deltaColor: this.dcolor(now[m.key], bl[m.key]), go: () => this.setState({ sel: m.key === 'nuc' ? 'HIF1A' : (m.key === 'VEGFA' ? 'VEGFA' : s.sel) }) };
+    });
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map(v => ({ y: (136 - v * 130).toFixed(1) }));
+    const yLabels = [1, 0.75, 0.5, 0.25, 0].map(v => ({ label: v.toFixed(2) }));
+    const xLabels = [0, 12, 24, 36, 48].map(v => ({ label: v + 'h' }));
+
+    const nucFrac = Math.min(0.94, 0.16 + 0.78 * (now.nuc / (now.HIF1A + 1e-4)) * Math.min(1, now.HIF1A + 0.2));
+    const comp = [
+      { name: 'HIF1A', nuc: nucFrac, mito: 0.04 },
+      { name: 'HIF1A^OH', nuc: 0.11, mito: 0.05 },
+      { name: 'ARNT', nuc: 0.88, mito: 0.02 },
+      { name: 'LDHA', nuc: 0.06, mito: 0.09 },
+      { name: 'PDK1', nuc: 0.03, mito: 0.71 }
+    ].map(c => {
+      const nuc = Math.round(c.nuc * 100), mito = Math.round(c.mito * 100), cyto = 100 - nuc - mito;
+      const bnuc = c.name === 'HIF1A' ? Math.round(Math.min(0.94, 0.16 + 0.78 * (bl.nuc / (bl.HIF1A + 1e-4)) * Math.min(1, bl.HIF1A + 0.2)) * 100) : nuc;
+      return { name: c.name, nuc, mito, cyto, cytoW: cyto, nucW: nuc, mitoW: mito, d: (nuc - bnuc >= 0 ? '+' : '') + (nuc - bnuc) + ' pp', dColor: nuc === bnuc ? '#7C8DA3' : (nuc > bnuc ? '#22C55E' : '#EF4444') };
+    });
+
+    const kpis = [
+      { label: 'ATP PRODUCTION', value: this.fmt(3.1 + 5.4 * now.atp, 1), unit: 'mM/min', a: now.atp, b: bl.atp },
+      { label: 'LACTATE', value: this.fmt(0.8 + 9.4 * now.lactate, 1), unit: 'mM', a: now.lactate, b: bl.lactate },
+      { label: 'OCR', value: (12 + 182 * now.ocr).toFixed(0), unit: 'pmol/min', a: now.ocr, b: bl.ocr }
+    ].map(k => ({ label: k.label, value: k.value, unit: k.unit, delta: this.pctDelta(k.a, k.b), dColor: this.dcolor(k.a, k.b) }));
+
+    const FR = [
+      { id: 'R_GLC_T', name: 'Glucose import · GLUT1', key: 'GLUT1', vmax: 8.4 },
+      { id: 'R_HK2', name: 'Hexokinase 2 phosphorylation', key: 'GLUT1', vmax: 7.1 },
+      { id: 'R_LDH', name: 'Pyruvate → lactate · LDHA', key: 'LDHA', vmax: 11.2 },
+      { id: 'R_PDH', name: 'Pyruvate → acetyl-CoA · PDH', key: 'PDH', vmax: 6.6 },
+      { id: 'R_OXPHOS', name: 'Oxidative phosphorylation', key: 'ocr', vmax: 14.8 },
+      { id: 'R_VEGF_S', name: 'VEGFA secretion', key: 'VEGFA', vmax: 2.9 }
+    ].map(r => {
+      const f = Math.max(0, Math.min(1.1, now[r.key])), b = Math.max(0, Math.min(1.1, bl[r.key]));
+      return { id: r.id, name: r.name, vmax: r.vmax.toFixed(1), flux: (r.vmax * f).toFixed(2), pct: (Math.min(1, f) * 100).toFixed(0), color: f > b ? '#22C55E' : (f < b ? '#EF4444' : '#7C8DA3'), delta: this.pctDelta(f, b), dColor: this.dcolor(f, b) };
+    });
+
+    const mesh = [];
+    const cols = 36, rows = 21, cw = 720 / cols, ch = 420 / rows;
+    const vessels = [{ x: 150, y: 110, r: 26 }, { x: 560, y: 300, r: 22 }, { x: 300, y: 340, r: 18 }];
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const cx = (i + 0.5) * cw, cy = (j + 0.5) * ch;
+        let o2 = 0;
+        vessels.forEach(v => { const dist = Math.hypot(cx - v.x, cy - v.y); o2 += Math.exp(-dist / (34 + v.r)); });
+        o2 = Math.min(1, o2) * (0.35 + 0.65 * this.o2n(s.scenario));
+        const vf = Math.min(1, (1 - o2) * now.VEGFA * 1.25);
+        const g = Math.round(24 + 150 * vf), r = Math.round(12 + 40 * (1 - o2)), b = Math.round(30 + 90 * o2);
+        mesh.push({ x: (i * cw).toFixed(2), y: (j * ch).toFixed(2), w: (cw + 0.6).toFixed(2), h: (ch + 0.6).toFixed(2), fill: 'rgb(' + r + ',' + g + ',' + b + ')' });
+      }
+    }
+
+    const logP = s.bbbLogP / 10;
+    const logBBv = -0.0015 * (s.bbbMW - 300) + 0.32 * logP - 0.28 * Math.max(0, logP - 4) * 2;
+    const results = this.commands().map((c, i) => ({
+      code: c.code, label: c.label, sub: c.sub, group: c.group,
+      bg: i === s.pi ? '#1A2635' : 'transparent',
+      hover: () => this.setState({ pi: i }),
+      run: () => this.exec(c)
+    }));
+
+    const route = this.ROUTES.filter(r => r.id === s.route)[0] || this.ROUTES[0];
+    const R = s.route;
+
+    const pathways = R !== 'pathways' ? [] : this.PATHWAYS.map(p => ({
+      id: p.id, name: p.name, n: p.n, p: p.p, src: p.src,
+      w: (p.frac * 100).toFixed(0), color: p.frac > 0.7 ? '#22C55E' : (p.frac > 0.45 ? '#F59E0B' : '#4E6479'),
+      score: p.frac.toFixed(2),
+      load: () => this.flash('Loaded ' + p.id + ' into stage · ' + p.n + ' nodes')
+    }));
+
+    const exq = (s.exq || '').toLowerCase();
+    const kinetics = R !== 'explorer' ? [] : this.KINETICS.filter(k => !exq || (k.t + ' ' + k.p + ' ' + k.src).toLowerCase().includes(exq)).map(k => ({
+      t: k.t, p: k.p, v: k.v, u: k.u, m: k.m, src: k.src,
+      c: k.c.toFixed(2), cw: (k.c * 100).toFixed(0), cColor: k.c > 0.85 ? '#22C55E' : (k.c > 0.7 ? '#F59E0B' : '#EF4444'),
+      go: () => this.setState({ sel: k.t })
+    }));
+
+    const sobol = R !== 'xai' ? [] : this.sobolRows().map(o => ({
+      id: o.id, s1: o.s1.toFixed(3), st: o.st.toFixed(3),
+      w1: (o.s1 * 100).toFixed(1), wt: (o.st * 100).toFixed(1),
+      inter: Math.max(0, o.st - o.s1).toFixed(3),
+      color: o.s1 > 0.25 ? '#C084FC' : (o.s1 > 0.08 ? '#3B82F6' : '#33455C'),
+      go: () => this.setState({ sel: o.id })
+    }));
+
+    const compounds = R !== 'pharma' ? [] : this.COMPOUNDS.map(c => {
+      const lb = -0.0015 * (c.mw - 300) + 0.32 * c.logp - 0.56 * Math.max(0, c.logp - 4);
+      return {
+        id: c.id, name: c.name, target: c.target, mode: c.mode, mw: c.mw, logp: c.logp.toFixed(1), tpsa: c.tpsa,
+        logbb: (lb >= 0 ? '+' : '') + lb.toFixed(2),
+        color: lb > -0.1 ? '#22C55E' : (lb > -0.6 ? '#F59E0B' : '#EF4444'),
+        w: Math.max(4, Math.min(100, (lb + 1.2) * 62)).toFixed(0),
+        verdict: lb > -0.1 ? 'CNS+' : (lb > -0.6 ? 'partial' : 'restricted'),
+        go: () => this.setState({ sel: c.target })
+      };
+    });
+
+    const briefs = R !== 'briefs' ? [] : this.BRIEFS.map(b => Object.assign({}, b, { open: () => this.flash('Opening ' + b.id + ' · ' + b.pages + ' pages'), pdf: () => this.flash('Export queued · ' + b.id + '.pdf') }));
+
+    const comboRows = R !== 'combos' ? [] : this.comboMatrix();
+    const comboIds = R !== 'combos' ? [] : this.TARGETS.slice();
+
+    const omics = R !== 'omics' ? [] : this.OMICS.map(o => {
+      const a = Math.max(1e-3, now[o.g] === undefined ? 0.5 : now[o.g]), b = Math.max(1e-3, bl[o.g] === undefined ? 0.5 : bl[o.g]);
+      const l2 = Math.max(-4, Math.min(4, Math.log(a / b) / Math.LN2));
+      const pv = Math.min(12, Math.abs(l2) * 2.6 + o.pep / 22);
+      return {
+        g: o.g, pep: o.pep, int: o.int.toFixed(1), l2: (l2 >= 0 ? '+' : '') + l2.toFixed(2),
+        pv: pv.toFixed(1), sig: pv > 2.6 ? 'sig' : 'ns', sigColor: pv > 2.6 ? '#22C55E' : '#4E6479',
+        color: l2 > 0.1 ? '#22C55E' : (l2 < -0.1 ? '#EF4444' : '#4E6479'),
+        left: (50 - Math.max(0, -l2) * 12).toFixed(1), w: (Math.abs(l2) * 12).toFixed(1),
+        intW: ((o.int - 5.5) * 22).toFixed(0),
+        go: () => this.setState({ sel: o.g })
+      };
+    });
+
+    const sel3 = this.TARGETS.indexOf(s.sel) >= 0 ? s.sel : 'HIF1A';
+    const plddt = R !== 'threed' ? [] : Array.from({ length: 64 }, (_, i) => {
+      const x = i / 63;
+      const v = 0.52 + 0.42 * Math.sin(x * 7.4 + sel3.length) * Math.cos(x * 2.1) + 0.18 * Math.sin(x * 21);
+      const c = Math.max(0.18, Math.min(0.98, v));
+      return { h: (6 + c * 34).toFixed(1), y: (40 - (6 + c * 34)).toFixed(1), x: (i * 9.6).toFixed(1), fill: c > 0.9 ? '#3B82F6' : (c > 0.7 ? '#38BDF8' : (c > 0.5 ? '#F59E0B' : '#EF4444')) };
+    });
+    const META = {
+      HIF1A: { up: 'Q16665', len: 826, mass: '92.7 kDa', af: 'AF-Q16665-F1', fam: 'bHLH-PAS transcription factor', plddt: '78.4' },
+      EGLN1: { up: 'Q9GZT9', len: 426, mass: '46.4 kDa', af: 'AF-Q9GZT9-F1', fam: '2-OG dioxygenase', plddt: '86.1' },
+      VHL: { up: 'P40337', len: 213, mass: '24.2 kDa', af: 'AF-P40337-F1', fam: 'CUL2 E3 substrate adaptor', plddt: '81.9' },
+      ARNT: { up: 'P27540', len: 789, mass: '86.6 kDa', af: 'AF-P27540-F1', fam: 'bHLH-PAS dimer partner', plddt: '74.2' },
+      MTOR: { up: 'P42345', len: 2549, mass: '288.9 kDa', af: 'AF-P42345-F1', fam: 'PIKK serine/threonine kinase', plddt: '88.6' },
+      VEGFA: { up: 'P15692', len: 232, mass: '27.0 kDa', af: 'AF-P15692-F1', fam: 'PDGF/VEGF growth factor', plddt: '70.8' },
+      GLUT1: { up: 'P11166', len: 492, mass: '54.1 kDa', af: 'AF-P11166-F1', fam: 'MFS sugar transporter', plddt: '92.3' },
+      LDHA: { up: 'P00338', len: 332, mass: '36.7 kDa', af: 'AF-P00338-F1', fam: 'L-lactate dehydrogenase', plddt: '95.1' },
+      PDK1: { up: 'Q15118', len: 436, mass: '49.2 kDa', af: 'AF-Q15118-F1', fam: 'PDH kinase / BCKDK', plddt: '89.7' },
+      PDH: { up: 'P08559', len: 390, mass: '43.3 kDa', af: 'AF-P08559-F1', fam: 'PDH E1 α subunit', plddt: '93.4' }
+    };
+    const m3 = META[sel3];
+    const sites = R !== 'threed' ? [] : this.SITES.map(x => ({ r: x.r, conf: x.conf, fn: x.fn, color: x.conf === 'High' ? '#22C55E' : '#F59E0B' }));
+
+    return {
+      pathways, kinetics, sobol, compounds, briefs, comboRows, comboIds, omics, plddt, sites,
+      exq: s.exq || '', onExq: e => this.setState({ exq: e.target.value }),
+      isPathways: R === 'pathways', isExplorer: R === 'explorer', isXai: R === 'xai', isPharma: R === 'pharma',
+      isBriefs: R === 'briefs', isCombos: R === 'combos', isOmics: R === 'omics', isThreed: R === 'threed',
+      sel3, up3: m3.up, len3: m3.len, mass3: m3.mass, af3: m3.af, fam3: m3.fam, plddt3: m3.plddt,
+      sub3: this.SUBS[sel3], act3: this.fmt(now[sel3], 3), base3: this.fmt(bl[sel3], 3),
+      scenLabel: this.SCEN[s.scenario].label,
+      modKey: isMac ? '⌘' : 'Ctrl', scenario: s.scenario, solverMs: (18 + (t % 7) * 3).toFixed(0),
+      runGlyph: s.running ? '❚❚' : '▶', runLabel: s.running ? 'PAUSE' : 'RUN SIMULATION',
+      onScenario: e => this.setState({ scenario: e.target.value, t: 24 }),
+      toggleRun: () => this.toggleRun(),
+      exportReport: () => this.flash('Report queued · cistron-' + s.scenario + '-brief.pdf'),
+      openPalette: () => this.setState({ paletteOpen: true, q: '', pi: 0 }),
+      closePalette: () => this.setState({ paletteOpen: false }),
+      stop: e => e.stopPropagation(),
+      onQ: e => this.setState({ q: e.target.value, pi: 0 }),
+      inputRef: el => { if (el) setTimeout(() => el.focus(), 0); },
+      paletteOpen: s.paletteOpen, q: s.q, results, resultCount: results.length,
+      toast: s.toast,
+      rail, isStudio: s.route === 'studio', isOther: s.route !== 'studio',
+      routeTitle: route.title, routeSub: route.sub, routeId: s.route,
+      isGraph: s.route === 'studio' && s.viewport === 'graph',
+      isSpatial: s.route === 'studio' && s.viewport === 'spatial',
+      showGraph: () => this.setState({ viewport: 'graph' }),
+      showSpatial: () => this.setState({ viewport: 'spatial' }),
+      tabGraphBg: s.viewport === 'graph' ? '#1A2635' : 'transparent',
+      tabGraphFg: s.viewport === 'graph' ? '#E6EDF5' : '#7C8DA3',
+      tabSpatialBg: s.viewport === 'spatial' ? '#1A2635' : 'transparent',
+      tabSpatialFg: s.viewport === 'spatial' ? '#E6EDF5' : '#7C8DA3',
+      nodes, edges, fluxLabels, grid, mesh, vessels,
+      legend: [{ color: '#22C55E', label: 'activation' }, { color: '#EF4444', label: 'inhibition / KO' }, { color: '#3B82F6', label: 'phosphorylation' }, { color: '#C084FC', label: 'translocation' }],
+      perturbCount: koCount, perturbColor: koCount ? '#F59E0B' : '#7C8DA3',
+      tLabel: t.toFixed(0), t,
+      onT: e => this.setState({ t: Number(e.target.value), running: false }),
+      dockW: s.dockW, bottomH: s.bottomH,
+      dragDock: e => this.drag('x', e), dragBottom: e => this.drag('y', e),
+      targets, impacts, synergy: syn,
+      resetPert: () => { this.setState({ pert: this.basePert() }); this.flash('Perturbations reset to wild type'); },
+      dockTabs: [{ id: 'traj', label: 'Time-Series Trajectory', short: 'Trajectory' }, { id: 'org', label: 'Organelle Translocation', short: 'Organelle' }, { id: 'flux', label: 'Metabolic Flux (FBA)', short: 'FBA' }].map(tb => ({
+        label: tw > 860 ? tb.label : tb.short, fg: s.bottomTab === tb.id ? '#E6EDF5' : '#7C8DA3', bar: s.bottomTab === tb.id ? '#22C55E' : 'transparent', go: () => this.setState({ bottomTab: tb.id })
+      })),
+      isTraj: s.bottomTab === 'traj', isOrg: s.bottomTab === 'org', isFlux: s.bottomTab === 'flux',
+      series, yTicks, yLabels, xLabels, cursorX: ((t / 48) * 600).toFixed(1),
+      graphRef: this.graphRef, glabels, koBadges, stageRef: this.stageRef,
+      showLegend: tw > 780, showMeta: tw > 560, showScrubLabel: tw > 700,
+      scrubW: tw > 700 ? 170 : 96,
+      compartments: comp, kpis, fluxRows: FR,
+      bbbMW: s.bbbMW, bbbLogPRaw: s.bbbLogP, bbbLogPLabel: logP.toFixed(1),
+      onMW: e => this.setState({ bbbMW: Number(e.target.value) }),
+      onLogP: e => this.setState({ bbbLogP: Number(e.target.value) }),
+      logBB: (logBBv >= 0 ? '+' : '') + logBBv.toFixed(2),
+      logBBColor: logBBv > -0.1 ? '#22C55E' : (logBBv > -0.6 ? '#F59E0B' : '#EF4444'),
+      bbbVerdict: logBBv > -0.1 ? 'CNS-penetrant · passive diffusion' : (logBBv > -0.6 ? 'Partial · efflux-limited' : 'Peripherally restricted'),
+      selected: s.sel
+    };
+  }
+}
+</script>
+</body>
+</html>

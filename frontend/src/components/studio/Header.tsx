@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Activity, Dna, Download, Loader2, Search, WifiOff } from 'lucide-react'
+import { Download, Loader2, Search, WifiOff } from 'lucide-react'
 import { useLab } from '../../lab/LabContext'
-import { GeneBadge, MetaLabel, MetricChip, OmicsProvenanceBadge, StatusPill } from '../ui'
+import { OmicsProvenanceBadge } from '../ui'
 import { resolveOmicsProvenance } from '../../api/types'
 import { ReportExportModal } from './ReportExportModal'
 
+const SCENARIO_PRESETS = [
+  'Hypoxia-induced angiogenesis',
+  'EGFR oncogenic signaling',
+  'TNF inflammatory cascade',
+  'PI3K-AKT survival pathway',
+  'WNT developmental signaling',
+] as const
+
 /**
- * Compact status header — disease Reactome search lives on sidebar → Pathways.
+ * Top chrome — Cistron VCL Systems Biology IDE mockup.
  */
 export function Header() {
   const {
     controls,
     patchControls,
     runQuery,
+    runSimulation,
     engineLive,
     busy,
     initializing,
@@ -42,137 +51,164 @@ export function Header() {
     runQuery(q)
   }
 
+  const runSim = () => {
+    if (busy || !engineLive) return
+    const q = draft.trim()
+    if (q && q !== controls.conditionQuery) {
+      patchControls({ conditionQuery: q })
+      runQuery(q)
+      return
+    }
+    runSimulation()
+  }
+
   const odeMs = latencyMs ?? scientist?.elapsed_ms ?? null
+  const live = engineLive && !initializing
 
   return (
     <>
-      <header className="flex shrink-0 flex-col gap-2 border-b border-slate-800/80 bg-obsidian-panel/80 px-4 py-2.5 backdrop-blur-xl">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold tracking-tight text-slate-50">
-                Cistron
-              </span>
-              <span className="hidden rounded-full border border-cyan-flux/30 bg-cyan-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300 sm:inline">
-                VCL
-              </span>
-            </div>
-            <div className="mt-0.5 flex max-w-[16rem] items-center gap-1.5">
-              <MetaLabel className="!normal-case !tracking-normal text-slate-500">
-                Scenario
-              </MetaLabel>
-              <span
-                className="truncate text-[11px] font-medium text-slate-300"
-                title={controls.conditionQuery}
-              >
-                {controls.conditionQuery || 'No active scenario'}
-              </span>
-            </div>
-          </div>
-
-          <div className="relative min-w-[14rem] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submit()
-              }}
-              placeholder="Quick condition (local resolve) · use Pathways for Reactome…"
-              className="w-full rounded-xl border border-slate-700/80 bg-obsidian/70 py-2 pl-9 pr-20 text-[13px] text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-500/45 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.12)]"
-            />
-            <button
-              type="button"
-              disabled={!engineLive || busy || !draft.trim()}
-              onClick={submit}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300 transition hover:bg-emerald-500/25 disabled:opacity-40"
-            >
-              Run
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              disabled={!graph}
-              onClick={() => setReportOpen(true)}
-              title={
-                graph ? 'Export scientific report (PDF / Markdown)' : 'Run a scenario first'
-              }
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-950/40 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200 transition hover:bg-emerald-900/50 disabled:opacity-40"
-            >
-              <Download className="h-3 w-3" />
-              Export Report
-            </button>
-            <StatusPill
-              live={engineLive}
-              busy={busy || initializing}
-              label={
-                initializing ? 'Integrating' : engineLive ? 'Engine Live' : 'Offline'
-              }
-            />
-            <MetricChip>
-              <span className="text-emerald-400/90">●</span>
-              <span className="uppercase tracking-wider">Kraeutler ODE</span>
-              <strong className="lab-mono text-slate-100">
-                {odeMs != null ? `${odeMs.toFixed(0)}ms` : '—'}
-              </strong>
-            </MetricChip>
-            <MetricChip>
-              <Activity className="h-3 w-3 text-cyan-flux" />
-              ping
-              <strong className="lab-mono text-slate-100">
-                {pingMs != null ? `${pingMs.toFixed(0)}ms` : '—'}
-              </strong>
-            </MetricChip>
-              {profileId ? (
-              <GeneBadge
-                name={
-                  profileId.length > 28
-                    ? `${profileId.slice(0, 26)}…`
-                    : profileId
-                }
-                tone="violet"
-                className="max-w-[14rem] truncate"
-              />
-            ) : null}
-            {activeOmicsProfile ? (
-              <MetricChip className="border-orange-500/40 bg-orange-950/40 text-orange-100 shadow-[0_0_12px_rgba(249,115,22,0.2)]">
-                <Dna className="h-3 w-3 text-orange-300" />
-                <span className="uppercase tracking-wider">Omics</span>
-                <OmicsProvenanceBadge
-                  provenance={resolveOmicsProvenance(activeOmicsProfile)}
-                />
-                {omicsAlignmentScore != null ? (
-                  <strong className="lab-mono text-amber-200">
-                    fit {omicsAlignmentScore.toFixed(0)}%
-                  </strong>
-                ) : null}
-              </MetricChip>
-            ) : null}
-            <MetricChip className="max-w-[9rem]">
-              sim
-              <strong className="lab-mono truncate text-slate-200">
-                {payload?.simulation_id ?? '—'}
-              </strong>
-            </MetricChip>
-            {busy ? (
-              <MetricChip className="max-w-[18rem] border-amber-kinase/30 text-amber-200">
-                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                <span className="truncate">{statusStage || 'Solving'}</span>
-              </MetricChip>
-            ) : null}
-          </div>
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-vcl-border bg-obsidian-panel px-3">
+        <div className="flex shrink-0 items-baseline gap-1.5">
+          <span className="font-mono text-[13px] font-bold tracking-[0.04em] text-vcl-text">
+            CISTRON
+          </span>
+          <span className="font-mono text-[11px] font-semibold tracking-widest text-emerald-active">
+            ·VCL
+          </span>
         </div>
 
-        {offlineMessage ? (
-          <div className="flex items-start gap-2 rounded-xl border border-coral-action/40 bg-coral-action/10 px-3 py-2 text-xs text-red-100">
-            <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{offlineMessage}</span>
+        <div className="relative min-w-[10rem] max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-vcl-dim" />
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit()
+            }}
+            placeholder="Search condition…"
+            className="h-8 w-full rounded-md border border-vcl-border bg-obsidian py-0 pl-8 pr-12 font-mono text-[11px] text-vcl-text outline-none placeholder:text-vcl-dim focus:border-emerald-active/50"
+          />
+          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-vcl-border bg-vcl-raised px-1.5 py-0.5 font-mono text-[9px] text-vcl-dim">
+            ⌘K
+          </kbd>
+        </div>
+
+        <select
+          value={
+            SCENARIO_PRESETS.includes(
+              controls.conditionQuery as (typeof SCENARIO_PRESETS)[number],
+            )
+              ? controls.conditionQuery
+              : '__custom__'
+          }
+          onChange={(e) => {
+            const v = e.target.value
+            if (v === '__custom__') return
+            setDraft(v)
+            patchControls({ conditionQuery: v })
+            if (engineLive && !busy) runQuery(v)
+          }}
+          title={controls.conditionQuery}
+          className="h-8 max-w-[14rem] shrink-0 rounded-md border border-vcl-border bg-vcl-surface px-2 font-mono text-[11px] text-vcl-text outline-none focus:border-emerald-active/50"
+        >
+          {!SCENARIO_PRESETS.includes(
+            controls.conditionQuery as (typeof SCENARIO_PRESETS)[number],
+          ) ? (
+            <option value="__custom__">
+              {controls.conditionQuery.slice(0, 42) || 'Custom scenario'}
+            </option>
+          ) : null}
+          {SCENARIO_PRESETS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          disabled={!engineLive || busy}
+          onClick={runSim}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-emerald-active px-3 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-obsidian transition hover:brightness-110 disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+          Run Simulation
+        </button>
+
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-vcl-border bg-vcl-surface px-2.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-vcl-muted"
+            title={
+              busy
+                ? statusStage || 'Solving'
+                : live
+                  ? `ODE ${odeMs != null ? `${odeMs.toFixed(0)}ms` : '—'} · ping ${pingMs != null ? `${pingMs.toFixed(0)}ms` : '—'}`
+                  : 'Engine offline'
+            }
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                live
+                  ? 'vcl-pulse bg-emerald-active'
+                  : 'bg-coral-action'
+              }`}
+            />
+            {initializing ? 'Integrating' : live ? 'Engine Live' : 'Offline'}
           </div>
-        ) : null}
+
+          {profileId ? (
+            <span
+              className="hidden max-w-[9rem] truncate rounded-md border border-violet-hub/30 bg-violet-hub/10 px-2 py-1 font-mono text-[10px] text-violet-hub lg:inline"
+              title={profileId}
+            >
+              {profileId}
+            </span>
+          ) : null}
+
+          {activeOmicsProfile ? (
+            <span className="hidden items-center gap-1 rounded-md border border-amber-kinase/35 bg-amber-kinase/10 px-2 py-1 font-mono text-[10px] text-amber-200 sm:inline-flex">
+              Omics
+              <OmicsProvenanceBadge
+                provenance={resolveOmicsProvenance(activeOmicsProfile)}
+              />
+              {omicsAlignmentScore != null
+                ? `${omicsAlignmentScore.toFixed(0)}%`
+                : null}
+            </span>
+          ) : null}
+
+          {payload?.simulation_id ? (
+            <span
+              className="hidden max-w-[7rem] truncate font-mono text-[10px] text-vcl-dim xl:inline"
+              title={payload.simulation_id}
+            >
+              {payload.simulation_id}
+            </span>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={!graph}
+            onClick={() => setReportOpen(true)}
+            title={
+              graph ? 'Export scientific report (PDF / Markdown)' : 'Run a scenario first'
+            }
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-vcl-border bg-vcl-raised px-2.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-vcl-text transition hover:border-vcl-border-strong disabled:opacity-40"
+          >
+            <Download className="h-3 w-3 text-vcl-muted" />
+            Export Report
+          </button>
+        </div>
       </header>
+
+      {offlineMessage ? (
+        <div className="flex items-start gap-2 border-b border-coral-action/40 bg-coral-action/10 px-3 py-2 text-xs text-red-100">
+          <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{offlineMessage}</span>
+        </div>
+      ) : null}
+
       <ReportExportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </>
   )

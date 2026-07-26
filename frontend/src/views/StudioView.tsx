@@ -31,43 +31,38 @@ export function StudioView() {
   const showBootSpinner = lab.busy && !lab.graph && !lab.payload
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-4 lg:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-500">
-            View
-          </span>
-          <div className="inline-flex rounded-xl border border-slate-700/80 bg-obsidian-panel/80 p-0.5">
-            <button
-              type="button"
-              onClick={() => setMeshMode('topology')}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                meshMode === 'topology'
-                  ? 'bg-emerald-500/20 text-emerald-100 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <GitBranch className="h-3.5 w-3.5" />
-              Graph Topology
-            </button>
-            <button
-              type="button"
-              onClick={() => setMeshMode('spatial')}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                meshMode === 'spatial'
-                  ? 'bg-cyan-500/20 text-cyan-100 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Grid3x3 className="h-3.5 w-3.5" />
-              Spatial Microenvironment Mesh
-            </button>
-          </div>
+    <div className="flex h-full min-h-0 flex-col gap-0 overflow-hidden lg:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex h-9 shrink-0 items-center gap-0 border-b border-vcl-border bg-obsidian-panel/80 px-2">
+          <button
+            type="button"
+            onClick={() => setMeshMode('topology')}
+            className={`inline-flex h-full items-center gap-1.5 border-b-2 px-3 font-mono text-[11px] font-semibold transition ${
+              meshMode === 'topology'
+                ? 'border-emerald-active text-vcl-text'
+                : 'border-transparent text-vcl-muted hover:text-vcl-text'
+            }`}
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            Network Graph Topology
+          </button>
+          <button
+            type="button"
+            onClick={() => setMeshMode('spatial')}
+            className={`inline-flex h-full items-center gap-1.5 border-b-2 px-3 font-mono text-[11px] font-semibold transition ${
+              meshMode === 'spatial'
+                ? 'border-cyan-flux text-vcl-text'
+                : 'border-transparent text-vcl-muted hover:text-vcl-text'
+            }`}
+          >
+            <Grid3x3 className="h-3.5 w-3.5" />
+            Spatial Mesh
+          </button>
         </div>
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden p-3">
           {showBootSpinner ? (
-            <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-400">
+            <div className="flex h-full items-center justify-center gap-2 text-sm text-vcl-muted">
               <Loader2 className="h-5 w-5 animate-spin text-emerald-active" />
               {lab.statusStage ?? 'Bootstrapping simulation studio…'}
             </div>
@@ -97,7 +92,7 @@ export function StudioView() {
           )}
         </div>
       </div>
-      <aside className="max-h-full w-full shrink-0 space-y-3 overflow-y-auto lg:w-[320px]">
+      <aside className="max-h-full w-full shrink-0 space-y-3 overflow-y-auto border-l border-vcl-border bg-obsidian-panel/50 p-3 lg:w-[320px]">
         <PerturbationPanel />
         <EfficacyCard />
         <MultiOmicsRail />
@@ -108,11 +103,11 @@ export function StudioView() {
           hypothesesLoading={lab.busy && lab.causalHypotheses.length === 0}
         />
         {lab.statusStage && lab.busy ? (
-          <p className="rounded-xl border border-slate-800/80 bg-slate-950/40 px-3 py-2 text-[0.7rem] leading-relaxed text-slate-500">
+          <p className="rounded-xl border border-vcl-border bg-obsidian/40 px-3 py-2 text-[0.7rem] leading-relaxed text-vcl-muted">
             {lab.statusStage}
           </p>
         ) : null}
-        <p className="px-1 text-[0.68rem] leading-relaxed text-slate-600">
+        <p className="px-1 text-[0.68rem] leading-relaxed text-vcl-dim">
           {meshMode === 'spatial'
             ? 'Spatial mesh: click to place ligand sources or drug sinks. Lower O₂ drives HIF1A cytoplasm→nucleus translocation in the coupled compartmental ODE.'
             : 'Use Target perturbations + Dual Screen for combinatorial KO. Shift-click canvas nodes to toggle KO. Scrub for yᵢ(t) without re-solving ODEs.'}

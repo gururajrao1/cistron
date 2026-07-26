@@ -1,16 +1,24 @@
 @import "tailwindcss";
 
+/* Cistron VCL Systems Biology IDE — design tokens from mockup */
 @theme {
-  --color-obsidian: #080c14;
-  --color-obsidian-panel: #0d111a;
-  --color-emerald-active: #10b981;
-  --color-cyan-flux: #06b6d4;
+  --color-obsidian: #07111d;
+  --color-obsidian-panel: #0a1520;
+  --color-vcl-surface: #101a28;
+  --color-vcl-raised: #16212f;
+  --color-vcl-border: #233042;
+  --color-vcl-border-strong: #33455c;
+  --color-vcl-muted: #7c8da3;
+  --color-vcl-dim: #4e6479;
+  --color-vcl-text: #e6edf5;
+  --color-emerald-active: #22c55e;
+  --color-cyan-flux: #3b82f6;
   --color-coral-action: #ef4444;
   --color-rose-inhib: #f43f5e;
   --color-amber-kinase: #f59e0b;
-  --color-violet-hub: #a855f7;
-  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --color-violet-hub: #c084fc;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html,
@@ -19,45 +27,45 @@ body,
   height: 100%;
   margin: 0;
   background: var(--color-obsidian);
-  color: #f1f5f9;
+  color: var(--color-vcl-text);
   font-family: var(--font-sans);
-  font-feature-settings: "ss01" on, "cv11" on;
+  font-size: 12px;
   -webkit-font-smoothing: antialiased;
 }
 
 body {
   background-color: var(--color-obsidian);
-  background-image:
-    radial-gradient(1100px 520px at 8% -12%, rgba(16, 185, 129, 0.08), transparent 55%),
-    radial-gradient(900px 480px at 92% 0%, rgba(168, 85, 247, 0.05), transparent 50%),
-    radial-gradient(700px 400px at 70% 100%, rgba(6, 182, 212, 0.04), transparent 45%),
-    linear-gradient(rgba(30, 41, 59, 0.22) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 41, 59, 0.22) 1px, transparent 1px);
-  background-size:
-    auto,
-    auto,
-    auto,
-    28px 28px,
-    28px 28px;
+  background-image: radial-gradient(circle at 50% 40%, #0b1724 0%, #07111d 70%);
   background-attachment: fixed;
 }
 
-/* High-density lab utilities */
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+}
+
 @layer utilities {
   .lab-glass {
-    background: rgb(15 23 42 / 0.8);
-    border: 1px solid rgb(30 41 59 / 0.8);
-    backdrop-filter: blur(12px);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    background: rgb(16 26 40 / 0.92);
+    border: 1px solid var(--color-vcl-border);
+    backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
   }
 
   .lab-meta {
     font-size: 10px;
     line-height: 1.2;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--color-vcl-dim);
   }
 
   .lab-mono {
@@ -66,46 +74,82 @@ body {
   }
 
   .lab-grid-panel {
-    background-color: rgb(13 17 26 / 0.92);
+    background-color: rgb(7 17 29 / 0.95);
     background-image:
-      linear-gradient(rgba(30, 41, 59, 0.35) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
-    background-size: 20px 20px;
+      linear-gradient(rgba(16, 28, 42, 0.9) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(16, 28, 42, 0.9) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .vcl-rail-btn {
+    position: relative;
+    width: 38px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+
+  .vcl-pulse {
+    animation: pulseDot 1.6s ease-in-out infinite;
   }
 
   .glow-emerald {
-    box-shadow: 0 0 16px rgb(16 185 129 / 0.35);
+    box-shadow: 0 0 14px rgb(34 197 94 / 0.28);
   }
 
   .glow-cyan {
-    box-shadow: 0 0 16px rgb(6 182 212 / 0.3);
+    box-shadow: 0 0 14px rgb(59 130 246 / 0.25);
   }
 
   .glow-violet {
-    box-shadow: 0 0 18px rgb(168 85 247 / 0.35);
+    box-shadow: 0 0 14px rgb(192 132 252 / 0.28);
   }
 
   .glow-coral {
-    box-shadow: 0 0 16px rgb(239 68 68 / 0.3);
+    box-shadow: 0 0 14px rgb(239 68 68 / 0.25);
   }
 }
 
-/* Compact scrollbars for dense drawers */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(51 65 85 / 0.8) transparent;
+  scrollbar-color: #233042 #0a1520;
 }
 
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgb(51 65 85 / 0.85);
-  border-radius: 999px;
+  background: #233042;
+  border-radius: 6px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #33455c;
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0a1520;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: #233042;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #e6edf5;
+  border: 2px solid #07111d;
+  cursor: ew-resize;
 }
