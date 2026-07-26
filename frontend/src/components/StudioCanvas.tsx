@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import cytoscape, { type Core, type EventObject } from 'cytoscape'
+import { useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import type { PresetDetail, ScrubberPayload } from '../api/types'
@@ -8,42 +7,20 @@ import { lerpAtTime } from '../api/client'
 import { useLab } from '../lab/LabContext'
 import { resolveOmicsProvenance } from '../api/types'
 import { TrajectoryChart } from './studio/TrajectoryChart'
-import { classifyEdgeKind, type EdgeKind } from '../engine/edgeClassification'
-import { nodeRingDataUri } from '../engine/nodeRing'
+import { NetworkGraphSvg, type GraphEdgeView } from './studio/NetworkGraphSvg'
+import { classifyEdgeKind } from '../engine/edgeClassification'
 import { stepHif1aTranslocation } from './studio/OrganelleCompartments'
 
-/**
- * Hard cap — never hand Cytoscape a huge graph.
- * Dagre / network-simplex is intentionally NOT used: it can lock the Chrome
- * main thread (page "isn't responding") on even modest cascade graphs.
- */
+/** Hard cap — never hand the stage a huge graph. */
 const MAX_CANVAS_NODES = 40
 
-const NODE_COLORS: Record<string, string> = {
-  O2: '#06B6D4',
-  EGLN1: '#A855F7',
-  HIF1A: '#EF4444',
-  VEGFA: '#10B981',
-  GLUT1: '#F59E0B',
-  MTOR: '#F43F5E',
-  EGF: '#06B6D4',
-  EGFR: '#A855F7',
-  KRAS: '#EF4444',
-  BRAF: '#F59E0B',
-  MAP2K1: '#34D399',
-  MAPK1: '#10B981',
-  ROS: '#F97316',
-  MYC: '#A855F7',
-  BAX: '#F43F5E',
-}
-
-/** Cell-surface receptors & environmental triggers — top of cascade. */
+/** Cell-surface receptors & environmental triggers. */
 const SURFACE = new Set([
   'EGF', 'EGFR', 'O2', 'ROS', 'TNF', 'TNFR', 'IL6', 'INS',
   'INSULIN', 'WNT', 'FGF', 'PDGF', 'HGF', 'IGF1', 'TGFB', 'LPS', 'NOTCH', 'VEGFR', 'KDR',
 ])
 
-/** Intracellular kinases / adapters — middle cascade. */
+/** Intracellular kinases / adapters. */
 const KINASE = new Set([
   'KRAS', 'HRAS', 'NRAS', 'BRAF', 'RAF1', 'ARAF', 'MAP2K1', 'MAP2K2',
   'MAPK1', 'MAPK3', 'PIK3CA', 'AKT1', 'AKT2', 'MTOR', 'SRC', 'ABL1',
@@ -51,7 +28,7 @@ const KINASE = new Set([
   'RAF', 'PI3K', 'AKT', 'EGLN1', 'VHL', 'PHD',
 ])
 
-/** Nuclear TFs & effectors — bottom of cascade. */
+/** Nuclear TFs & effectors. */
 const NUCLEAR = new Set([
   'HIF1A', 'ARNT', 'EPAS1', 'MYC', 'TP53', 'NFKB1', 'RELA', 'FOS',
   'JUN', 'STAT3', 'STAT1', 'FOXO1', 'CREB1', 'SP1', 'VEGFA', 'BAX',
@@ -59,7 +36,7 @@ const NUCLEAR = new Set([
   'LDHA', 'BNIP3', 'MMP9', 'ANGPT2',
 ])
 
-/** Short role/identity subtitles shown under well-known node symbols. */
+/** Short role/identity subtitles rendered under well-known node symbols. */
 const GENE_SUBTITLE: Record<string, string> = {
   O2: 'O₂ tension',
   HIF1A: 'TF · O₂-labile',
@@ -85,13 +62,12 @@ const GENE_SUBTITLE: Record<string, string> = {
   AKT1: 'kinase',
 }
 
-/** Fallback subtitle from the same semantic layer used for canvas depth. */
 function subtitleFor(id: string): string {
   const u = id.toUpperCase()
   if (GENE_SUBTITLE[u]) return GENE_SUBTITLE[u]
-  if (KINASE.has(u) || KINASE.has(id)) return 'kinase'
-  if (NUCLEAR.has(u) || NUCLEAR.has(id)) return 'TF · effector'
-  if (SURFACE.has(u) || SURFACE.has(id)) return 'receptor · ligand'
+  if (KINASE.has(u)) return 'kinase'
+  if (NUCLEAR.has(u)) return 'TF · effector'
+  if (SURFACE.has(u)) return 'receptor · ligand'
   return ''
 }
 
@@ -105,13 +81,6 @@ function mixHex(a: string, b: string, t: number): string {
   const cb = parse(b.startsWith('#') ? b : '#10B981')
   const m = (i: number) => Math.round(ca[i]! + (cb[i]! - ca[i]!) * t)
   return `#${[0, 1, 2].map((i) => m(i).toString(16).padStart(2, '0')).join('')}`
-}
-
-function activityHue(base: string, y: number): string {
-  const quiescent = '#334155'
-  const hot = '#FF5252'
-  if (y < 0.4) return mixHex(quiescent, base, y / 0.4)
-  return mixHex(base, hot, (y - 0.4) / 0.6)
 }
 
 /** Diverging DE scale for omics overlay (−3 … +3 log2FC). */
@@ -129,7 +98,7 @@ function omicsHeatColor(log2Fc: number | null | undefined): string {
   return mixHex(OMICS_NEUTRAL, OMICS_DOWN, -t)
 }
 
-/** Floating top-left legend for the omics heatmap overlay (avoids bottom-edge clip). */
+/** Floating top-left legend for the omics heatmap overlay. */
 function OmicsHeatmapLegend({
   profileName,
   provenance,
@@ -163,106 +132,6 @@ function OmicsHeatmapLegend({
       </div>
     </div>
   )
-}
-
-function semanticLayer(id: string): number | null {
-  const u = id.toUpperCase()
-  if (SURFACE.has(u) || SURFACE.has(id)) return 0
-  if (NUCLEAR.has(u) || NUCLEAR.has(id)) return 2
-  if (KINASE.has(u) || KINASE.has(id)) return 1
-  if (/^(MAP|RAF|RAS|AKT|PIK|JAK|SRC|SOS|MEK|ERK)/i.test(id)) return 1
-  if (/^(HIF|MYC|STAT|FOS|JUN|TP53|NFK|VEG|BAX|CASP|GLUT)/i.test(id)) return 2
-  if (/^(EGF|O2|ROS|TNF|IL|WNT|FGF|PDGF)/i.test(id)) return 0
-  return null
-}
-
-function assignLayers(
-  nodeIds: string[],
-  edges: Array<{ source: string; target: string }>,
-): Map<string, number> {
-  const succ = new Map<string, string[]>()
-  const pred = new Map<string, string[]>()
-  for (const id of nodeIds) {
-    succ.set(id, [])
-    pred.set(id, [])
-  }
-  for (const e of edges) {
-    if (!succ.has(e.source) || !pred.has(e.target)) continue
-    succ.get(e.source)!.push(e.target)
-    pred.get(e.target)!.push(e.source)
-  }
-
-  // Longest-path BFS with hard visit budget — feedback cycles must NOT
-  // re-enqueue forever (that froze Chrome on hypoxia cascades).
-  const sources = nodeIds.filter((n) => (pred.get(n)?.length ?? 0) === 0)
-  const depth = new Map<string, number>()
-  const queue = sources.length ? [...sources] : [...nodeIds]
-  for (const s of queue) depth.set(s, 0)
-  const maxDepthCap = Math.max(8, nodeIds.length)
-  const budget = nodeIds.length * nodeIds.length + 16
-  let steps = 0
-  let qi = 0
-  while (qi < queue.length && steps++ < budget) {
-    const u = queue[qi++]!
-    const d = depth.get(u) ?? 0
-    if (d >= maxDepthCap) continue
-    for (const v of succ.get(u) ?? []) {
-      const nd = d + 1
-      if (!depth.has(v) || nd > (depth.get(v) ?? 0)) {
-        depth.set(v, Math.min(nd, maxDepthCap))
-        queue.push(v)
-      }
-    }
-  }
-
-  const maxD = Math.max(1, ...Array.from(depth.values(), (v) => v || 0))
-  const layers = new Map<string, number>()
-  for (const id of nodeIds) {
-    const sem = semanticLayer(id)
-    if (sem != null) {
-      layers.set(id, sem)
-      continue
-    }
-    const d = depth.get(id) ?? Math.floor(maxD / 2)
-    if (d <= 0) layers.set(id, 0)
-    else if (d >= maxD) layers.set(id, 2)
-    else layers.set(id, 1)
-  }
-  return layers
-}
-
-/** Synchronous TB grid — O(n). Never calls dagre / network-simplex. */
-function applyLayeredPositions(
-  cy: Core,
-  nodeIds: string[],
-  layers: Map<string, number>,
-  nodeSep: number,
-  rankSep: number,
-): void {
-  const byLayer = new Map<number, string[]>()
-  for (const id of nodeIds) {
-    const L = layers.get(id) ?? 1
-    if (!byLayer.has(L)) byLayer.set(L, [])
-    byLayer.get(L)!.push(id)
-  }
-  for (const [L, ids] of byLayer) {
-    ids.sort()
-    const totalW = (ids.length - 1) * nodeSep
-    ids.forEach((id, i) => {
-      const n = cy.getElementById(id)
-      if (n.empty()) return
-      n.position({ x: i * nodeSep - totalW / 2, y: L * rankSep })
-    })
-  }
-}
-
-function spacingForN(n: number): { nodeSep: number; rankSep: number; padding: number } {
-  const s = Math.sqrt(Math.max(n, 1))
-  return {
-    nodeSep: Math.max(48, Math.min(120, Math.round(720 / s))),
-    rankSep: Math.max(72, Math.min(160, Math.round(980 / s))),
-    padding: Math.max(28, Math.min(56, Math.round(420 / s))),
-  }
 }
 
 function sliceGraphForCanvas(graph: PresetDetail, maxNodes = MAX_CANVAS_NODES): PresetDetail {
@@ -333,17 +202,6 @@ export function StudioCanvas({
   stageOnly?: boolean
 }) {
   const { activeOmicsProfile, untreatedRun, treatedRun } = useLab()
-  const cyRef = useRef<HTMLDivElement>(null)
-  const cyInstance = useRef<Core | null>(null)
-  const styleRafRef = useRef<number | null>(null)
-  const knockoutRef = useRef<Set<string>>(new Set())
-  const onNodeSelectRef = useRef(onNodeSelect)
-  const onToggleKnockoutRef = useRef(onToggleKnockout)
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
-  const [layoutReady, setLayoutReady] = useState(false)
-  onNodeSelectRef.current = onNodeSelect
-  onToggleKnockoutRef.current = onToggleKnockout
-  knockoutRef.current = new Set(knockouts)
 
   const omicsLfcByNode = useMemo(() => {
     const map: Record<string, number> = {}
@@ -362,14 +220,6 @@ export function StudioCanvas({
     [graph],
   )
 
-  const graphSig = useMemo(() => {
-    if (!displayGraph) return ''
-    const n = Object.keys(displayGraph.nodes ?? {}).length
-    const e = Array.isArray(displayGraph.edges) ? displayGraph.edges.length : 0
-    const id = displayGraph.id || displayGraph.name || 'g'
-    return `${id}|${n}|${e}`
-  }, [displayGraph])
-
   const { nodes: nodeY, edges: edgeF } = useMemo(() => {
     if (!payload?.nodes || !payload?.time_steps?.length) {
       return { nodes: {} as Record<string, number>, edges: {} as Record<string, number> }
@@ -382,70 +232,72 @@ export function StudioCanvas({
     }
   }, [payload, scrubT])
 
-  /** Pre-perturbation baseline activities — drives the dim arc of the node ring. */
-  const { nodes: baselineNodeY } = useMemo(() => {
+  /** Pre-perturbation baseline activities — drives the dim arc of each ring. */
+  const baselineNodeY = useMemo(() => {
     const source = untreatedRun ?? payload
-    if (!source?.nodes || !source?.time_steps?.length) {
-      return { nodes: {} as Record<string, number> }
-    }
+    if (!source?.nodes || !source?.time_steps?.length) return {} as Record<string, number>
     try {
-      return lerpAtTime(source, scrubT)
+      return lerpAtTime(source, scrubT).nodes
     } catch (err) {
       console.warn('lerpAtTime (baseline) failed', err)
-      return { nodes: {} as Record<string, number> }
+      return {} as Record<string, number>
     }
   }, [untreatedRun, payload, scrubT])
 
   /**
-   * HIF1A → ARNT nuclear translocation "flux" for the one synthetic edge we
-   * draw — real value from the same compartment step the Organelle dock tab
-   * uses, not fabricated per-edge data.
+   * HIF1A nuclear-import fraction for the one synthesized translocation edge —
+   * a real value from the same compartment step the Organelle dock tab uses.
    */
   const translocationFraction = useMemo(() => {
     const hif1aY = nodeY['HIF1A']
     if (hif1aY == null) return null
     const o2 = nodeY['O2'] ?? 0.35
     const state = { cytoplasm: hif1aY * 0.55, nucleus: hif1aY * 0.35, mitochondria: hif1aY * 0.1 }
-    // Fixed settling window, not scrubT: nodeY already varies with scrubT via
-    // the lerp above, so reusing scrubT as the Euler dt here would saturate
-    // the step within the first few scrub-minutes and flatten the rest of
-    // the 0-60 range.
-    const { next } = stepHif1aTranslocation(state, o2, 6)
+    const { next } = stepHif1aTranslocation(state, o2, Math.max(1, scrubT))
     return next.nucleus
-  }, [nodeY])
+  }, [nodeY, scrubT])
 
-  const pathKey = useMemo(
-    () => (Array.isArray(pathNodes) ? pathNodes : []).join('\0'),
-    [pathNodes],
-  )
-  const pathSet = useMemo(
-    () => new Set(Array.isArray(pathNodes) ? pathNodes : []),
-    [pathKey],
-  )
-  const koSet = useMemo(
-    () => new Set(Array.isArray(knockouts) ? knockouts : []),
-    [knockouts],
-  )
-  const pertEntries = useMemo(
-    () => Object.entries(perturbations),
-    [perturbations],
-  )
-  const pertMap = useMemo(() => {
-    const m: Record<string, number> = {}
-    for (const [k, v] of pertEntries) {
-      m[k] = v
-      m[k.toUpperCase()] = v
+  const edgeViews = useMemo<GraphEdgeView[]>(() => {
+    if (!displayGraph) return []
+    const nodeIds = new Set(Object.keys(displayGraph.nodes ?? {}))
+    const safeEdges = (Array.isArray(displayGraph.edges) ? displayGraph.edges : []).filter(
+      (e) => e?.source && e?.target && nodeIds.has(e.source) && nodeIds.has(e.target),
+    )
+    const views: GraphEdgeView[] = safeEdges.map((e, i) => ({
+      id: `e${i}-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      kind: classifyEdgeKind(e, KINASE),
+      flux: edgeF[`${e.source}->${e.target}`] ?? 0,
+    }))
+
+    // Only drawn when both dimer partners are on canvas and no real fetched
+    // edge already connects them.
+    const hasHifArnt = safeEdges.some(
+      (e) =>
+        (e.source === 'HIF1A' && e.target === 'ARNT') ||
+        (e.source === 'ARNT' && e.target === 'HIF1A'),
+    )
+    if (nodeIds.has('HIF1A') && nodeIds.has('ARNT') && !hasHifArnt) {
+      views.push({
+        id: 'e-translocation-HIF1A-ARNT',
+        source: 'HIF1A',
+        target: 'ARNT',
+        kind: 'translocation',
+        flux: translocationFraction ?? 0,
+      })
     }
-    return m
-  }, [pertEntries])
-  const pertKey = useMemo(
-    () =>
-      pertEntries
-        .map(([k, v]) => `${k}:${v.toFixed(2)}`)
-        .sort()
-        .join('|'),
-    [pertEntries],
-  )
+    return views
+  }, [displayGraph, edgeF, translocationFraction])
+
+  const omicsColorFor = useMemo(() => {
+    if (!omicsActive) return undefined
+    return (id: string): string | null => {
+      const lfc = omicsLfcByNode[id] ?? omicsLfcByNode[id.toUpperCase()]
+      if (lfc == null) return OMICS_NEUTRAL
+      return mixHex('#101A28', omicsHeatColor(lfc), 0.75)
+    }
+  }, [omicsActive, omicsLfcByNode])
 
   const maxFlux = useMemo(
     () => (Object.values(edgeF).length ? Math.max(...Object.values(edgeF)) : 0),
@@ -453,512 +305,41 @@ export function StudioCanvas({
   )
   const activeNodes = Object.values(nodeY).filter((v) => v >= 0.35).length
 
-  useEffect(() => {
-    if (!cyRef.current || !displayGraph?.nodes || !Object.keys(displayGraph.nodes).length) {
-      setLayoutReady(false)
-      return
-    }
-
-    let cancelled = false
-    let ro: ResizeObserver | null = null
-    let fitting = false
-    let detachHandlers: (() => void) | null = null
-    const container = cyRef.current
-    setLayoutReady(false)
-
-    const build = () => {
-      if (cancelled || !cyRef.current || !displayGraph) return
-
-      try {
-        cyInstance.current?.destroy()
-        cyInstance.current = null
-
-        const nodeIds = Object.keys(displayGraph.nodes ?? {})
-        if (!nodeIds.length) {
-          setLayoutReady(true)
-          return
-        }
-        const safeEdges = (Array.isArray(displayGraph.edges) ? displayGraph.edges : []).filter(
-          (e) =>
-            e?.source &&
-            e?.target &&
-            nodeIds.includes(e.source) &&
-            nodeIds.includes(e.target),
-        )
-        const layers = assignLayers(nodeIds, safeEdges)
-        const { nodeSep, rankSep, padding } = spacingForN(nodeIds.length)
-
-        const edgeKindClass: Record<EdgeKind, string> = {
-          inhibition: 'inhibitory',
-          phosphorylation: 'phospho',
-          activation: 'stimulatory',
-        }
-
-        const elements = [
-          ...nodeIds.map((id) => ({
-            data: { id, label: id, layer: layers.get(id) ?? 1 },
-          })),
-          ...safeEdges.map((e, i) => {
-            const sign = typeof e.sign === 'number' ? e.sign : e.is_inhibition ? -1 : 1
-            const kind = classifyEdgeKind(e, KINASE)
-            return {
-              data: {
-                id: `e${i}-${e.source}-${e.target}`,
-                source: e.source,
-                target: e.target,
-                sign,
-                kind,
-                key: `${e.source}->${e.target}`,
-                inhibitory: sign < 0,
-              },
-              classes: edgeKindClass[kind],
-            }
-          }),
-          // Real translocation flux (HIF1A nuclear import) from the compartment
-          // engine — only drawn when both dimer-partner nodes are on canvas
-          // and no real fetched edge already connects them.
-          ...(nodeIds.includes('HIF1A') &&
-          nodeIds.includes('ARNT') &&
-          !safeEdges.some(
-            (e) =>
-              (e.source === 'HIF1A' && e.target === 'ARNT') ||
-              (e.source === 'ARNT' && e.target === 'HIF1A'),
-          )
-            ? [
-                {
-                  data: {
-                    id: 'e-translocation-HIF1A-ARNT',
-                    source: 'HIF1A',
-                    target: 'ARNT',
-                    kind: 'translocation' as const,
-                    key: 'HIF1A=>ARNT',
-                    inhibitory: false,
-                  },
-                  classes: 'translocation',
-                },
-              ]
-            : []),
-        ]
-
-        const cy = cytoscape({
-          container: cyRef.current,
-          elements,
-          style: [
-            {
-              selector: 'node',
-              style: {
-                label: 'data(label)',
-                color: '#F8FAFC',
-                'font-size': 9,
-                'font-weight': 600,
-                'font-family': 'Plus Jakarta Sans, Inter, sans-serif',
-                'text-valign': 'center',
-                'text-halign': 'center',
-                'text-wrap': 'wrap',
-                'text-max-width': '76px',
-                'line-height': 1.15,
-                'text-margin-y': 4,
-                'text-outline-width': 1.5,
-                'text-outline-color': '#0F172A',
-                'background-color': '#64748B',
-                width: 28,
-                height: 28,
-                'border-width': 2,
-                'border-color': '#1E293B',
-                'underlay-color': '#10B981',
-                'underlay-padding': 4,
-                'underlay-opacity': 0,
-                'underlay-shape': 'ellipse',
-                'min-zoomed-font-size': 8,
-                'transition-property': 'opacity, width, height, background-color',
-                'transition-duration': 80,
-              },
-            },
-            {
-              selector: 'node:selected',
-              style: { 'border-color': '#FBBF24', 'border-width': 4 },
-            },
-            {
-              selector: 'node.knocked-out',
-              style: {
-                'border-style': 'dashed',
-                'border-color': '#FF5252',
-                'border-width': 3,
-                'background-opacity': 0.35,
-              },
-            },
-            {
-              selector: 'node.perturbed',
-              style: {
-                'border-style': 'dashed',
-                'border-color': '#FB7185',
-                'border-width': 3.5,
-                'background-opacity': 0.45,
-              },
-            },
-            {
-              selector: 'edge.stimulatory',
-              style: {
-                width: 2,
-                'line-color': '#22C55E',
-                'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#22C55E',
-                'curve-style': 'bezier',
-                'line-style': 'solid',
-                opacity: 0.75,
-                'transition-property': 'opacity, width, line-color',
-                'transition-duration': 80,
-              },
-            },
-            {
-              selector: 'edge.inhibitory',
-              style: {
-                width: 2,
-                'line-color': '#EF4444',
-                'target-arrow-shape': 'tee',
-                'target-arrow-color': '#EF4444',
-                'curve-style': 'bezier',
-                'line-style': 'dashed',
-                'line-dash-pattern': [4, 8],
-                opacity: 0.75,
-              },
-            },
-            {
-              selector: 'edge.phospho',
-              style: {
-                width: 2,
-                'line-color': '#3B82F6',
-                'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#3B82F6',
-                'curve-style': 'bezier',
-                'line-style': 'dashed',
-                'line-dash-pattern': [7, 5],
-                opacity: 0.75,
-              },
-            },
-            {
-              selector: 'edge.translocation',
-              style: {
-                width: 2,
-                'line-color': '#C084FC',
-                'target-arrow-shape': 'triangle',
-                'target-arrow-color': '#C084FC',
-                'source-arrow-shape': 'triangle',
-                'source-arrow-color': '#C084FC',
-                'curve-style': 'bezier',
-                'line-style': 'solid',
-                opacity: 0.75,
-              },
-            },
-            { selector: '.faded', style: { opacity: 0.15 } },
-            { selector: '.hover-focus', style: { opacity: 1 } },
-          ],
-          layout: { name: 'null' },
-          userZoomingEnabled: true,
-          userPanningEnabled: true,
-          boxSelectionEnabled: false,
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-          // Sparse graphs (a handful of nodes) would otherwise let `cy.fit()`
-          // zoom in so far that node labels balloon to an unreadable size.
-          maxZoom: 1.5,
-        })
-        cyInstance.current = cy
-
-        // Instant layered positions — no dagre, no layoutstop wait.
-        cy.batch(() => {
-          applyLayeredPositions(cy, nodeIds, layers, nodeSep, rankSep)
-          cy.nodes().forEach((n) => {
-            if (knockoutRef.current.has(n.id())) n.addClass('knocked-out')
-          })
-        })
-        cy.fit(undefined, padding)
-        setLayoutReady(true)
-
-        const clearHover = () => setHoveredNode(null)
-        const onHover = (evt: EventObject) => {
-          const n = evt.target
-          if (!n.isNode?.()) return
-          setHoveredNode(n.id())
-        }
-        const onTap = (evt: EventObject) => {
-          const n = evt.target
-          if (!n.isNode?.()) return
-          const orig = evt.originalEvent as MouseEvent | undefined
-          if (orig?.shiftKey) {
-            onToggleKnockoutRef.current?.(n.id())
-            return
+  const stage = (
+    <>
+      {displayGraph ? (
+        <NetworkGraphSvg
+          graph={displayGraph}
+          edges={edgeViews}
+          nodeValues={nodeY}
+          baselineValues={baselineNodeY}
+          subtitleFor={subtitleFor}
+          omicsColorFor={omicsColorFor}
+          perturbations={perturbations}
+          knockouts={knockouts}
+          selectedNode={selectedNode}
+          onNodeSelect={onNodeSelect}
+          onToggleKnockout={onToggleKnockout}
+        />
+      ) : null}
+      {loading && !displayGraph ? (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 bg-obsidian/60 text-sm text-vcl-muted">
+          <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
+          Loading pathway map…
+        </div>
+      ) : null}
+      {omicsActive && activeOmicsProfile ? (
+        <OmicsHeatmapLegend
+          profileName={
+            activeOmicsProfile.condition ||
+            activeOmicsProfile.sample_name ||
+            activeOmicsProfile.profile_id
           }
-          onNodeSelectRef.current?.(n.id())
-        }
-        const onCtx = (evt: EventObject) => {
-          const n = evt.target
-          if (!n.isNode?.()) return
-          const oe = evt.originalEvent as MouseEvent | undefined
-          oe?.preventDefault?.()
-          oe?.stopPropagation?.()
-          onToggleKnockoutRef.current?.(n.id())
-        }
-        const blockMenu = (e: Event) => e.preventDefault()
-        container.addEventListener('contextmenu', blockMenu)
-        cy.on('mouseover', 'node', onHover)
-        cy.on('mouseout', 'node', clearHover)
-        cy.on('tap', 'node', onTap)
-        cy.on('cxttap', 'node', onCtx)
-        cy.on('tap', (evt) => {
-          if (evt.target === cy) clearHover()
-        })
-        detachHandlers = () => {
-          cy.off('mouseover', 'node', onHover)
-          cy.off('mouseout', 'node', clearHover)
-          cy.off('tap', 'node', onTap)
-          cy.off('cxttap', 'node', onCtx)
-          container.removeEventListener('contextmenu', blockMenu)
-        }
-
-        ro = new ResizeObserver(() => {
-          const inst = cyInstance.current
-          if (!inst || fitting) return
-          fitting = true
-          requestAnimationFrame(() => {
-            try {
-              inst.resize()
-              inst.fit(undefined, padding)
-            } finally {
-              fitting = false
-            }
-          })
-        })
-        ro.observe(container)
-        // No continuous edge-dash RAF — that + layout was locking the tab.
-      } catch (err) {
-        console.error('Cytoscape init failed', err)
-        setLayoutReady(true)
-      }
-    }
-
-    const startTimer = window.setTimeout(() => {
-      requestAnimationFrame(build)
-    }, 0)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(startTimer)
-      detachHandlers?.()
-      ro?.disconnect()
-      cyInstance.current?.destroy()
-      cyInstance.current = null
-    }
-  }, [graphSig])
-
-  useEffect(() => {
-    if (styleRafRef.current != null) cancelAnimationFrame(styleRafRef.current)
-    styleRafRef.current = requestAnimationFrame(() => {
-      styleRafRef.current = null
-      const cy = cyInstance.current
-      if (!cy || !layoutReady) return
-      const focusIds = new Set<string>()
-      const focusEdgeIds = new Set<string>()
-      if (hoveredNode) {
-  const n = cy.getElementById(hoveredNode)
-  if (n.nonempty() && n.isNode()) {
-    const nbhd = n.closedNeighborhood()
-    nbhd.nodes().toArray().forEach((el) => focusIds.add(el.id()))
-    nbhd.edges().toArray().forEach((el) => focusEdgeIds.add(el.id()))
-  }
-}
-      cy.batch(() => {
-        cy.nodes().forEach((n) => {
-          const id = n.id()
-          const pertVal = pertMap[id] ?? pertMap[id.toUpperCase()]
-          const isPert = pertVal != null
-          const isKo = koSet.has(id) || (isPert && pertVal <= 1e-6)
-          const y = isKo ? 0 : (nodeY[id] ?? 0)
-          const onPath = pathSet.has(id)
-          const selected = selectedNode === id
-          const lfc = omicsLfcByNode[id] ?? omicsLfcByNode[id.toUpperCase()]
-          const mapped = omicsActive && lfc != null
-          const paletteBase = NODE_COLORS[id] ?? '#94A3B8'
-          // Omics overlay: red ↑ / blue ↓ scaled by |log2FC|; unmapped → slate.
-          const heat = mapped ? omicsHeatColor(lfc) : OMICS_NEUTRAL
-          const fill = omicsActive
-            ? mapped
-              ? mixHex(heat, activityHue(heat, y), 0.2)
-              : OMICS_NEUTRAL
-            : activityHue(paletteBase, y)
-          const glow = mapped ? 6 + Math.min(10, Math.abs(lfc ?? 0) * 2) : 2 + y * 14
-          const inHover = !hoveredNode || focusIds.has(id)
-          const fade = inHover ? 1 : 0.15
-          n.toggleClass('knocked-out', isKo)
-          n.toggleClass('perturbed', Boolean(isPert && !isKo))
-          n.toggleClass('omics-mapped', Boolean(mapped))
-          const symbolLine = isKo
-            ? `${id} 🚫`
-            : isPert
-              ? `${id} ·${pertVal!.toFixed(1)}`
-              : mapped
-                ? `${id} ●`
-                : id
-          const subtitle = subtitleFor(id)
-          const label = subtitle
-            ? `${y.toFixed(2)}\n${symbolLine}\n${subtitle}`
-            : `${y.toFixed(2)}\n${symbolLine}`
-          n.style({
-            'background-color': fill,
-            width: 18 + 30 * Math.max(y, isKo ? 0.15 : 0),
-            height: 18 + 30 * Math.max(y, isKo ? 0.15 : 0),
-            opacity:
-              (isKo ? 0.28 : isPert ? 0.4 + 0.35 * y : 0.35 + 0.65 * Math.max(y, 0.2)) *
-              fade,
-            'border-color': selected
-              ? '#FBBF24'
-              : isKo
-                ? '#FF5252'
-                : isPert
-                  ? '#FB7185'
-                  : onPath
-                    ? '#10B981'
-                    : mapped
-                      ? heat
-                      : omicsActive
-                        ? '#475569'
-                        : mixHex('#1E293B', paletteBase, y * 0.5),
-            'border-width': selected
-              ? 4
-              : isKo || isPert
-                ? 3.5
-                : onPath
-                  ? 3.5
-                  : mapped
-                    ? 3
-                    : 1.5 + y,
-            'border-style': isKo || isPert ? 'dashed' : 'solid',
-            'underlay-color': isKo
-              ? '#FF5252'
-              : isPert
-                ? '#FB7185'
-                : mapped
-                  ? heat
-                  : omicsActive
-                    ? OMICS_NEUTRAL
-                    : paletteBase,
-            'underlay-padding': isKo || isPert ? 8 : glow,
-            'underlay-opacity': isKo
-              ? inHover
-                ? 0.35
-                : 0.18
-              : isPert
-                ? inHover
-                  ? 0.28
-                  : 0.12
-                : mapped
-                  ? inHover
-                    ? 0.35 + 0.25 * Math.min(1, Math.abs(lfc ?? 0) / OMICS_LFC_ABS_MAX)
-                    : 0.12
-                  : inHover
-                    ? 0.12 + 0.55 * y
-                    : 0.04,
-            'font-size': onPath || selected || mapped || isPert ? 9.5 : 9,
-            label,
-            // Progress ring: dim arc = pre-perturbation baseline, bright arc =
-            // live/perturbed value — both real trajectory reads, not a fake glow.
-            'background-image': nodeRingDataUri(baselineNodeY[id] ?? baselineNodeY[id.toUpperCase()] ?? y, y),
-            'background-clip': 'none',
-            'background-width': '165%',
-            'background-height': '165%',
-            'background-position-x': '50%',
-            'background-position-y': '50%',
-            // Not `fade` — Cytoscape multiplies this by the node's own
-            // `opacity` (already fade-scaled above), so re-applying fade here
-            // would compound it (0.15 * 0.15) and make the ring vanish on hover.
-            'background-image-opacity': 1,
-          })
-        })
-        cy.edges().forEach((e) => {
-          const key = String(e.data('key'))
-          const kind = (e.data('kind') as EdgeKind | 'translocation' | undefined) ?? 'activation'
-          const isTranslocation = kind === 'translocation'
-          const inhibitory = kind === 'inhibition'
-          const flux = isTranslocation ? (translocationFraction ?? 0) : (edgeF[key] ?? 0)
-          const src = e.source().id()
-          const tgt = e.target().id()
-          const onPath = pathSet.has(src) && pathSet.has(tgt)
-          const edgeInFocus = !hoveredNode || focusEdgeIds.has(e.id())
-          const fade = edgeInFocus ? 1 : 0.15
-          const color = onPath
-            ? '#10B981'
-            : inhibitory
-              ? '#EF4444'
-              : kind === 'phosphorylation'
-                ? '#3B82F6'
-                : isTranslocation
-                  ? '#C084FC'
-                  : '#22C55E'
-          e.style({
-            width: 1.0 + 8.5 * flux,
-            'line-color': color,
-            'target-arrow-color': color,
-            ...(isTranslocation ? { 'source-arrow-color': color } : {}),
-            'target-arrow-shape': inhibitory ? 'tee' : 'triangle',
-            'line-style':
-              kind === 'phosphorylation'
-                ? 'dashed'
-                : flux > 0.12
-                  ? 'dashed'
-                  : inhibitory
-                    ? 'dashed'
-                    : 'solid',
-            opacity: (0.18 + 0.82 * flux) * fade,
-            'line-dash-pattern':
-              kind === 'phosphorylation'
-                ? [7, 5]
-                : inhibitory
-                  ? [3, 7]
-                  : [5, Math.max(3, 10 - Math.min(7, flux * 8))],
-            'overlay-opacity': flux > 0.35 && fade > 0.5 ? 0.08 + flux * 0.12 : 0,
-            'overlay-color': color,
-            'overlay-padding': 2 + flux * 4,
-            label: `V ${flux.toFixed(2)}`,
-            'font-size': 8.5,
-            color,
-            'text-background-color': '#0B1220',
-            'text-background-opacity': fade > 0.5 ? 0.85 : 0,
-            'text-background-padding': '1.5px',
-            'text-background-shape': 'roundrectangle',
-            'text-rotation': 'autorotate',
-          })
-        })
-      })
-    })
-    return () => {
-      if (styleRafRef.current != null) {
-        cancelAnimationFrame(styleRafRef.current)
-        styleRafRef.current = null
-      }
-    }
-  }, [
-    nodeY,
-    edgeF,
-    baselineNodeY,
-    translocationFraction,
-    pathKey,
-    pathSet,
-    selectedNode,
-    koSet,
-    hoveredNode,
-    layoutReady,
-    omicsActive,
-    omicsLfcByNode,
-    pertKey,
-    pertMap,
-  ])
-
-  useEffect(() => {
-    const cy = cyInstance.current
-    if (!cy || !layoutReady) return
-    cy.batch(() => {
-      cy.nodes().forEach((n:any) => n.toggleClass('knocked-out', koSet.has(n.id())))
-    })
-  }, [koSet, layoutReady])
+          provenance={resolveOmicsProvenance(activeOmicsProfile)}
+        />
+      ) : null}
+    </>
+  )
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
@@ -1025,104 +406,36 @@ export function StudioCanvas({
         </>
       ) : null}
 
-      <div
-        className={
-          stageOnly
-            ? 'relative min-h-0 flex-1 overflow-hidden'
-            : undefined
-        }
-      >
-        {stageOnly ? (
-          <div className="relative h-full min-h-0 w-full overflow-hidden">
-            <div
-              ref={cyRef}
-              data-cistron-export="topology"
-              className="absolute inset-0 h-full w-full"
-              style={{ touchAction: 'none' }}
-            />
-            {loading && !displayGraph ? (
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 bg-obsidian/60 text-sm text-vcl-muted">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-                Loading pathway map…
-              </div>
-            ) : displayGraph && !layoutReady ? (
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 bg-obsidian/40 text-sm text-vcl-muted">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-                Laying out cascade…
-              </div>
-            ) : null}
-            {omicsActive && activeOmicsProfile ? (
-              <OmicsHeatmapLegend
-                profileName={
-                  activeOmicsProfile.condition ||
-                  activeOmicsProfile.sample_name ||
-                  activeOmicsProfile.profile_id
-                }
-                provenance={resolveOmicsProvenance(activeOmicsProfile)}
-              />
-            ) : null}
+      {stageOnly ? (
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div
+            data-cistron-export="topology"
+            className="relative h-full min-h-0 w-full overflow-hidden"
+          >
+            {stage}
             <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-md border border-vcl-border bg-obsidian/85 px-2 py-1 font-mono text-[10px] text-vcl-dim backdrop-blur-sm">
-              edge width ∝ V_max · ring = activity · Shift-click = KO
+              edge width ∝ V_max · ring = perturbed vs baseline · Shift-click = KO
             </div>
           </div>
-        ) : (
-          <GlassCard
-            title="Signaling topology"
-            hint={
-              omicsActive
-                ? 'Omics heat · red ↑log2FC · blue ↓log2FC · slate unmapped'
-                : 'Hierarchical TB · hover path · flux glow ∝ Fⱼ→ᵢ(t) · → stim · ⊣ inhib'
-            }
-            className="flex min-h-0 flex-1 flex-col overflow-hidden !pb-3"
+        </div>
+      ) : (
+        <GlassCard
+          title="Signaling topology"
+          hint={
+            omicsActive
+              ? 'Omics heat · red ↑log2FC · blue ↓log2FC · slate unmapped'
+              : '→ activation · ⊣ inhibition · ┄ phosphorylation · ⇌ translocation'
+          }
+          className="flex min-h-0 flex-1 flex-col overflow-hidden !pb-3"
+        >
+          <div
+            data-cistron-export="topology"
+            className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-xl border border-slate-800/80"
           >
-            <div className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-xl border border-slate-800/80 lab-grid-panel">
-              <div
-                ref={cyRef}
-                data-cistron-export="topology"
-                className="absolute inset-0 h-full w-full"
-                style={{ touchAction: 'none' }}
-              />
-              {loading && !displayGraph ? (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-obsidian/60 text-sm text-slate-300">
-                  <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-                  Loading pathway map…
-                </div>
-              ) : displayGraph && !layoutReady ? (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-obsidian/40 text-sm text-slate-300">
-                  <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-                  Laying out cascade…
-                </div>
-              ) : null}
-              {omicsActive && activeOmicsProfile ? (
-                <OmicsHeatmapLegend
-                  profileName={
-                    activeOmicsProfile.condition ||
-                    activeOmicsProfile.sample_name ||
-                    activeOmicsProfile.profile_id
-                  }
-                  provenance={resolveOmicsProvenance(activeOmicsProfile)}
-                />
-              ) : null}
-              <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-slate-500">
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
-                  <span className="h-0.5 w-3.5 bg-cyan-flux" /> Stim →
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
-                  <span className="h-0.5 w-3.5 border-t border-dashed border-coral-action" /> Inhib ⊣
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-violet-hub" /> Hub
-                </span>
-                {pertKey ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-md border border-coral-action/40 bg-coral-action/10 px-1.5 py-0.5 text-red-200 backdrop-blur-sm">
-                    🚫 Perturbed
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </GlassCard>
-        )}
-      </div>
+            {stage}
+          </div>
+        </GlassCard>
+      )}
 
       {!stageOnly ? (
         <TrajectoryChart
