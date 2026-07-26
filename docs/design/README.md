@@ -1,7 +1,19 @@
 # Cistron VCL design reference
 
-Static mockup from *Cistron VCL Systems Biology IDE* (design canvas HTML).
+Source mockup (design canvas):
 
-Live React Studio applies the same tokens (IBM Plex, `#07111D` shell, 54px code rail, top bar chrome) under `frontend/`.
+- `Cistron-VCL.dc.html` + `support.js` — original Systems Biology IDE layout
+- `thumbnail.png` — mockup preview
+- `studio-live.png` — live React Studio after integration
 
-Open `Cistron-VCL.dc.html` in a browser for the original layout reference.
+The live app implements this chrome under `frontend/`:
+
+| Mockup region | Live |
+|---|---|
+| 46px header (CISTRON·VCL, ⌘K, scenario, RUN, ENGINE LIVE, EXPORT) | `Header.tsx` |
+| 54px code rail ST/PW/… | `SidebarNav.tsx` |
+| Stage toolbar (Graph / Spatial) | `StudioView.tsx` |
+| Bottom dock (Trajectory / Organelle / FBA + scrub) | `layout/vcl/BottomAnalysisDock.tsx` |
+| Right inspector (perturbations + impact/synergy) | `layout/vcl/RightInspectorDock.tsx` |
+| Command palette ⌘K | `layout/vcl/CommandPalette.tsx` |
+| Shell geometry + resizers | `layout/AppShell.tsx` |

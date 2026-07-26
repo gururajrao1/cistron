@@ -274,6 +274,7 @@ export function StudioCanvas({
   perturbations = {},
   onToggleKnockout,
   loading = false,
+  stageOnly = false,
 }: {
   preset: string
   graph: PresetDetail | null
@@ -289,6 +290,8 @@ export function StudioCanvas({
   perturbations?: Record<string, number>
   onToggleKnockout?: (nodeId: string) => void
   loading?: boolean
+  /** VCL IDE: graph viewport only (KPIs / scrub / trajectory live in docks). */
+  stageOnly?: boolean
 }) {
   const { activeOmicsProfile, untreatedRun, treatedRun } = useLab()
   const cyRef = useRef<HTMLDivElement>(null)
@@ -768,126 +771,177 @@ export function StudioCanvas({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <div className="grid shrink-0 grid-cols-3 gap-3">
-        <GlassCard>
-          <div className="text-[0.68rem] uppercase tracking-[0.08em] text-slate-500">
-            Active proteins
+      {!stageOnly ? (
+        <>
+          <div className="grid shrink-0 grid-cols-3 gap-3">
+            <GlassCard>
+              <div className="text-[0.68rem] uppercase tracking-[0.08em] text-slate-500">
+                Active proteins
+              </div>
+              <div className="mt-1 text-2xl font-bold text-emerald-300">
+                {payload ? activeNodes : loading ? '…' : '—'}
+                <span className="text-sm font-medium text-slate-500">
+                  {' '}
+                  / {payload ? Object.keys(nodeY).length : '—'}
+                </span>
+              </div>
+            </GlassCard>
+            <GlassCard>
+              <div className="text-[0.68rem] uppercase tracking-[0.08em] text-slate-500">
+                Peak edge flux F
+              </div>
+              <div className="mt-1 text-2xl font-bold text-slate-100">
+                {payload ? maxFlux.toFixed(3) : loading ? '…' : '—'}
+              </div>
+            </GlassCard>
+            <GlassCard>
+              <div className="text-[0.68rem] uppercase tracking-[0.08em] text-slate-500">
+                Master regulator
+              </div>
+              <div className="mt-1 truncate text-2xl font-bold text-coral-action">
+                {topRegulator ?? (loading ? '…' : '—')}
+              </div>
+            </GlassCard>
           </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-300">
-            {payload ? activeNodes : loading ? '…' : '—'}
-            <span className="text-sm font-medium text-slate-500">
-              {' '}
-              / {payload ? Object.keys(nodeY).length : '—'}
-            </span>
+
+          <GlassCard className="!py-3 shrink-0">
+            <div className="mb-2 flex justify-between text-[0.7rem] tracking-wide text-slate-500">
+              <span>t₀ · basal</span>
+              <span className="font-semibold text-emerald-300/90">
+                Timeline · {scrubT.toFixed(0)} min
+              </span>
+              <span>t₆₀ · steady</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={60}
+              step={1}
+              value={scrubT}
+              disabled={!payload}
+              onChange={(e) => onScrub(Number(e.target.value))}
+              className="w-full accent-emerald-active disabled:opacity-40"
+            />
+            <div className="mt-1.5 flex justify-between gap-2 text-[0.65rem] text-slate-600">
+              <span>Click · inspect · Shift/Right-click · knockout wᵢ=0</span>
+              <span>
+                {pathNodes.length
+                  ? `Cascade: ${(Array.isArray(pathNodes) ? pathNodes : []).join(' → ')}`
+                  : 'Hover to trace Nᵢₙ / Nₒᵤₜ'}
+              </span>
+            </div>
+          </GlassCard>
+        </>
+      ) : null}
+
+      <div
+        className={
+          stageOnly
+            ? 'relative min-h-0 flex-1 overflow-hidden'
+            : undefined
+        }
+      >
+        {stageOnly ? (
+          <div className="relative h-full min-h-0 w-full overflow-hidden">
+            <div
+              ref={cyRef}
+              data-cistron-export="topology"
+              className="absolute inset-0 h-full w-full"
+              style={{ touchAction: 'none' }}
+            />
+            {loading && !displayGraph ? (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 bg-obsidian/60 text-sm text-vcl-muted">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
+                Loading pathway map…
+              </div>
+            ) : displayGraph && !layoutReady ? (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 bg-obsidian/40 text-sm text-vcl-muted">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
+                Laying out cascade…
+              </div>
+            ) : null}
+            {omicsActive && activeOmicsProfile ? (
+              <OmicsHeatmapLegend
+                profileName={
+                  activeOmicsProfile.condition ||
+                  activeOmicsProfile.sample_name ||
+                  activeOmicsProfile.profile_id
+                }
+                provenance={resolveOmicsProvenance(activeOmicsProfile)}
+              />
+            ) : null}
+            <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-md border border-vcl-border bg-obsidian/85 px-2 py-1 font-mono text-[10px] text-vcl-dim backdrop-blur-sm">
+              edge width ∝ V_max · ring = activity · Shift-click = KO
+            </div>
           </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="text-[0.68rem] uppercase tracking-[0.08em] text-slate-500">
-            Peak edge flux F
-          </div>
-          <div className="mt-1 text-2xl font-bold text-slate-100">
-            {payload ? maxFlux.toFixed(3) : loading ? '…' : '—'}
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="text-[0.68rem] uppercase tracking-[0.08em] text-slate-500">
-            Master regulator
-          </div>
-          <div className="mt-1 truncate text-2xl font-bold text-coral-action">
-            {topRegulator ?? (loading ? '…' : '—')}
-          </div>
-        </GlassCard>
+        ) : (
+          <GlassCard
+            title="Signaling topology"
+            hint={
+              omicsActive
+                ? 'Omics heat · red ↑log2FC · blue ↓log2FC · slate unmapped'
+                : 'Hierarchical TB · hover path · flux glow ∝ Fⱼ→ᵢ(t) · → stim · ⊣ inhib'
+            }
+            className="flex min-h-0 flex-1 flex-col overflow-hidden !pb-3"
+          >
+            <div className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-xl border border-slate-800/80 lab-grid-panel">
+              <div
+                ref={cyRef}
+                data-cistron-export="topology"
+                className="absolute inset-0 h-full w-full"
+                style={{ touchAction: 'none' }}
+              />
+              {loading && !displayGraph ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-obsidian/60 text-sm text-slate-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
+                  Loading pathway map…
+                </div>
+              ) : displayGraph && !layoutReady ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-obsidian/40 text-sm text-slate-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
+                  Laying out cascade…
+                </div>
+              ) : null}
+              {omicsActive && activeOmicsProfile ? (
+                <OmicsHeatmapLegend
+                  profileName={
+                    activeOmicsProfile.condition ||
+                    activeOmicsProfile.sample_name ||
+                    activeOmicsProfile.profile_id
+                  }
+                  provenance={resolveOmicsProvenance(activeOmicsProfile)}
+                />
+              ) : null}
+              <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-slate-500">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
+                  <span className="h-0.5 w-3.5 bg-cyan-flux" /> Stim →
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
+                  <span className="h-0.5 w-3.5 border-t border-dashed border-coral-action" /> Inhib ⊣
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-hub" /> Hub
+                </span>
+                {pertKey ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-coral-action/40 bg-coral-action/10 px-1.5 py-0.5 text-red-200 backdrop-blur-sm">
+                    🚫 Perturbed
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </GlassCard>
+        )}
       </div>
 
-      <GlassCard className="!py-3 shrink-0">
-        <div className="mb-2 flex justify-between text-[0.7rem] tracking-wide text-slate-500">
-          <span>t₀ · basal</span>
-          <span className="font-semibold text-emerald-300/90">
-            Timeline · {scrubT.toFixed(0)} min
-          </span>
-          <span>t₆₀ · steady</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={60}
-          step={1}
-          value={scrubT}
-          disabled={!payload}
-          onChange={(e) => onScrub(Number(e.target.value))}
-          className="w-full accent-emerald-active disabled:opacity-40"
+      {!stageOnly ? (
+        <TrajectoryChart
+          untreatedRun={untreatedRun}
+          treatedRun={treatedRun}
+          focus={FOCUS_SERIES[preset] ?? FOCUS_SERIES.hypoxia ?? ['HIF1A', 'VEGFA']}
+          scrubT={scrubT}
+          loading={loading}
         />
-        <div className="mt-1.5 flex justify-between gap-2 text-[0.65rem] text-slate-600">
-          <span>Click · inspect · Shift/Right-click · knockout wᵢ=0</span>
-          <span>
-            {pathNodes.length ? `Cascade: ${(Array.isArray(pathNodes) ? pathNodes : []).join(' → ')}` : 'Hover to trace Nᵢₙ / Nₒᵤₜ'}
-          </span>
-        </div>
-      </GlassCard>
-
-      <GlassCard
-        title="Signaling topology"
-        hint={
-          omicsActive
-            ? 'Omics heat · red ↑log2FC · blue ↓log2FC · slate unmapped'
-            : 'Hierarchical TB · hover path · flux glow ∝ Fⱼ→ᵢ(t) · → stim · ⊣ inhib'
-        }
-        className="flex min-h-0 flex-1 flex-col overflow-hidden !pb-3"
-      >
-        <div className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-xl border border-slate-800/80 lab-grid-panel">
-          <div
-            ref={cyRef}
-            data-cistron-export="topology"
-            className="absolute inset-0 h-full w-full"
-            style={{ touchAction: 'none' }}
-          />
-          {loading && !displayGraph ? (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-obsidian/60 text-sm text-slate-300">
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-              Loading pathway map…
-            </div>
-          ) : displayGraph && !layoutReady ? (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-obsidian/40 text-sm text-slate-300">
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-              Laying out cascade…
-            </div>
-          ) : null}
-          {omicsActive && activeOmicsProfile ? (
-            <OmicsHeatmapLegend
-              profileName={
-                activeOmicsProfile.condition ||
-                activeOmicsProfile.sample_name ||
-                activeOmicsProfile.profile_id
-              }
-              provenance={resolveOmicsProvenance(activeOmicsProfile)}
-            />
-          ) : null}
-          <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-slate-500">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
-              <span className="h-0.5 w-3.5 bg-cyan-flux" /> Stim →
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
-              <span className="h-0.5 w-3.5 border-t border-dashed border-coral-action" /> Inhib ⊣
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-800/80 bg-obsidian/85 px-1.5 py-0.5 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-hub" /> Hub
-            </span>
-            {pertKey ? (
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-coral-action/40 bg-coral-action/10 px-1.5 py-0.5 text-red-200 backdrop-blur-sm">
-                🚫 Perturbed
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </GlassCard>
-
-      <TrajectoryChart
-        untreatedRun={untreatedRun}
-        treatedRun={treatedRun}
-        focus={focus}
-        scrubT={scrubT}
-        loading={loading}
-      />
+      ) : null}
     </div>
   )
 }

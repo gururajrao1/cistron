@@ -684,13 +684,12 @@ export function LabProvider({ children }: { children: ReactNode }) {
         else kos.delete(sym)
         return { ...prev, knockouts: Array.from(kos) }
       })
+      perturbationsRef.current = {
+        ...perturbationsRef.current,
+        [sym]: v,
+      }
       if (opts?.resim !== false) {
-        // Defer so ref sees the updated perturbations map.
         queueMicrotask(() => {
-          perturbationsRef.current = {
-            ...perturbationsRef.current,
-            [sym]: v,
-          }
           resimWithPerturbations()
         })
       }

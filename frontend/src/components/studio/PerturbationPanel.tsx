@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Ban, Box, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { Ban, RotateCcw } from 'lucide-react'
 import { clsx } from 'clsx'
 import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
@@ -16,25 +15,25 @@ function baselineFor(
   return null
 }
 
-export function PerturbationPanel() {
+export function PerturbationPanel({
+  variant = 'card',
+}: {
+  variant?: 'card' | 'dock'
+}) {
   const lab = useLab()
-  const navigate = useNavigate()
-  const [query, setQuery] = useState('')
   const [drafts, setDrafts] = useState<Record<string, number>>({})
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toUpperCase()
+  const nodes = useMemo(() => {
     const list = lab.nodes
-    if (!q) return list
-    return list.filter((n) => n.toUpperCase().includes(q))
-  }, [lab.nodes, query])
-
-  const activeEntries = useMemo(
-    () =>
-      Object.entries(lab.perturbations)
-        .sort(([a], [b]) => a.localeCompare(b)),
-    [lab.perturbations],
-  )
+    // Prefer perturbed + focus nodes first for dock density
+    const pert = new Set(Object.keys(lab.perturbations).map((s) => s.toUpperCase()))
+    return [...list].sort((a, b) => {
+      const ap = pert.has(a.toUpperCase()) ? 0 : 1
+      const bp = pert.has(b.toUpperCase()) ? 0 : 1
+      if (ap !== bp) return ap - bp
+      return a.localeCompare(b)
+    })
+  }, [lab.nodes, lab.perturbations])
 
   const valueOf = (sym: string) => {
     if (sym in drafts) return drafts[sym]!
@@ -44,101 +43,68 @@ export function PerturbationPanel() {
 
   const isPerturbed = (sym: string) => sym in lab.perturbations
 
-  return (
-    <GlassCard
-      title="Target perturbations"
-      hint="CRISPR KO · dose titration · reset to baseline y₀"
-    >
-      <div className="mb-3 space-y-2">
-        <label className="relative block">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search proteins…"
-            className="w-full rounded-lg border border-slate-800 bg-obsidian/80 py-2 pl-8 pr-2.5 text-[12px] text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-500/40"
-          />
-        </label>
-
-        {activeEntries.length > 0 ? (
-          <div className="rounded-lg border border-coral-action/25 bg-coral-action/5 px-2.5 py-2">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <MetaLabel className="!text-coral-action">Active targets</MetaLabel>
-              <button
-                type="button"
-                disabled={lab.busy}
-                onClick={() => {
-                  setDrafts({})
-                  lab.clearAllPerturbations()
-                }}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 hover:border-coral-action/40 hover:text-red-200 disabled:opacity-40"
-              >
-                <Trash2 className="h-3 w-3" />
-                Clear all
-              </button>
-            </div>
-            <ul className="flex flex-wrap gap-1.5">
-              {activeEntries.map(([sym, val]) => (
-                <li key={sym}>
+  const rows = (
+    <div className={clsx(variant === 'dock' ? 'space-y-0' : 'max-h-[320px] space-y-2 overflow-y-auto pr-0.5')}>
+      {nodes.length === 0 ? (
+        <p className="px-3 py-4 text-[11px] text-vcl-dim">No graph nodes yet — run a simulation.</p>
+      ) : (
+        nodes.map((sym) => {
+          const val = valueOf(sym)
+          const dosePct = Math.round(val * 100)
+          const ko = isPerturbed(sym) && val <= 1e-6
+          const baseline = baselineFor(sym, lab.omicsClamps)
+          return (
+            <div
+              key={sym}
+              className={clsx(
+                variant === 'dock'
+                  ? 'border-b border-vcl-border/70 px-2.5 py-2'
+                  : 'rounded-xl border px-2.5 py-2',
+                variant === 'dock'
+                  ? isPerturbed(sym)
+                    ? 'bg-coral-action/[0.04]'
+                    : 'bg-transparent'
+                  : isPerturbed(sym)
+                    ? 'border-coral-action/35 bg-coral-action/[0.06]'
+                    : 'border-slate-800/80 bg-obsidian/40',
+              )}
+            >
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-mono text-[11.5px] font-semibold text-vcl-text">{sym}</div>
+                  <div className="text-[10px] text-vcl-dim">
+                    {ko
+                      ? 'CRISPR knockout'
+                      : isPerturbed(sym)
+                        ? `Dose ${dosePct}%`
+                        : baseline != null
+                          ? `Baseline y₀=${baseline.toFixed(2)}`
+                          : 'Wild-type activity'}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     disabled={lab.busy}
-                    onClick={() => lab.clearPerturbation(sym)}
-                    className="inline-flex items-center gap-1 rounded-full border border-coral-action/35 bg-obsidian/70 px-2 py-0.5 text-[10px] font-semibold text-red-100 hover:bg-coral-action/15 disabled:opacity-40"
-                    title="Reset this target"
+                    onClick={() => {
+                      setDrafts((d) => {
+                        const next = { ...d }
+                        delete next[sym]
+                        return next
+                      })
+                      lab.setNodePerturbation(sym, 0)
+                    }}
+                    className={clsx(
+                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-wide disabled:opacity-40',
+                      ko
+                        ? 'border border-coral-action/50 bg-[#3A1418] text-[#F87171]'
+                        : 'border border-vcl-border bg-vcl-raised text-vcl-muted hover:border-coral-action/40 hover:text-red-200',
+                    )}
                   >
-                    <GeneBadge name={sym} tone="coral" />
-                    <span className="lab-mono">
-                      {val <= 1e-6 ? 'KO' : `y=${val.toFixed(2)}`}
-                    </span>
+                    <Ban className="h-3 w-3" />
+                    CRISPR KO
                   </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-[11px] leading-relaxed text-slate-500">
-            No interactive targets yet. Knock out a node or drag a titration slider.
-          </p>
-        )}
-      </div>
-
-      <div className="max-h-[320px] space-y-2 overflow-y-auto pr-0.5">
-        {filtered.length === 0 ? (
-          <p className="text-[11px] text-slate-500">No nodes match “{query}”.</p>
-        ) : (
-          filtered.map((sym) => {
-            const val = valueOf(sym)
-            const ko = isPerturbed(sym) && val <= 1e-6
-            const baseline = baselineFor(sym, lab.omicsClamps)
-            return (
-              <div
-                key={sym}
-                className={clsx(
-                  'rounded-xl border px-2.5 py-2 transition',
-                  isPerturbed(sym)
-                    ? 'border-coral-action/35 bg-coral-action/[0.06]'
-                    : 'border-slate-800/80 bg-obsidian/40',
-                )}
-              >
-                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <GeneBadge name={sym} tone={ko ? 'coral' : 'cyan'} />
-                    {ko ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-red-300">
-                        🚫 KO
-                      </span>
-                    ) : isPerturbed(sym) ? (
-                      <span className="lab-mono text-[10px] text-amber-200">
-                        y={val.toFixed(2)}
-                      </span>
-                    ) : baseline != null ? (
-                      <span className="lab-mono text-[10px] text-slate-500">
-                        y₀={baseline.toFixed(2)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
+                  {isPerturbed(sym) ? (
                     <button
                       type="button"
                       disabled={lab.busy}
@@ -148,84 +114,110 @@ export function PerturbationPanel() {
                           delete next[sym]
                           return next
                         })
-                        lab.setNodePerturbation(sym, 0)
-                      }}
-                      className={clsx(
-                        'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide disabled:opacity-40',
-                        ko
-                          ? 'border-coral-action/50 bg-coral-action/20 text-red-100'
-                          : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-coral-action/40 hover:text-red-200',
-                      )}
-                    >
-                      <Ban className="h-3 w-3" />
-                      Knockout
-                    </button>
-                    <button
-                      type="button"
-                      disabled={lab.busy || !isPerturbed(sym)}
-                      onClick={() => {
-                        setDrafts((d) => {
-                          const next = { ...d }
-                          delete next[sym]
-                          return next
-                        })
                         lab.clearPerturbation(sym)
                       }}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 hover:border-emerald-500/40 hover:text-emerald-200 disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded border border-vcl-border bg-vcl-raised px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-wide text-vcl-muted hover:text-vcl-text disabled:opacity-40"
                     >
                       <RotateCcw className="h-3 w-3" />
-                      Reset
                     </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(`/biophysics?symbol=${encodeURIComponent(sym)}`)
-                      }
-                      className="inline-flex items-center gap-1 rounded-md border border-cyan-flux/35 bg-cyan-950/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-100 hover:bg-cyan-900/40"
-                      title="Open full-page 3D structure"
-                    >
-                      <Box className="h-3 w-3" />
-                      3D
-                    </button>
-                  </div>
+                  ) : null}
                 </div>
-                <label className="block">
-                  <div className="mb-1 flex justify-between text-[10px] text-slate-500">
-                    <span>Titration</span>
-                    <span className="lab-mono text-slate-400">{val.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={val}
-                    disabled={lab.busy}
-                    onChange={(e) => {
-                      const next = Number(e.target.value)
-                      setDrafts((d) => ({ ...d, [sym]: next }))
-                    }}
-                    onPointerUp={(e) => {
-                      const next = Number((e.target as HTMLInputElement).value)
-                      setDrafts((d) => {
-                        const copy = { ...d }
-                        delete copy[sym]
-                        return copy
-                      })
-                      lab.setNodePerturbation(sym, next)
-                    }}
-                    className="w-full accent-coral-action disabled:opacity-40"
-                  />
-                  <div className="mt-0.5 flex justify-between text-[9px] uppercase tracking-wide text-slate-600">
-                    <span>0 · KO</span>
-                    <span>1 · full</span>
-                  </div>
-                </label>
               </div>
-            )
-          })
-        )}
+              <label className="block">
+                <div className="mb-1 flex justify-between text-[10px] text-vcl-dim">
+                  <span>Dose</span>
+                  <span className="lab-mono text-vcl-muted">{dosePct}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={val}
+                  disabled={lab.busy}
+                  onChange={(e) => {
+                    const next = Number(e.target.value)
+                    setDrafts((d) => ({ ...d, [sym]: next }))
+                  }}
+                  onPointerUp={(e) => {
+                    const next = Number((e.target as HTMLInputElement).value)
+                    setDrafts((d) => {
+                      const copy = { ...d }
+                      delete copy[sym]
+                      return copy
+                    })
+                    lab.setNodePerturbation(sym, next)
+                  }}
+                  className="w-full accent-emerald-active disabled:opacity-40"
+                />
+                <div className="mt-0.5 flex justify-between text-[9px] uppercase tracking-wide text-vcl-dim">
+                  <span>0 · KO</span>
+                  <span>100 · full</span>
+                  <span>200%</span>
+                </div>
+              </label>
+            </div>
+          )
+        })
+      )}
+    </div>
+  )
+
+  if (variant === 'dock') {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex h-8 shrink-0 items-center justify-between border-b border-vcl-border px-2.5">
+          <span className="lab-meta !text-vcl-muted">Target perturbations</span>
+          <button
+            type="button"
+            disabled={lab.busy || Object.keys(lab.perturbations).length === 0}
+            onClick={() => {
+              setDrafts({})
+              lab.clearAllPerturbations()
+            }}
+            className="font-mono text-[10px] font-semibold uppercase tracking-wide text-vcl-dim hover:text-coral-action disabled:opacity-40"
+          >
+            reset
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{rows}</div>
       </div>
+    )
+  }
+
+  return (
+    <GlassCard
+      title="Target perturbations"
+      hint="CRISPR KO · dose titration · reset to baseline y₀"
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <MetaLabel>Active</MetaLabel>
+        <button
+          type="button"
+          disabled={lab.busy || Object.keys(lab.perturbations).length === 0}
+          onClick={() => {
+            setDrafts({})
+            lab.clearAllPerturbations()
+          }}
+          className="font-mono text-[10px] uppercase text-slate-400 hover:text-red-200 disabled:opacity-40"
+        >
+          Clear all
+        </button>
+      </div>
+      {Object.keys(lab.perturbations).length === 0 ? (
+        <p className="mb-2 text-[11px] text-slate-500">
+          No interactive targets yet. Knock out a node or drag a titration slider.
+        </p>
+      ) : (
+        <ul className="mb-2 flex flex-wrap gap-1.5">
+          {Object.entries(lab.perturbations).map(([sym, val]) => (
+            <li key={sym}>
+              <GeneBadge name={sym} tone={val <= 1e-6 ? 'coral' : 'amber'} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {rows}
     </GlassCard>
   )
 }

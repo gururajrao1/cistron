@@ -100,12 +100,15 @@ export function TrajectoryChart({
   focus,
   scrubT,
   loading = false,
+  compact = false,
 }: {
   untreatedRun: ScrubberPayload | null
   treatedRun: ScrubberPayload | null
   focus: string[]
   scrubT: number
   loading?: boolean
+  /** Flat dock mode — no GlassCard chrome, fills parent height. */
+  compact?: boolean
 }) {
   const compare = Boolean(untreatedRun && treatedRun)
   const active = treatedRun ?? untreatedRun
@@ -131,6 +134,98 @@ export function TrajectoryChart({
     })
   }, [active, untreatedRun, treatedRun, focus, compare])
 
+  const chartBody = active ? (
+    <div className={compact ? 'h-full w-full min-h-0' : 'h-[150px] w-full'}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="#233042" strokeDasharray="3 3" />
+          <XAxis
+            dataKey="t"
+            stroke="#4E6479"
+            tick={{ fill: '#7C8DA3', fontSize: 10 }}
+            label={{
+              value: 'min',
+              position: 'insideBottomRight',
+              fill: '#4E6479',
+              offset: -2,
+            }}
+          />
+          <YAxis
+            domain={[0, 1.05]}
+            stroke="#4E6479"
+            tick={{ fill: '#7C8DA3', fontSize: 10 }}
+            width={32}
+          />
+          <Tooltip content={<DeltaTooltip focus={focus} />} />
+          {!compact ? (
+            <Legend
+              wrapperStyle={{ fontSize: 10 }}
+              formatter={(value) => {
+                const s = String(value)
+                if (s.endsWith('__u')) return `${s.slice(0, -3)} (untreated)`
+                if (s.endsWith('__t')) return `${s.slice(0, -3)} (treated)`
+                return s
+              }}
+            />
+          ) : null}
+          <ReferenceLine
+            x={scrubT}
+            stroke="#22C55E"
+            strokeWidth={2}
+            strokeDasharray="4 4"
+            label={`t=${scrubT}`}
+          />
+          {focus.map((sym) => {
+            const color = SERIES_COLORS[sym] ?? '#94A3B8'
+            return (
+              <Line
+                key={untreatedKey(sym)}
+                type="monotone"
+                dataKey={untreatedKey(sym)}
+                name={untreatedKey(sym)}
+                stroke={color}
+                strokeOpacity={compare ? 0.55 : 1}
+                dot={false}
+                strokeWidth={compare ? 1.8 : 2.3}
+                isAnimationActive={false}
+              />
+            )
+          })}
+          {compare
+            ? focus.map((sym) => {
+                const color = SERIES_COLORS[sym] ?? '#94A3B8'
+                return (
+                  <Line
+                    key={treatedKey(sym)}
+                    type="monotone"
+                    dataKey={treatedKey(sym)}
+                    name={treatedKey(sym)}
+                    stroke={color}
+                    strokeDasharray="5 4"
+                    strokeWidth={2.6}
+                    dot={false}
+                    isAnimationActive={false}
+                    style={{
+                      filter: `drop-shadow(0 0 4px ${color})`,
+                    }}
+                  />
+                )
+              })
+            : null}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  ) : (
+    <div className="flex h-full min-h-[100px] items-center justify-center gap-2 text-sm text-vcl-muted">
+      <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
+      {loading ? 'Computing activation curves…' : 'No trajectory yet'}
+    </div>
+  )
+
+  if (compact) {
+    return <div className="flex h-full min-h-0 flex-col overflow-hidden">{chartBody}</div>
+  }
+
   return (
     <GlassCard
       title="Activation trajectories"
@@ -141,90 +236,7 @@ export function TrajectoryChart({
       }
       className="h-[220px] shrink-0 overflow-hidden"
     >
-      {active ? (
-        <div className="h-[150px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#1E293B" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="t"
-                stroke="#64748B"
-                tick={{ fill: '#64748B', fontSize: 11 }}
-                label={{
-                  value: 'min',
-                  position: 'insideBottomRight',
-                  fill: '#64748B',
-                  offset: -2,
-                }}
-              />
-              <YAxis
-                domain={[0, 1.05]}
-                stroke="#64748B"
-                tick={{ fill: '#64748B', fontSize: 11 }}
-              />
-              <Tooltip content={<DeltaTooltip focus={focus} />} />
-              <Legend
-                wrapperStyle={{ fontSize: 10 }}
-                formatter={(value) => {
-                  const s = String(value)
-                  if (s.endsWith('__u')) return `${s.slice(0, -3)} (untreated)`
-                  if (s.endsWith('__t')) return `${s.slice(0, -3)} (treated)`
-                  return s
-                }}
-              />
-              <ReferenceLine
-                x={scrubT}
-                stroke="#10B981"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                label={`t=${scrubT}`}
-              />
-              {focus.map((sym) => {
-                const color = SERIES_COLORS[sym] ?? '#94A3B8'
-                return (
-                  <Line
-                    key={untreatedKey(sym)}
-                    type="monotone"
-                    dataKey={untreatedKey(sym)}
-                    name={untreatedKey(sym)}
-                    stroke={color}
-                    strokeOpacity={compare ? 0.55 : 1}
-                    dot={false}
-                    strokeWidth={compare ? 1.8 : 2.3}
-                    isAnimationActive={false}
-                  />
-                )
-              })}
-              {compare
-                ? focus.map((sym) => {
-                    const color = SERIES_COLORS[sym] ?? '#94A3B8'
-                    return (
-                      <Line
-                        key={treatedKey(sym)}
-                        type="monotone"
-                        dataKey={treatedKey(sym)}
-                        name={treatedKey(sym)}
-                        stroke={color}
-                        strokeDasharray="5 4"
-                        strokeWidth={2.6}
-                        dot={false}
-                        isAnimationActive={false}
-                        style={{
-                          filter: `drop-shadow(0 0 4px ${color})`,
-                        }}
-                      />
-                    )
-                  })
-                : null}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      ) : (
-        <div className="flex h-[120px] items-center justify-center gap-2 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin text-emerald-active" />
-          {loading ? 'Computing activation curves…' : 'No trajectory yet'}
-        </div>
-      )}
+      {chartBody}
     </GlassCard>
   )
 }
