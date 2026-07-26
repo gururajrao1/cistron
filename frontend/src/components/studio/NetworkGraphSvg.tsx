@@ -5,6 +5,8 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
 } from 'react'
 import type { PresetDetail } from '../../api/types'
 import type { EdgeKind } from '../../engine/edgeClassification'
@@ -22,6 +24,16 @@ import type { EdgeKind } from '../../engine/edgeClassification'
 
 const FALLBACK_W = 920
 const FALLBACK_H = 560
+
+/** Layout keeps a compact cluster rather than filling the pane edge-to-edge. */
+const COL_GAP_MAX = 190
+const ROW_GAP_MAX = 128
+
+/** Viewport zoom bounds. */
+const MIN_ZOOM = 0.35
+const MAX_ZOOM = 3.5
+/** Pointer travel (px) below which a drag still counts as a click. */
+const CLICK_SLOP = 4
 
 /** Node disc geometry (mockup values). */
 const RING_R = 25
@@ -82,6 +94,28 @@ export type GraphEdgeView = {
 
 type Point = { x: number; y: number }
 
+/** Pan offset (screen px) + zoom factor applied to the whole scene. */
+type Viewport = { k: number; x: number; y: number }
+
+type DragState =
+  | null
+  | {
+      mode: 'pan'
+      startX: number
+      startY: number
+      origin: Point
+      moved: boolean
+    }
+  | {
+      mode: 'node'
+      id: string
+      startX: number
+      startY: number
+      offset: Point
+      shiftKey: boolean
+      moved: boolean
+    }
+
 /**
  * Longest-path depth → left-to-right columns. Cycles are bounded by a visit
  * budget so feedback loops can never spin here.
@@ -140,14 +174,22 @@ function buildLayout(
   const usableW = Math.max(1, width - marginX * 2)
   const usableH = Math.max(1, height - marginY * 2)
 
+  // Cap the gaps and centre the cluster: stretching nodes edge-to-edge on a
+  // wide pane leaves a sparse graph looking scattered.
+  const colGap =
+    colKeys.length > 1 ? Math.min(COL_GAP_MAX, usableW / (colKeys.length - 1)) : 0
+  const clusterW = colGap * (colKeys.length - 1)
+  const startX = (width - clusterW) / 2
+
   const positions = new Map<string, Point>()
   colKeys.forEach((key, ci) => {
     const ids = columns.get(key)!.slice().sort()
-    const x =
-      colKeys.length > 1 ? marginX + (ci * usableW) / (colKeys.length - 1) : width / 2
+    const x = colKeys.length > 1 ? startX + ci * colGap : width / 2
+    const rowGap = ids.length > 1 ? Math.min(ROW_GAP_MAX, usableH / (ids.length - 1)) : 0
+    const clusterH = rowGap * (ids.length - 1)
+    const startY = (height - clusterH) / 2
     ids.forEach((id, ri) => {
-      const y = ids.length > 1 ? marginY + (ri * usableH) / (ids.length - 1) : height / 2
-      positions.set(id, { x, y })
+      positions.set(id, { x, y: ids.length > 1 ? startY + ri * rowGap : height / 2 })
     })
   })
   return positions
@@ -264,9 +306,153 @@ export function NetworkGraphSvg({
   }, [])
 
   const nodeIds = useMemo(() => Object.keys(graph.nodes ?? {}), [graph])
-  const positions = useMemo(
+  const layout = useMemo(
     () => buildLayout(nodeIds, edges, size.w, size.h),
     [nodeIds, edges, size.w, size.h],
+  )
+
+  /** Viewport pan/zoom, and any nodes the user has dragged off the layout. */
+  const [view, setView] = useState<Viewport>({ k: 1, x: 0, y: 0 })
+  const [moved, setMoved] = useState<Record<string, Point>>({})
+  const svgRef = useRef<SVGSVGElement>(null)
+  const dragRef = useRef<DragState>(null)
+
+  // A new graph invalidates hand-placed positions.
+  useLayoutEffect(() => {
+    setMoved({})
+    setView({ k: 1, x: 0, y: 0 })
+  }, [graph])
+
+  const positions = useMemo(() => {
+    if (!Object.keys(moved).length) return layout
+    const merged = new Map(layout)
+    for (const [id, p] of Object.entries(moved)) merged.set(id, p)
+    return merged
+  }, [layout, moved])
+
+  /** Screen point → graph coordinates under the current viewport. */
+  const toGraph = useCallback(
+    (clientX: number, clientY: number): Point => {
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (!rect) return { x: clientX, y: clientY }
+      return {
+        x: (clientX - rect.left - view.x) / view.k,
+        y: (clientY - rect.top - view.y) / view.k,
+      }
+    },
+    [view],
+  )
+
+  const handleWheel = useCallback((event: ReactWheelEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const px = event.clientX - rect.left
+    const py = event.clientY - rect.top
+    setView((prev) => {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev.k * Math.exp(-event.deltaY * 0.0015)))
+      if (next === prev.k) return prev
+      // Keep the point under the cursor anchored while zooming.
+      const ratio = next / prev.k
+      return { k: next, x: px - (px - prev.x) * ratio, y: py - (py - prev.y) * ratio }
+    })
+  }, [])
+
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<SVGSVGElement>) => {
+      // Only left button drags; right button is the knockout shortcut.
+      if (event.button !== 0) return
+      const target = event.target as Element
+      const nodeId = target.closest('[data-node-id]')?.getAttribute('data-node-id') ?? null
+      // Capture keeps the drag alive past the pane edge; a stale pointerId
+      // throws here, which would otherwise abort the whole gesture.
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        /* non-fatal: drag still tracks while the pointer stays inside */
+      }
+      if (nodeId) {
+        const p = positions.get(nodeId)
+        const g = toGraph(event.clientX, event.clientY)
+        dragRef.current = {
+          mode: 'node',
+          id: nodeId,
+          startX: event.clientX,
+          startY: event.clientY,
+          offset: p ? { x: g.x - p.x, y: g.y - p.y } : { x: 0, y: 0 },
+          shiftKey: event.shiftKey,
+          moved: false,
+        }
+      } else {
+        dragRef.current = {
+          mode: 'pan',
+          startX: event.clientX,
+          startY: event.clientY,
+          origin: { x: view.x, y: view.y },
+          moved: false,
+        }
+      }
+    },
+    [positions, toGraph, view.x, view.y],
+  )
+
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<SVGSVGElement>) => {
+      const drag = dragRef.current
+      if (!drag) return
+      const dx = event.clientX - drag.startX
+      const dy = event.clientY - drag.startY
+      if (!drag.moved && Math.hypot(dx, dy) > CLICK_SLOP) drag.moved = true
+      if (!drag.moved) return
+
+      if (drag.mode === 'pan') {
+        setView((prev) => ({ ...prev, x: drag.origin.x + dx, y: drag.origin.y + dy }))
+      } else if (drag.id) {
+        const g = toGraph(event.clientX, event.clientY)
+        setMoved((prev) => ({
+          ...prev,
+          [drag.id!]: { x: g.x - drag.offset.x, y: g.y - drag.offset.y },
+        }))
+      }
+    },
+    [toGraph],
+  )
+
+  const handlePointerUp = useCallback(
+    (event: ReactPointerEvent<SVGSVGElement>) => {
+      const drag = dragRef.current
+      dragRef.current = null
+      if (!drag) return
+      try {
+        event.currentTarget.releasePointerCapture?.(event.pointerId)
+      } catch {
+        /* already released */
+      }
+      // A press that never travelled is a click, not a drag.
+      if (drag.mode === 'node' && drag.id && !drag.moved) {
+        if (drag.shiftKey) onToggleKnockout?.(drag.id)
+        else onNodeSelect?.(drag.id)
+      }
+    },
+    [onNodeSelect, onToggleKnockout],
+  )
+
+  const resetView = useCallback(() => {
+    setView({ k: 1, x: 0, y: 0 })
+    setMoved({})
+  }, [])
+
+  const zoomBy = useCallback(
+    (factor: number) => {
+      setView((prev) => {
+        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev.k * factor))
+        if (next === prev.k) return prev
+        // Anchor on the pane centre so button zoom feels stable.
+        const cx = size.w / 2
+        const cy = size.h / 2
+        const ratio = next / prev.k
+        return { k: next, x: cx - (cx - prev.x) * ratio, y: cy - (cy - prev.y) * ratio }
+      })
+    },
+    [size.w, size.h],
   )
 
   const koSet = useMemo(
@@ -294,17 +480,6 @@ export function NetworkGraphSvg({
     return { ids, edgeIds }
   }, [hovered, edges])
 
-  const handleNodeClick = useCallback(
-    (id: string) => (event: ReactMouseEvent) => {
-      if (event.shiftKey) {
-        onToggleKnockout?.(id)
-        return
-      }
-      onNodeSelect?.(id)
-    },
-    [onNodeSelect, onToggleKnockout],
-  )
-
   const handleNodeContext = useCallback(
     (id: string) => (event: ReactMouseEvent) => {
       event.preventDefault()
@@ -321,12 +496,28 @@ export function NetworkGraphSvg({
     return { v, h }
   }, [size.w, size.h])
 
+  const panning = dragRef.current?.mode === 'pan' && dragRef.current.moved
+
   return (
     <div ref={hostRef} style={{ position: 'absolute', inset: 0 }}>
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${size.w} ${size.h}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onDoubleClick={resetView}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        touchAction: 'none',
+        cursor: panning ? 'grabbing' : 'grab',
+      }}
     >
       <defs>
         <marker
@@ -400,6 +591,7 @@ export function NetworkGraphSvg({
         ))}
       </g>
 
+      <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
       <g>
         {edges.map((e) => {
           const a = positions.get(e.source)
@@ -467,10 +659,10 @@ export function NetworkGraphSvg({
           return (
             <g
               key={id}
+              data-node-id={id}
               transform={`translate(${p.x},${p.y})`}
               opacity={dimmed ? 0.2 : 1}
-              style={{ cursor: 'pointer' }}
-              onClick={handleNodeClick(id)}
+              style={{ cursor: 'move' }}
               onContextMenu={handleNodeContext(id)}
               onMouseEnter={() => setHovered(id)}
               onMouseLeave={() => setHovered(null)}
@@ -537,7 +729,38 @@ export function NetworkGraphSvg({
           )
         })}
       </g>
+      </g>
     </svg>
+
+    <div
+      className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-md border border-vcl-border bg-obsidian/90 backdrop-blur-sm"
+      style={{ pointerEvents: 'auto' }}
+    >
+      <button
+        type="button"
+        title="Zoom in"
+        onClick={() => zoomBy(1.25)}
+        className="h-6 w-6 font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        title="Zoom out"
+        onClick={() => zoomBy(1 / 1.25)}
+        className="h-6 w-6 border-t border-vcl-border font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        title="Reset view and node positions"
+        onClick={resetView}
+        className="h-6 w-6 border-t border-vcl-border font-mono text-[9px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+      >
+        ⟳
+      </button>
+    </div>
     </div>
   )
 }

@@ -414,7 +414,8 @@ export function StudioCanvas({
           >
             {stage}
             <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-md border border-vcl-border bg-obsidian/85 px-2 py-1 font-mono text-[10px] text-vcl-dim backdrop-blur-sm">
-              edge width ∝ V_max · ring = perturbed vs baseline · Shift-click = KO
+              edge width ∝ V_max · ring = perturbed vs baseline · Shift-click = KO ·
+              scroll = zoom · drag = pan/move · double-click = reset
             </div>
           </div>
         </div>
