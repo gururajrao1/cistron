@@ -59,6 +59,42 @@ const NUCLEAR = new Set([
   'LDHA', 'BNIP3', 'MMP9', 'ANGPT2',
 ])
 
+/** Short role/identity subtitles shown under well-known node symbols. */
+const GENE_SUBTITLE: Record<string, string> = {
+  O2: 'O₂ tension',
+  HIF1A: 'TF · O₂-labile',
+  EGLN1: 'PHD2',
+  VHL: 'E3 ligase',
+  ARNT: 'HIF1B · nuclear',
+  VEGFA: 'secreted',
+  GLUT1: 'SLC2A1',
+  LDHA: 'EC 1.1.1.27',
+  PDK1: 'PDHK',
+  PDH: 'TCA entry',
+  MTOR: 'kinase',
+  EGF: 'ligand',
+  EGFR: 'receptor',
+  KRAS: 'GTPase',
+  BRAF: 'kinase',
+  MAP2K1: 'MEK1',
+  MAPK1: 'ERK2',
+  ROS: 'oxidant',
+  MYC: 'TF',
+  BAX: 'apoptosis',
+  TP53: 'TF · guardian',
+  AKT1: 'kinase',
+}
+
+/** Fallback subtitle from the same semantic layer used for canvas depth. */
+function subtitleFor(id: string): string {
+  const u = id.toUpperCase()
+  if (GENE_SUBTITLE[u]) return GENE_SUBTITLE[u]
+  if (KINASE.has(u) || KINASE.has(id)) return 'kinase'
+  if (NUCLEAR.has(u) || NUCLEAR.has(id)) return 'TF · effector'
+  if (SURFACE.has(u) || SURFACE.has(id)) return 'receptor · ligand'
+  return ''
+}
+
 function mixHex(a: string, b: string, t: number): string {
   const parse = (h: string) => [
     parseInt(h.slice(1, 3), 16),
@@ -513,12 +549,16 @@ export function StudioCanvas({
               style: {
                 label: 'data(label)',
                 color: '#F8FAFC',
-                'font-size': 11,
+                'font-size': 9,
                 'font-weight': 600,
                 'font-family': 'Plus Jakarta Sans, Inter, sans-serif',
-                'text-valign': 'top',
-                'text-margin-y': -8,
-                'text-outline-width': 2,
+                'text-valign': 'center',
+                'text-halign': 'center',
+                'text-wrap': 'wrap',
+                'text-max-width': '76px',
+                'line-height': 1.15,
+                'text-margin-y': 4,
+                'text-outline-width': 1.5,
                 'text-outline-color': '#0F172A',
                 'background-color': '#64748B',
                 width: 28,
@@ -618,6 +658,9 @@ export function StudioCanvas({
           userPanningEnabled: true,
           boxSelectionEnabled: false,
           pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+          // Sparse graphs (a handful of nodes) would otherwise let `cy.fit()`
+          // zoom in so far that node labels balloon to an unreadable size.
+          maxZoom: 1.5,
         })
         cyInstance.current = cy
 
@@ -748,13 +791,17 @@ export function StudioCanvas({
           n.toggleClass('knocked-out', isKo)
           n.toggleClass('perturbed', Boolean(isPert && !isKo))
           n.toggleClass('omics-mapped', Boolean(mapped))
-          const label = isKo
+          const symbolLine = isKo
             ? `${id} 🚫`
             : isPert
               ? `${id} ·${pertVal!.toFixed(1)}`
               : mapped
                 ? `${id} ●`
                 : id
+          const subtitle = subtitleFor(id)
+          const label = subtitle
+            ? `${y.toFixed(2)}\n${symbolLine}\n${subtitle}`
+            : `${y.toFixed(2)}\n${symbolLine}`
           n.style({
             'background-color': fill,
             width: 18 + 30 * Math.max(y, isKo ? 0.15 : 0),
@@ -810,7 +857,7 @@ export function StudioCanvas({
                   : inHover
                     ? 0.12 + 0.55 * y
                     : 0.04,
-            'font-size': onPath || selected || mapped || isPert ? 12 : 10,
+            'font-size': onPath || selected || mapped || isPert ? 9.5 : 9,
             label,
             // Progress ring: dim arc = pre-perturbation baseline, bright arc =
             // live/perturbed value — both real trajectory reads, not a fake glow.
@@ -870,6 +917,14 @@ export function StudioCanvas({
             'overlay-opacity': flux > 0.35 && fade > 0.5 ? 0.08 + flux * 0.12 : 0,
             'overlay-color': color,
             'overlay-padding': 2 + flux * 4,
+            label: `V ${flux.toFixed(2)}`,
+            'font-size': 8.5,
+            color,
+            'text-background-color': '#0B1220',
+            'text-background-opacity': fade > 0.5 ? 0.85 : 0,
+            'text-background-padding': '1.5px',
+            'text-background-shape': 'roundrectangle',
+            'text-rotation': 'autorotate',
           })
         })
       })
