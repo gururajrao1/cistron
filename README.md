@@ -20,20 +20,27 @@ Render’s **Free** plan supports native runtimes (Python, Node, static sites) o
 | Service | Runtime | Role |
 | --- | --- | --- |
 | `cistron-api` | Python (Free) | FastAPI + Reactome/STRING proxies |
-| `cistron-ui` | Static (Free) | Built Vite Studio (`VITE_API_BASE` → API URL) |
+| `cistron-ui` | Static (Free) | Built Vite Studio |
 
 **Steps**
 
-1. Delete the failed Blueprint `cistron2` (or create a new one).
-2. Render → **New → Blueprint** → `gururajrao1/cistron` → apply updated `render.yaml`.
-3. Wait for **both** services to go live.
-4. Open the **`cistron-ui`** URL (not only the API).
+1. Delete any failed Blueprint (e.g. `cistron2`).
+2. Render → **New → Blueprint** → `gururajrao1/cistron` → apply `render.yaml`.
+3. Wait until **`cistron-api`** is live → copy its URL  
+   (`https://cistron-api-xxxx.onrender.com`).
+4. Open **`cistron-ui` → Environment** → set  
+   `VITE_API_BASE` = that API URL (**no trailing slash**).
+5. **`cistron-ui` → Manual Deploy → Clear build cache & deploy**.
+6. Open the **`cistron-ui`** URL.
+
+> Why the manual `VITE_API_BASE` step? Vite bakes the API URL at **build** time.  
+> Render Blueprint `fromService` → static site often fails validation / isn’t available at create time (same approach as Render’s official FastAPI + Vite example).
 
 **Notes**
 
 - Free API **sleeps after ~15 min** idle; first request can take ~30–60s.
-- Pathways calls go to `https://<api>/proxy/reactome` and `/proxy/string-db`.
-- `Dockerfile` remains for local Docker / Fly / Hugging Face Spaces (free Docker hosts), not for Render Free.
+- Pathways uses `VITE_API_BASE/proxy/reactome` and `/proxy/string-db`.
+- `Dockerfile` remains for local Docker / Fly / Hugging Face Spaces, **not** Render Free.
 
 ### Local Docker (optional)
 

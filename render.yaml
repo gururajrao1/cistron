@@ -1,37 +1,45 @@
-# Free Render blueprint (NO Docker — Docker web services are paid on Render).
+# Free Render blueprint (native runtimes only — Docker web services are paid).
 # https://render.com/docs/free
 #
 # Creates:
-#   1) cistron-api  — Python FastAPI (Free web service)
-#   2) cistron-ui   — Vite Studio static site (Free)
+#   1) cistron-api — Python FastAPI (Free)
+#   2) cistron-ui  — Vite Studio static site (Free)
 #
-# After deploy: open the cistron-ui URL. First API hit after idle may take ~1 min (spin-up).
+# After first deploy:
+#   1. Copy the cistron-api URL (https://cistron-api-xxxx.onrender.com)
+#   2. In cistron-ui → Environment → set VITE_API_BASE to that URL (no trailing slash)
+#   3. Manual Deploy → Clear build cache & deploy on cistron-ui
+#   4. Open the cistron-ui URL
+#
+# (Render does not reliably wire static-site build env from another service at
+#  Blueprint create time — same pattern as render-examples/full-stack-fastapi-template.)
 
 services:
   - type: web
     name: cistron-api
     runtime: python
     plan: free
-    pythonVersion: "3.11.11"
     buildCommand: pip install -r requirements.txt && pip install -e .
     startCommand: uvicorn cistron.api.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/v1/health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
       - key: PYTHONUNBUFFERED
         value: "1"
 
   - type: web
     name: cistron-ui
     runtime: static
-    buildCommand: cd frontend && npm ci && export VITE_API_BASE="https://${VITE_API_HOST}" && npm run build
+    buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Set after API is live, then rebuild UI (required for Vite bake-in).
+      - key: VITE_API_BASE
+        sync: false
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-    envVars:
-      - key: VITE_API_HOST
-        fromService:
-          type: web
-          name: cistron-api
-          property: host
