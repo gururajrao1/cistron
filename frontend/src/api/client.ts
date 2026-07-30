@@ -58,7 +58,8 @@ export async function ensureApiBase(force = false): Promise<string> {
         {
           timeout: 2_500,
         },
-      )      const service = String(data?.service ?? '')
+      )
+      const service = String(data?.service ?? '')
       // Never pin the old VoidSignal listener — it 404s /omics/*.
       if (service.includes('voidsignal')) continue
       if (data?.status === 'ok' && service.includes('cistron')) {
