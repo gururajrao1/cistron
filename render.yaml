@@ -1,13 +1,11 @@
-# Free Render blueprint — ONE native Python web service (no Docker, no static site).
+# Free Render blueprint — ONE native Python web service.
 # https://render.com/docs/free
 #
-# Why one service:
-#   - Docker web services are paid on Render
-#   - Two-service API+static blueprints kept failing validation
-#     (fromService host / sync:false prompts at create time)
-#   - FastAPI already serves frontend/dist when present (same as Dockerfile)
+# IMPORTANT: Delete every other cistron* service on the account first
+# (cistron-api, cistron-ui, cistron-**** Docker). They are still linked to
+# this repo and all redeploy + fail on every push.
 #
-# After deploy: open the single *.onrender.com URL (Studio + /api/v1/*).
+# After deploy: open the single *.onrender.com URL.
 
 services:
   - type: web
@@ -15,8 +13,9 @@ services:
     runtime: python
     plan: free
     buildCommand: bash scripts/render-build.sh
-    startCommand: uvicorn cistron.api.app:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/v1/health
+    startCommand: python -m uvicorn cistron.api.app:app --host 0.0.0.0 --port $PORT
+    # Omit healthCheckPath on Free: cold import of numpy/scipy can exceed
+    # the first health window and mark a working process as failed.
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.11"

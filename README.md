@@ -27,10 +27,12 @@ Research-grade **virtual cellular laboratory** — Hill-cube ODE signalling, mul
 
 **Steps**
 
-1. Delete any failed Blueprint / old `cistron-*` services.
-2. Render → **New → Blueprint** → `gururajrao1/cistron` → apply `render.yaml`.
-3. Wait for **`cistron`** to go live (first build can take several minutes).
-4. Open the single `*.onrender.com` URL — Studio + `/api/v1/health` on the same host.
+1. In Render → **Services**, delete **every** failed `cistron*` row  
+   (`cistron-api`, `cistron-ui`, `cistron-****` Docker, and the failed `cistron`).  
+   They stay Git-linked and **all redeploy on every push**, so one bad leftover breaks the dashboard view.
+2. Delete the old Blueprint (or create a fresh one).
+3. **New → Blueprint** → `gururajrao1/cistron` → apply `render.yaml` (only service: **`cistron`**).
+4. Wait for build (several minutes). Open the single `*.onrender.com` URL.
 
 **Notes**
 
