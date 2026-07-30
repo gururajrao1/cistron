@@ -9,7 +9,7 @@ import {
 } from '../../engine/metabolicBridge'
 import { stepHif1aTranslocation } from '../../components/studio/OrganelleCompartments'
 
-type BottomTab = 'trajectory' | 'organelle' | 'flux'
+type BottomTab = 'trajectory' | 'compare' | 'organelle' | 'flux'
 
 function terminalY(
   nodes: Record<string, number[]> | undefined,
@@ -161,8 +161,105 @@ function FluxTab() {
   )
 }
 
+function CompareTab() {
+  const lab = useLab()
+  const focus = useMemo(() => {
+    const preset = FOCUS_SERIES[lab.profileId] ?? FOCUS_SERIES.hypoxia
+    const fromGraph = lab.nodes.slice(0, 8)
+    return Array.from(new Set([...(preset ?? []), ...fromGraph])).slice(0, 8)
+  }, [lab.profileId, lab.nodes])
+
+  const untreated = lab.untreatedRun
+  const treated = lab.treatedRun
+  const hasBoth = Boolean(untreated && treated)
+
+  return (
+    <div className="h-full overflow-auto p-2">
+      {!hasBoth ? (
+        <p className="px-2 py-4 text-[11px] text-vcl-muted">
+          Apply a knockout or titration, then re-run — baseline (untreated) vs treated trajectories
+          will appear here as Δy at each scrub time.
+        </p>
+      ) : (
+        <>
+          <p className="mb-2 px-1 font-mono text-[10px] text-vcl-dim">
+            Scenario A/B · untreated vs treated at t = {lab.scrubT.toFixed(0)} min
+          </p>
+          <table className="w-full border-collapse text-left font-mono text-[10.5px]">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-[0.1em] text-vcl-dim">
+                <th className="px-2 py-1.5 font-semibold">Species</th>
+                <th className="px-2 py-1.5 font-semibold text-right">Baseline</th>
+                <th className="px-2 py-1.5 font-semibold text-right">Treated</th>
+                <th className="px-2 py-1.5 font-semibold text-right">Δy</th>
+                <th className="px-2 py-1.5 font-semibold text-right">Δ%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {focus.map((sym) => {
+                const i = Math.min(
+                  lab.scrubT,
+                  (untreated!.time_steps.length ?? 1) - 1,
+                  (treated!.time_steps.length ?? 1) - 1,
+                )
+                const u = untreated!.nodes[sym]?.[i] ?? 0
+                const t = treated!.nodes[sym]?.[i] ?? 0
+                const d = t - u
+                const pct = u > 1e-6 ? (d / u) * 100 : 0
+                return (
+                  <tr key={sym} className="border-t border-vcl-border/80 hover:bg-vcl-surface/40">
+                    <td className="px-2 py-1.5 font-semibold text-vcl-text">{sym}</td>
+                    <td className="px-2 py-1.5 text-right text-vcl-muted">{u.toFixed(3)}</td>
+                    <td className="px-2 py-1.5 text-right text-vcl-soft">{t.toFixed(3)}</td>
+                    <td
+                      className={clsx(
+                        'px-2 py-1.5 text-right',
+                        d < -0.02
+                          ? 'text-coral-action'
+                          : d > 0.02
+                            ? 'text-emerald-active'
+                            : 'text-vcl-dim',
+                      )}
+                    >
+                      {d >= 0 ? '+' : ''}
+                      {d.toFixed(3)}
+                    </td>
+                    <td
+                      className={clsx(
+                        'px-2 py-1.5 text-right',
+                        pct < -2
+                          ? 'text-coral-action'
+                          : pct > 2
+                            ? 'text-emerald-active'
+                            : 'text-vcl-dim',
+                      )}
+                    >
+                      {pct >= 0 ? '+' : ''}
+                      {pct.toFixed(1)}%
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <div className="mt-2 px-1">
+            <TrajectoryChart
+              untreatedRun={untreated}
+              treatedRun={treated}
+              focus={focus.slice(0, 4)}
+              scrubT={lab.scrubT}
+              loading={lab.busy}
+              compact
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 /**
- * Persistent bottom analysis dock — Time-Series / Organelle / Metabolic tabs + scrub.
+ * Persistent bottom analysis dock — Time-Series / Compare / Organelle / Metabolic tabs + scrub.
  */
 export function BottomAnalysisDock() {
   const lab = useLab()
@@ -176,6 +273,7 @@ export function BottomAnalysisDock() {
 
   const tabs: { id: BottomTab; label: string }[] = [
     { id: 'trajectory', label: 'Time-Series Trajectory' },
+    { id: 'compare', label: 'Scenario A/B' },
     { id: 'organelle', label: 'Organelle Translocation' },
     { id: 'flux', label: 'Metabolic Flux (FBA)' },
   ]
@@ -231,6 +329,7 @@ export function BottomAnalysisDock() {
             />
           </div>
         ) : null}
+        {tab === 'compare' ? <CompareTab /> : null}
         {tab === 'organelle' ? <OrganelleTab /> : null}
         {tab === 'flux' ? <FluxTab /> : null}
       </div>

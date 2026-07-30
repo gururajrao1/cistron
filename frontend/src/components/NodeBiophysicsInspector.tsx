@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState } from 'react'
-import { Ban, Box, Crosshair, Loader2, X } from 'lucide-react'
+import { Ban, Box, Crosshair, GitBranch, Loader2, X } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import { GeneBadge, MetaLabel, SparkBar } from './ui'
 import { fetchProteinMeta } from '../api/client'
@@ -376,6 +376,21 @@ export function NodeBiophysicsInspector({
             >
               <Box className="h-3.5 w-3.5" />
               Open 3D Structure
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  sessionStorage.setItem('cistron.combo.focus', activeNode)
+                } catch {
+                  /* ignore */
+                }
+                navigate('/combinations')
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-violet-hub/40 bg-violet-950/40 px-3 py-2 text-[11px] font-semibold text-violet-100 hover:bg-violet-900/40"
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+              Add to Combos
             </button>
           </div>
         </GlassCard>

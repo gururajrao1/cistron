@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Network, Play, Timer } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { ProvenanceBadge, SOURCE_COLORS } from '../components/ProvenanceBadge'
+import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
 import { fetchKnowledgeSources, fetchSourceSituations } from '../api/client'
 import { useLab } from '../lab/LabContext'
 import { ALL_KNOWLEDGE_SOURCES } from '../api/types'
@@ -75,13 +76,16 @@ export function ExplorerView() {
 
   return (
     <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4">
-      <div>
-        <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-          Dynamic Query & Network Builder
-        </h1>
-        <p className="text-sm text-slate-500">
-          Multi-source knowledge search · consensus fusion · τ parameterization
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
+            Dynamic Query & Network Builder
+          </h1>
+          <p className="text-sm text-slate-500">
+            Multi-source knowledge search · consensus fusion · τ parameterization
+          </p>
+        </div>
+        <ApplyToStudioButton disabled={!lab.graph} busy={lab.busy} />
       </div>
 
       <GlassCard title="Knowledge Sources" hint="Toggle databases included in resolve_multisource_network">

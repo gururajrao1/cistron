@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { Play } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
+import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
 import { useLab } from '../lab/LabContext'
 
 function occupancy(c: number, ki: number): number {
@@ -78,14 +79,24 @@ export function PharmacologyView() {
             {nodes.length} nodes
           </p>
         </div>
-        <button
-          type="button"
-          disabled={!lab.engineLive || lab.busy}
-          onClick={applyAndRun}
-          className="inline-flex items-center gap-2 rounded-xl bg-coral-action px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-        >
-          <Play className="h-4 w-4" /> Apply & Resimulate
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!lab.engineLive || lab.busy}
+            onClick={applyAndRun}
+            className="inline-flex items-center gap-2 rounded-xl bg-coral-action px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          >
+            <Play className="h-4 w-4" /> Apply & Resimulate
+          </button>
+          <ApplyToStudioButton
+            label="Apply → Studio"
+            disabled={!lab.engineLive || lab.busy}
+            busy={lab.busy}
+            onBeforeNavigate={async () => {
+              applyAndRun()
+            }}
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

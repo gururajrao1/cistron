@@ -15,6 +15,7 @@ import { NodeBiophysicsInspector } from '../components/NodeBiophysicsInspector'
 import { BottomAnalysisDock } from './vcl/BottomAnalysisDock'
 import { RightInspectorDock } from './vcl/RightInspectorDock'
 import { CommandPalette } from './vcl/CommandPalette'
+import { FirstRunChecklist } from '../components/studio/FirstRunChecklist'
 import { useLab } from '../lab/LabContext'
 
 /** Catch canvas/runtime errors so Studio never blanks the whole shell. */
@@ -210,6 +211,7 @@ export function AppShell() {
       ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {isStudio ? <FirstRunChecklist /> : null}
     </div>
   )
 }

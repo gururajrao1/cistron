@@ -16,6 +16,7 @@ import { Loader2, Radar } from 'lucide-react'
 import { GlassCard } from '../GlassCard'
 import { ScientistPanel } from '../ScientistPanel'
 import { TopologyPanel } from '../TopologyPanel'
+import { ApplyToStudioButton } from './ApplyToStudioButton'
 import { useLab } from '../../lab/LabContext'
 import {
   computeSensitivityXAI,
@@ -105,15 +106,18 @@ export function XAIWorkspace() {
             Sobol Sᵢ / S_Ti · SHAP-force kinetic parameters · GAT prioritization
           </p>
         </div>
-        <button
-          type="button"
-          disabled={!lab.graph || busy}
-          onClick={runSobol}
-          className="inline-flex items-center gap-2 rounded-xl border border-cyan-flux/40 bg-cyan-950/40 px-4 py-2.5 text-sm font-bold text-cyan-100 disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
-          Run Sobol / SHAP-force
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!lab.graph || busy}
+            onClick={runSobol}
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-flux/40 bg-cyan-950/40 px-4 py-2.5 text-sm font-bold text-cyan-100 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
+            Run Sobol / SHAP-force
+          </button>
+          <ApplyToStudioButton disabled={!lab.graph} />
+        </div>
       </div>
 
       {status ? <p className="text-[11px] text-cyan-200/90">{status}</p> : null}

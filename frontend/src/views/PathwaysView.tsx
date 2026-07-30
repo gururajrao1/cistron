@@ -12,6 +12,7 @@ import {
 import { clsx } from 'clsx'
 import { GlassCard } from '../components/GlassCard'
 import { GeneBadge, MetaLabel } from '../components/ui'
+import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
 import { useLab } from '../lab/LabContext'
 import {
   searchDiseasePathways,
@@ -358,6 +359,13 @@ export function PathwaysView() {
               <FlaskConical className="h-3.5 w-3.5" />
               Open Simulation Studio
             </button>
+            <div className="pt-1">
+              <ApplyToStudioButton
+                label="Apply → Studio"
+                disabled={!lab.graph || lab.busy}
+                busy={lab.busy}
+              />
+            </div>
           </GlassCard>
 
           <GlassCard className="space-y-2">

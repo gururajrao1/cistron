@@ -5,6 +5,7 @@ import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
 import { HypothesisCardList } from './HypothesisCard'
 import { TopologyPanel } from '../TopologyPanel'
+import { ApplyToStudioButton } from './ApplyToStudioButton'
 import { useLab } from '../../lab/LabContext'
 import {
   runDualKnockoutScreen,
@@ -111,6 +112,12 @@ export function CombosWorkspace() {
             <Play className="h-4 w-4" />
             Server SL scan
           </button>
+          <ApplyToStudioButton
+            disabled={!selected}
+            onBeforeNavigate={() => {
+              if (selected) applyDual(selected)
+            }}
+          />
         </div>
       </div>
 
