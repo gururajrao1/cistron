@@ -1,0 +1,16 @@
+# Free Render.com blueprint — one Web Service for API + Studio UI
+# https://render.com/docs/blueprint-spec
+#
+# 1. Push this repo to GitHub
+# 2. Render Dashboard → New → Blueprint → connect gururajrao1/cistron
+# 3. Deploy. Free tier sleeps after ~15 min idle (first request may take ~1 min).
+
+services:
+  - type: web
+    name: cistron
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"

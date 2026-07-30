@@ -12,27 +12,22 @@ import type {
 } from './types'
 
 /**
- * Visualization-only API client.
- * All ODE / GAT / BioReasoner math stays on FastAPI (`cistron.api.app`).
- *
- * Prefer direct backend URL so the Vite UI works even if the proxy is misconfigured.
- * Override with VITE_API_BASE (e.g. empty string to use the Vite /api proxy).
- *
- * IMPORTANT: Port 8000 may still host a zombie VoidSignal process without /omics.
- * We probe for `cistron-api` at runtime and pin the live base URL.
+ * Prefer VITE_API_BASE when set (including empty string = same-origin deploy).
+ * Otherwise probe localhost candidates for local Studio development.
  */
-const ENV_API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
+const API_BASE_ENV_DEFINED = typeof import.meta.env.VITE_API_BASE === 'string'
+const ENV_API_BASE = API_BASE_ENV_DEFINED
+  ? String(import.meta.env.VITE_API_BASE).trim()
+  : undefined
 
-const API_CANDIDATES: string[] = [
-  ...(ENV_API_BASE ? [ENV_API_BASE] : []),
-  'http://127.0.0.1:8001',
-  'http://127.0.0.1:8000',
-]
+const API_CANDIDATES: string[] = API_BASE_ENV_DEFINED
+  ? [ENV_API_BASE ?? '']
+  : ['http://127.0.0.1:8001', 'http://127.0.0.1:8000']
 
 let resolvedApiBase: string | null = null
 
 export const api = axios.create({
-  baseURL: ENV_API_BASE || 'http://127.0.0.1:8001',
+  baseURL: API_BASE_ENV_DEFINED ? (ENV_API_BASE ?? '') : 'http://127.0.0.1:8001',
   headers: { 'Content-Type': 'application/json' },
   timeout: 60_000,
 })
@@ -55,13 +50,15 @@ export async function ensureApiBase(force = false): Promise<string> {
 
   const tried: string[] = []
   for (const base of API_CANDIDATES) {
-    if (!base || tried.includes(base)) continue
+    if (typeof base !== 'string' || tried.includes(base)) continue
     tried.push(base)
     try {
-      const { data } = await axios.get<HealthResponse>(`${base}${v1}/health`, {
-        timeout: 2_500,
-      })
-      const service = String(data?.service ?? '')
+      const { data } = await axios.get<HealthResponse>(
+        base === '' ? `${v1}/health` : `${base}${v1}/health`,
+        {
+          timeout: 2_500,
+        },
+      )      const service = String(data?.service ?? '')
       // Never pin the old VoidSignal listener — it 404s /omics/*.
       if (service.includes('voidsignal')) continue
       if (data?.status === 'ok' && service.includes('cistron')) {

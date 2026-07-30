@@ -8,6 +8,41 @@ Research-grade **virtual cellular laboratory** — Hill-cube ODE signalling, mul
 
 ---
 
+## Deploy (free)
+
+Fully free stack: **one Docker service** serves FastAPI + the built Studio SPA.
+
+| Piece | Free option |
+| --- | --- |
+| Hosting | [Render](https://render.com) free Web Service (or Railway / Fly.io free allowance) |
+| Container | `Dockerfile` in repo root |
+| Blueprint | `render.yaml` |
+
+### Render (recommended)
+
+1. Create a free account at https://render.com (GitHub login).
+2. **New → Blueprint** → select `gururajrao1/cistron` (or your fork).
+3. Apply `render.yaml` → deploy.
+4. Open the `.onrender.com` URL. Health: `/api/v1/health`.
+
+**Notes**
+
+- Free instances **sleep after ~15 minutes** idle; the first hit can take 30–60s to wake.
+- Pathways uses same-origin proxies `/proxy/reactome` and `/proxy/string-db` (no paid CORS gateway).
+- Local Docker: `docker build -t cistron . && docker run -p 8000:8000 -e PORT=8000 cistron`
+
+### Local production-like run
+
+```bash
+cd frontend && npm ci && set VITE_API_BASE=&& npm run build && cd ..
+pip install -e ".[api]"
+python -m uvicorn cistron.api.app:app --host 0.0.0.0 --port 8000
+```
+
+Then open http://127.0.0.1:8000
+
+---
+
 ## Quick start
 
 ### 1. API (prefer port **8001**)

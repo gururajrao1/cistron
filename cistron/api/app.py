@@ -17,7 +17,10 @@ import traceback
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+import httpx
 
 from cistron.ai import prioritize
 from cistron.ai.scientist import generate_scientist_reasoning, snapshot_state_summary
@@ -986,7 +989,65 @@ def create_app() -> FastAPI:
     _register_routes(v1)
     app.include_router(v1)
 
+    # Browser CORS bypass for Reactome / STRING (used by production SPA).
+    @app.api_route("/proxy/reactome/{path:path}", methods=["GET", "POST", "OPTIONS"])
+    async def proxy_reactome(path: str, request: Request) -> Response:
+        return await _proxy_upstream(f"https://reactome.org/{path}", request)
+
+    @app.api_route("/proxy/string-db/{path:path}", methods=["GET", "POST", "OPTIONS"])
+    async def proxy_string(path: str, request: Request) -> Response:
+        return await _proxy_upstream(f"https://string-db.org/{path}", request)
+
+    # Optional: serve Vite build from the same process (Render / Docker free deploy).
+    dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    if dist.is_dir():
+        assets = dist / "assets"
+        if assets.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets), name="assets")
+
+        @app.get("/{full_path:path}")
+        async def spa_fallback(full_path: str):
+            if full_path.startswith(("api/", "proxy/", "health", "presets", "simulate")):
+                raise HTTPException(status_code=404, detail="Not found")
+            index = dist / "index.html"
+            if not index.is_file():
+                raise HTTPException(status_code=404, detail="Frontend not built")
+            return Response(index.read_bytes(), media_type="text/html")
+
     return app
+
+
+async def _proxy_upstream(url: str, request: Request) -> Response:
+    if request.method == "OPTIONS":
+        return Response(status_code=204)
+    q = str(request.url.query)
+    target = f"{url}?{q}" if q else url
+    body = await request.body()
+    headers = {
+        k: v
+        for k, v in request.headers.items()
+        if k.lower() not in {"host", "content-length", "connection"}
+    }
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            upstream = await client.request(
+                request.method,
+                target,
+                content=body if body else None,
+                headers=headers,
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Upstream proxy error: {exc}") from exc
+    excluded = {"content-encoding", "transfer-encoding", "content-length", "connection"}
+    out_headers = {
+        k: v for k, v in upstream.headers.items() if k.lower() not in excluded
+    }
+    return Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        headers=out_headers,
+        media_type=upstream.headers.get("content-type"),
+    )
 
 
 app = create_app()

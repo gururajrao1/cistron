@@ -1,0 +1,9 @@
+# Free alternative: Railway / Fly / local Docker all work with the same Dockerfile.
+# Prefer Render blueprint (render.yaml) for one-click free deploy from GitHub.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[env]
+PYTHONUNBUFFERED = "1"

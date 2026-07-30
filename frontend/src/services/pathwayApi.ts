@@ -46,18 +46,19 @@ const MAX_GENES = 36
 const MAX_EDGES = 80
 const MIN_STRING_SCORE = 0.4
 
+function isLocalViteDev(): boolean {
+  return typeof window !== 'undefined' && /:(5173|4173)$/.test(window.location.host)
+}
+
 function reactomeBase(): string {
-  if (typeof window !== 'undefined' && /:(5173|4173)$/.test(window.location.host)) {
-    return '/reactome/ContentService'
-  }
-  return 'https://reactome.org/ContentService'
+  // Local Vite uses vite.config.ts proxy; production uses FastAPI /proxy/reactome.
+  if (isLocalViteDev()) return '/reactome/ContentService'
+  return '/proxy/reactome/ContentService'
 }
 
 function stringBase(): string {
-  if (typeof window !== 'undefined' && /:(5173|4173)$/.test(window.location.host)) {
-    return '/string-db/api'
-  }
-  return 'https://string-db.org/api'
+  if (isLocalViteDev()) return '/string-db/api'
+  return '/proxy/string-db/api'
 }
 
 /** Lowercase kebab slug for provenance keys — keep short for UI badges. */
