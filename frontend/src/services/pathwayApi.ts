@@ -50,15 +50,26 @@ function isLocalViteDev(): boolean {
   return typeof window !== 'undefined' && /:(5173|4173)$/.test(window.location.host)
 }
 
+/** API origin for production proxies (empty = same-origin). */
+function apiOrigin(): string {
+  const fromEnv = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
+  if (fromEnv) return fromEnv.replace(/\/$/, '')
+  return ''
+}
+
 function reactomeBase(): string {
-  // Local Vite uses vite.config.ts proxy; production uses FastAPI /proxy/reactome.
+  // Local Vite uses vite.config.ts proxy; split/static deploys hit FastAPI /proxy/*.
   if (isLocalViteDev()) return '/reactome/ContentService'
-  return '/proxy/reactome/ContentService'
+  const origin = apiOrigin()
+  return origin
+    ? `${origin}/proxy/reactome/ContentService`
+    : '/proxy/reactome/ContentService'
 }
 
 function stringBase(): string {
   if (isLocalViteDev()) return '/string-db/api'
-  return '/proxy/string-db/api'
+  const origin = apiOrigin()
+  return origin ? `${origin}/proxy/string-db/api` : '/proxy/string-db/api'
 }
 
 /** Lowercase kebab slug for provenance keys — keep short for UI badges. */

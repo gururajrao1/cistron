@@ -10,26 +10,37 @@ Research-grade **virtual cellular laboratory** — Hill-cube ODE signalling, mul
 
 ## Deploy (free)
 
-Fully free stack: **one Docker service** serves FastAPI + the built Studio SPA.
+### Why Render Docker failed
 
-| Piece | Free option |
-| --- | --- |
-| Hosting | [Render](https://render.com) free Web Service (or Railway / Fly.io free allowance) |
-| Container | `Dockerfile` in repo root |
-| Blueprint | `render.yaml` |
+Render’s **Free** plan supports native runtimes (Python, Node, static sites) only.  
+**Docker web services require a paid plan** — so a Blueprint with `runtime: docker` will keep failing with “Create web service … (deploy failed)”.
 
-### Render (recommended)
+### Free Render blueprint (current `render.yaml`)
 
-1. Create a free account at https://render.com (GitHub login).
-2. **New → Blueprint** → select `gururajrao1/cistron` (or your fork).
-3. Apply `render.yaml` → deploy.
-4. Open the `.onrender.com` URL. Health: `/api/v1/health`.
+| Service | Runtime | Role |
+| --- | --- | --- |
+| `cistron-api` | Python (Free) | FastAPI + Reactome/STRING proxies |
+| `cistron-ui` | Static (Free) | Built Vite Studio (`VITE_API_BASE` → API URL) |
+
+**Steps**
+
+1. Delete the failed Blueprint `cistron2` (or create a new one).
+2. Render → **New → Blueprint** → `gururajrao1/cistron` → apply updated `render.yaml`.
+3. Wait for **both** services to go live.
+4. Open the **`cistron-ui`** URL (not only the API).
 
 **Notes**
 
-- Free instances **sleep after ~15 minutes** idle; the first hit can take 30–60s to wake.
-- Pathways uses same-origin proxies `/proxy/reactome` and `/proxy/string-db` (no paid CORS gateway).
-- Local Docker: `docker build -t cistron . && docker run -p 8000:8000 -e PORT=8000 cistron`
+- Free API **sleeps after ~15 min** idle; first request can take ~30–60s.
+- Pathways calls go to `https://<api>/proxy/reactome` and `/proxy/string-db`.
+- `Dockerfile` remains for local Docker / Fly / Hugging Face Spaces (free Docker hosts), not for Render Free.
+
+### Local Docker (optional)
+
+```bash
+docker build -t cistron .
+docker run -p 8000:8000 -e PORT=8000 cistron
+```
 
 ### Local production-like run
 

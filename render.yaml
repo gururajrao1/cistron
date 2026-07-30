@@ -1,16 +1,37 @@
-# Free Render.com blueprint — one Web Service for API + Studio UI
-# https://render.com/docs/blueprint-spec
+# Free Render blueprint (NO Docker — Docker web services are paid on Render).
+# https://render.com/docs/free
 #
-# 1. Push this repo to GitHub
-# 2. Render Dashboard → New → Blueprint → connect gururajrao1/cistron
-# 3. Deploy. Free tier sleeps after ~15 min idle (first request may take ~1 min).
+# Creates:
+#   1) cistron-api  — Python FastAPI (Free web service)
+#   2) cistron-ui   — Vite Studio static site (Free)
+#
+# After deploy: open the cistron-ui URL. First API hit after idle may take ~1 min (spin-up).
 
 services:
   - type: web
-    name: cistron
-    runtime: docker
+    name: cistron-api
+    runtime: python
     plan: free
+    pythonVersion: "3.11.11"
+    buildCommand: pip install -r requirements.txt && pip install -e .
+    startCommand: uvicorn cistron.api.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/v1/health
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+
+  - type: web
+    name: cistron-ui
+    runtime: static
+    buildCommand: cd frontend && npm ci && export VITE_API_BASE="https://${VITE_API_HOST}" && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_HOST
+        fromService:
+          type: web
+          name: cistron-api
+          property: host
