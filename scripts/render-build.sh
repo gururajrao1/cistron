@@ -20,7 +20,8 @@ fi
 export PATH="${NODE_DIR}/bin:${PATH}"
 (
   cd frontend
-  npm ci
+  # Prefer npm ci; fall back to npm install when lockfile drifts (Render Node != local).
+  npm ci || npm install
   VITE_API_BASE= npm run build
 )
 ui_status=$?
