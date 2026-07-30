@@ -10,36 +10,32 @@ Research-grade **virtual cellular laboratory** — Hill-cube ODE signalling, mul
 
 ## Deploy (free)
 
-### Why Render Docker failed
+### Why earlier Blueprints failed
 
-Render’s **Free** plan supports native runtimes (Python, Node, static sites) only.  
-**Docker web services require a paid plan** — so a Blueprint with `runtime: docker` will keep failing with “Create web service … (deploy failed)”.
+| Attempt | Why it failed |
+| --- | --- |
+| Docker web service | **Paid** on Render — Free only allows native runtimes |
+| Python API + static UI + `fromService`/`sync:false` | Blueprint validation / create-time env wiring keeps failing |
 
 ### Free Render blueprint (current `render.yaml`)
 
-| Service | Runtime | Role |
-| --- | --- | --- |
-| `cistron-api` | Python (Free) | FastAPI + Reactome/STRING proxies |
-| `cistron-ui` | Static (Free) | Built Vite Studio |
+**One** Free Python web service named `cistron`:
+
+1. Build installs Node, runs `frontend` Vite build with **same-origin** `VITE_API_BASE=`
+2. Installs the Python package
+3. `uvicorn` serves API **and** the built Studio from `frontend/dist`
 
 **Steps**
 
-1. Delete any failed Blueprint (e.g. `cistron2`).
+1. Delete any failed Blueprint / old `cistron-*` services.
 2. Render → **New → Blueprint** → `gururajrao1/cistron` → apply `render.yaml`.
-3. Wait until **`cistron-api`** is live → copy its URL  
-   (`https://cistron-api-xxxx.onrender.com`).
-4. Open **`cistron-ui` → Environment** → set  
-   `VITE_API_BASE` = that API URL (**no trailing slash**).
-5. **`cistron-ui` → Manual Deploy → Clear build cache & deploy**.
-6. Open the **`cistron-ui`** URL.
-
-> Why the manual `VITE_API_BASE` step? Vite bakes the API URL at **build** time.  
-> Render Blueprint `fromService` → static site often fails validation / isn’t available at create time (same approach as Render’s official FastAPI + Vite example).
+3. Wait for **`cistron`** to go live (first build can take several minutes).
+4. Open the single `*.onrender.com` URL — Studio + `/api/v1/health` on the same host.
 
 **Notes**
 
-- Free API **sleeps after ~15 min** idle; first request can take ~30–60s.
-- Pathways uses `VITE_API_BASE/proxy/reactome` and `/proxy/string-db`.
+- Free instances **sleep after ~15 min** idle; first request can take ~30–60s.
+- Pathways uses same-origin `/proxy/reactome` and `/proxy/string-db`.
 - `Dockerfile` remains for local Docker / Fly / Hugging Face Spaces, **not** Render Free.
 
 ### Local Docker (optional)

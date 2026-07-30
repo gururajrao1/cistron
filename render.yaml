@@ -1,25 +1,20 @@
-# Free Render blueprint (native runtimes only — Docker web services are paid).
+# Free Render blueprint — ONE native Python web service (no Docker, no static site).
 # https://render.com/docs/free
 #
-# Creates:
-#   1) cistron-api — Python FastAPI (Free)
-#   2) cistron-ui  — Vite Studio static site (Free)
+# Why one service:
+#   - Docker web services are paid on Render
+#   - Two-service API+static blueprints kept failing validation
+#     (fromService host / sync:false prompts at create time)
+#   - FastAPI already serves frontend/dist when present (same as Dockerfile)
 #
-# After first deploy:
-#   1. Copy the cistron-api URL (https://cistron-api-xxxx.onrender.com)
-#   2. In cistron-ui → Environment → set VITE_API_BASE to that URL (no trailing slash)
-#   3. Manual Deploy → Clear build cache & deploy on cistron-ui
-#   4. Open the cistron-ui URL
-#
-# (Render does not reliably wire static-site build env from another service at
-#  Blueprint create time — same pattern as render-examples/full-stack-fastapi-template.)
+# After deploy: open the single *.onrender.com URL (Studio + /api/v1/*).
 
 services:
   - type: web
-    name: cistron-api
+    name: cistron
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && pip install -e .
+    buildCommand: bash scripts/render-build.sh
     startCommand: uvicorn cistron.api.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/v1/health
     envVars:
@@ -27,19 +22,5 @@ services:
         value: "3.11.11"
       - key: PYTHONUNBUFFERED
         value: "1"
-
-  - type: web
-    name: cistron-ui
-    runtime: static
-    buildCommand: cd frontend && npm ci && npm run build
-    staticPublishPath: frontend/dist
-    envVars:
       - key: NODE_VERSION
-        value: "22"
-      # Set after API is live, then rebuild UI (required for Vite bake-in).
-      - key: VITE_API_BASE
-        sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+        value: "22.16.0"
