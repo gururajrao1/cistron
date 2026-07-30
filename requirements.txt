@@ -1,5 +1,6 @@
 # Optional lockfile for native Render Python builds (mirrors pyproject extras).
 fastapi>=0.110
+python-multipart>=0.0.9
 httpx>=0.27
 uvicorn>=0.27
 aiohttp>=3.9

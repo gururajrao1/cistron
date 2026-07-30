@@ -33,6 +33,7 @@ dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
     "fastapi>=0.110",
+    "python-multipart>=0.0.9",
     "httpx>=0.27",
     "aiohttp>=3.9",
     "uvicorn>=0.27",
@@ -41,7 +42,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 ui = ["streamlit>=1.28", "plotly>=5.18"]
-api = ["fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.27"]
+api = ["fastapi>=0.110", "python-multipart>=0.0.9", "httpx>=0.27", "uvicorn>=0.27"]
 all = ["cistron[dev,ui,api]"]
 
 [project.scripts]
