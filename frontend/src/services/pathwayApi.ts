@@ -46,10 +46,6 @@ const MAX_GENES = 36
 const MAX_EDGES = 80
 const MIN_STRING_SCORE = 0.4
 
-function isLocalViteDev(): boolean {
-  return typeof window !== 'undefined' && /:(5173|4173)$/.test(window.location.host)
-}
-
 /** API origin for production proxies (empty = same-origin). */
 function apiOrigin(): string {
   const fromEnv = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
@@ -57,9 +53,8 @@ function apiOrigin(): string {
   return ''
 }
 
+/** Always use /proxy/* — Vite and FastAPI both expose these paths. */
 function reactomeBase(): string {
-  // Local Vite uses vite.config.ts proxy; split/static deploys hit FastAPI /proxy/*.
-  if (isLocalViteDev()) return '/reactome/ContentService'
   const origin = apiOrigin()
   return origin
     ? `${origin}/proxy/reactome/ContentService`
@@ -67,7 +62,6 @@ function reactomeBase(): string {
 }
 
 function stringBase(): string {
-  if (isLocalViteDev()) return '/string-db/api'
   const origin = apiOrigin()
   return origin ? `${origin}/proxy/string-db/api` : '/proxy/string-db/api'
 }
@@ -325,7 +319,18 @@ async function fetchReactomePathwayEntries(
     if (res.status === 404) return []
     throw new Error(`Reactome search failed (${res.status})`)
   }
-  const body = (await res.json()) as ReactomeSearchResponse
+  const raw = await res.text()
+  let body: ReactomeSearchResponse
+  try {
+    body = JSON.parse(raw) as ReactomeSearchResponse
+  } catch {
+    const looksHtml = /^\s*</.test(raw)
+    throw new Error(
+      looksHtml
+        ? 'Reactome proxy returned HTML instead of JSON (check /proxy/reactome)'
+        : 'Reactome returned invalid JSON',
+    )
+  }
   const entries: ReactomeSearchEntry[] = []
   for (const group of body.results ?? []) {
     for (const entry of group.entries ?? []) entries.push(entry)

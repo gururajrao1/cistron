@@ -989,13 +989,22 @@ def create_app() -> FastAPI:
     _register_routes(v1)
     app.include_router(v1)
 
-    # Browser CORS bypass for Reactome / STRING (used by production SPA).
+    # Browser CORS bypass for Reactome / STRING (production SPA + Vite /proxy aliases).
     @app.api_route("/proxy/reactome/{path:path}", methods=["GET", "POST", "OPTIONS"])
     async def proxy_reactome(path: str, request: Request) -> Response:
         return await _proxy_upstream(f"https://reactome.org/{path}", request)
 
     @app.api_route("/proxy/string-db/{path:path}", methods=["GET", "POST", "OPTIONS"])
     async def proxy_string(path: str, request: Request) -> Response:
+        return await _proxy_upstream(f"https://string-db.org/{path}", request)
+
+    # Vite-dev path aliases — prevent SPA fallback from returning index.html as "JSON".
+    @app.api_route("/reactome/{path:path}", methods=["GET", "POST", "OPTIONS"])
+    async def proxy_reactome_alias(path: str, request: Request) -> Response:
+        return await _proxy_upstream(f"https://reactome.org/{path}", request)
+
+    @app.api_route("/string-db/{path:path}", methods=["GET", "POST", "OPTIONS"])
+    async def proxy_string_alias(path: str, request: Request) -> Response:
         return await _proxy_upstream(f"https://string-db.org/{path}", request)
 
     # Optional: serve Vite build from the same process (Render / Docker free deploy).
@@ -1007,7 +1016,9 @@ def create_app() -> FastAPI:
 
         @app.get("/{full_path:path}")
         async def spa_fallback(full_path: str):
-            if full_path.startswith(("api/", "proxy/", "health", "presets", "simulate")):
+            if full_path.startswith(
+                ("api/", "proxy/", "reactome/", "string-db/", "health", "presets", "simulate")
+            ):
                 raise HTTPException(status_code=404, detail="Not found")
             index = dist / "index.html"
             if not index.is_file():
@@ -1018,16 +1029,28 @@ def create_app() -> FastAPI:
 
 
 async def _proxy_upstream(url: str, request: Request) -> Response:
+    """Forward to Reactome/STRING with decompressed JSON/text bodies.
+
+    Never forward the browser's Accept-Encoding. If we pass ``br`` and brotli
+    isn't installed, httpx returns raw compressed bytes; stripping
+    Content-Encoding then makes ``res.json()`` blow up in the Studio.
+    """
     if request.method == "OPTIONS":
         return Response(status_code=204)
     q = str(request.url.query)
     target = f"{url}?{q}" if q else url
     body = await request.body()
-    headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in {"host", "content-length", "connection"}
+    skip = {
+        "host",
+        "content-length",
+        "connection",
+        "accept-encoding",
+        "cookie",
+        "transfer-encoding",
     }
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in skip}
+    # Prefer identity so upstream returns plain JSON we can relay as-is.
+    headers["Accept-Encoding"] = "identity"
     try:
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             upstream = await client.request(

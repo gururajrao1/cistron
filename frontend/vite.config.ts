@@ -28,7 +28,19 @@ export default defineConfig({
         target: 'http://127.0.0.1:8001',
         changeOrigin: true,
       },
-      // CORS bypass for live Reactome / STRING interactome construction
+      // Same paths as production FastAPI proxies (CORS bypass).
+      '/proxy/reactome': {
+        target: 'https://reactome.org',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/proxy\/reactome/, ''),
+      },
+      '/proxy/string-db': {
+        target: 'https://string-db.org',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/proxy\/string-db/, ''),
+      },
       '/reactome': {
         target: 'https://reactome.org',
         changeOrigin: true,
