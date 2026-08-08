@@ -92,9 +92,7 @@ export function OmicsUploader() {
     async (file: File | null) => {
       if (!file || uploading) return
       if (!lab.engineLive) {
-        setLocalError(
-          'Cistron API is offline. Start it with: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001',
-        )
+        setLocalError(lab.offlineMessage || 'API offline — wait for reconnect or refresh.')
         return
       }
       setUploading(true)
@@ -107,26 +105,26 @@ export function OmicsUploader() {
         )
         lab.runOmicsProfile(profile)
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Upload failed'
-        setLocalError(
-          msg.includes('404') || msg.toLowerCase().includes('not found')
-            ? `${msg} — is an old VoidSignal process still on :8000? Use Cistron on :8001 (python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001)`
-            : msg,
-        )
+        setLocalError(err instanceof Error ? err.message : 'Upload failed')
       } finally {
         setUploading(false)
       }
     },
-    [uploading, lab.engineLive, lab.runOmicsProfile, sampleName, condition],
+    [
+      uploading,
+      lab.engineLive,
+      lab.offlineMessage,
+      lab.runOmicsProfile,
+      sampleName,
+      condition,
+    ],
   )
 
   const loadExample = useCallback(
     async (kind: 'hypoxia' | 'control') => {
       if (uploading) return
       if (!lab.engineLive) {
-        setLocalError(
-          'Cistron API is offline. Start it with: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001',
-        )
+        setLocalError(lab.offlineMessage || 'API offline — wait for reconnect or refresh.')
         return
       }
       setUploading(true)
@@ -145,17 +143,12 @@ export function OmicsUploader() {
         const profile = await uploadOmicsCsv(blob, nextSample, nextCondition)
         lab.runOmicsProfile(profile)
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Example load failed'
-        setLocalError(
-          msg.includes('404') || msg.toLowerCase().includes('not found')
-            ? `${msg} — restart Cistron API on :8001 (not the old VoidSignal process on :8000)`
-            : msg,
-        )
+        setLocalError(err instanceof Error ? err.message : 'Example load failed')
       } finally {
         setUploading(false)
       }
     },
-    [uploading, lab.engineLive, lab.runOmicsProfile],
+    [uploading, lab.engineLive, lab.offlineMessage, lab.runOmicsProfile],
   )
 
   return (

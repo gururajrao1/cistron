@@ -307,8 +307,14 @@ export function Header({ onOpenPalette }: Props) {
         </div>
       </header>
 
+      {!live && !offlineMessage ? (
+        <div className="flex items-start gap-2 border-b border-vcl-border bg-vcl-surface/80 px-3 py-1.5 text-[11px] text-vcl-muted">
+          <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+          <span>Connecting to API…</span>
+        </div>
+      ) : null}
       {offlineMessage ? (
-        <div className="flex items-start gap-2 border-b border-coral-action/40 bg-coral-action/10 px-3 py-2 text-xs text-red-100">
+        <div className="flex items-start gap-2 border-b border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-50">
           <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>{offlineMessage}</span>
         </div>

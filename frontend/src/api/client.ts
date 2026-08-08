@@ -13,26 +13,57 @@ import type {
 
 /**
  * Prefer VITE_API_BASE when set (including empty string = same-origin deploy).
- * Otherwise probe localhost candidates for local Studio development.
+ * On hosted deploys (Render etc.), always use same-origin — never probe localhost.
+ * Locally, only :8001 (skip :8000 so an old VoidSignal process cannot win).
  */
 const API_BASE_ENV_DEFINED = typeof import.meta.env.VITE_API_BASE === 'string'
 const ENV_API_BASE = API_BASE_ENV_DEFINED
   ? String(import.meta.env.VITE_API_BASE).trim()
   : undefined
 
-const API_CANDIDATES: string[] = API_BASE_ENV_DEFINED
-  ? [ENV_API_BASE ?? '']
-  : ['http://127.0.0.1:8001', 'http://127.0.0.1:8000']
+const v1 = '/api/v1'
+
+function isBrowserLocalHost(): boolean {
+  if (typeof window === 'undefined') return true
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]'
+}
+
+/** True on Render / production SPA — free tiers need longer cold-start probes. */
+function isHostedDeploy(): boolean {
+  return typeof window !== 'undefined' && !isBrowserLocalHost()
+}
+
+function apiCandidates(): string[] {
+  if (API_BASE_ENV_DEFINED) return [ENV_API_BASE ?? '']
+  if (isHostedDeploy()) return ['']
+  return ['http://127.0.0.1:8001']
+}
+
+function offlineHelp(): string {
+  if (isHostedDeploy()) {
+    return 'API is waking up or unreachable. Wait ~30s and refresh (free hosts sleep when idle).'
+  }
+  return 'Start the API: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001'
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
 
 let resolvedApiBase: string | null = null
 
 export const api = axios.create({
-  baseURL: API_BASE_ENV_DEFINED ? (ENV_API_BASE ?? '') : 'http://127.0.0.1:8001',
+  baseURL: API_BASE_ENV_DEFINED
+    ? (ENV_API_BASE ?? '')
+    : isHostedDeploy()
+      ? ''
+      : 'http://127.0.0.1:8001',
   headers: { 'Content-Type': 'application/json' },
   timeout: 60_000,
 })
-
-const v1 = '/api/v1'
 
 export class ApiOfflineError extends Error {
   constructor(message = 'Cistron API is offline') {
@@ -41,41 +72,47 @@ export class ApiOfflineError extends Error {
   }
 }
 
-/** Probe localhost candidates and lock onto a live `cistron-api` process. */
+function isCistronHealth(data: HealthResponse | undefined): boolean {
+  if (!data || data.status !== 'ok') return false
+  const service = String(data.service ?? '').toLowerCase()
+  if (service.includes('voidsignal')) return false
+  // Accept cistron-api, or a bare ok on same-origin deploys.
+  return !service || service.includes('cistron')
+}
+
+/** Probe candidates and lock onto a live `cistron-api` process. */
 export async function ensureApiBase(force = false): Promise<string> {
-  if (resolvedApiBase && !force) {
+  if (resolvedApiBase !== null && !force) {
     api.defaults.baseURL = resolvedApiBase
     return resolvedApiBase
   }
 
-  const tried: string[] = []
-  for (const base of API_CANDIDATES) {
-    if (typeof base !== 'string' || tried.includes(base)) continue
-    tried.push(base)
-    try {
-      const { data } = await axios.get<HealthResponse>(
-        base === '' ? `${v1}/health` : `${base}${v1}/health`,
-        {
-          timeout: 2_500,
-        },
-      )
-      const service = String(data?.service ?? '')
-      // Never pin the old VoidSignal listener — it 404s /omics/*.
-      if (service.includes('voidsignal')) continue
-      if (data?.status === 'ok' && service.includes('cistron')) {
-        resolvedApiBase = base.replace(/\/$/, '')
-        api.defaults.baseURL = resolvedApiBase
-        return resolvedApiBase
+  const candidates = apiCandidates()
+  const hosted = isHostedDeploy()
+  const timeoutMs = hosted ? 15_000 : 3_000
+  const rounds = hosted ? 5 : 2
+
+  for (let round = 0; round < rounds; round++) {
+    for (const base of candidates) {
+      if (typeof base !== 'string') continue
+      try {
+        const { data } = await axios.get<HealthResponse>(
+          base === '' ? `${v1}/health` : `${base.replace(/\/$/, '')}${v1}/health`,
+          { timeout: timeoutMs },
+        )
+        if (isCistronHealth(data)) {
+          resolvedApiBase = base.replace(/\/$/, '')
+          api.defaults.baseURL = resolvedApiBase
+          return resolvedApiBase
+        }
+      } catch {
+        // try next / retry round (cold start)
       }
-    } catch {
-      // try next candidate
     }
+    if (round < rounds - 1) await sleep(hosted ? 2_500 * (round + 1) : 400)
   }
 
-  throw new ApiOfflineError(
-    'Cannot find a live Cistron API. Start: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001 ' +
-      '(avoid :8000 — it may still be the old VoidSignal process)',
-  )
+  throw new ApiOfflineError(offlineHelp())
 }
 
 /** Human-readable errors when FastAPI is down or returns 4xx/5xx. */
@@ -85,17 +122,17 @@ export function formatApiError(err: unknown): string {
     const ax = err as AxiosError<{ detail?: string | { msg?: string }[] }>
     if (!ax.response) {
       if (ax.code === 'ECONNABORTED') {
-        return 'API request timed out. Is uvicorn running on http://127.0.0.1:8001?'
+        return isHostedDeploy()
+          ? 'API timed out while waking up — refresh in a few seconds.'
+          : 'API request timed out. Is uvicorn running on http://127.0.0.1:8001?'
       }
-      return (
-        'Cannot reach Cistron API. Start: python -m uvicorn cistron.api.app:app --host 127.0.0.1 --port 8001'
-      )
+      return offlineHelp()
     }
     const detail = ax.response.data?.detail
     if (ax.response.status === 404) {
-      const hint =
-        'Wrong backend (old VoidSignal on :8000 has no /omics). ' +
-        'Hard-refresh the page; API must be cistron-api on :8001.'
+      const hint = isHostedDeploy()
+        ? 'API route missing — redeploy the latest build.'
+        : 'API route missing. Use Cistron on :8001 (not an old process on :8000).'
       if (typeof detail === 'string' && detail.trim()) return `${detail} — ${hint}`
       return hint
     }

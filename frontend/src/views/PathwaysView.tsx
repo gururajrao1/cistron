@@ -336,7 +336,9 @@ export function PathwaysView() {
               <p className="text-[12px] text-slate-500">Waiting for a disease query…</p>
             )}
             {!lab.engineLive ? (
-              <p className="text-[11px] text-red-200">API offline — start uvicorn on :8001</p>
+              <p className="text-[11px] text-amber-200/90">
+                {lab.offlineMessage || 'Connecting to API…'}
+              </p>
             ) : null}
           </GlassCard>
 

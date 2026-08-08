@@ -209,7 +209,9 @@ export function LabProvider({ children }: { children: ReactNode }) {
       return data
     },
     refetchInterval: () => (simBusyRef.current ? false : 15_000),
-    retry: 1,
+    // Hosted free tiers need several attempts while the dyno wakes.
+    retry: 4,
+    retryDelay: (n) => Math.min(1_500 * 2 ** n, 10_000),
   })
 
   const suggestionsQ = useQuery({
