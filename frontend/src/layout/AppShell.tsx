@@ -135,13 +135,33 @@ export function AppShell() {
         <SidebarNav collapsed onToggle={() => undefined} />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <main className="relative min-h-0 flex-1 overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-30" />
-            <div className="relative h-full min-h-0 overflow-hidden">
-              <StudioErrorBoundary>
-                <Outlet />
-              </StudioErrorBoundary>
-            </div>
+          {/* Studio fills the stage; other routes must scroll or the bottom clips. */}
+          <main
+            className={
+              isStudio
+                ? 'relative min-h-0 flex-1 overflow-hidden'
+                : 'relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto'
+            }
+          >
+            {isStudio ? (
+              <>
+                <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-30" />
+                <div className="relative h-full min-h-0 overflow-hidden">
+                  <StudioErrorBoundary>
+                    <Outlet />
+                  </StudioErrorBoundary>
+                </div>
+              </>
+            ) : (
+              <div className="relative min-h-full bg-obsidian/40">
+                <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-30" />
+                <div className="relative pb-8">
+                  <StudioErrorBoundary>
+                    <Outlet />
+                  </StudioErrorBoundary>
+                </div>
+              </div>
+            )}
           </main>
 
           {isStudio ? (

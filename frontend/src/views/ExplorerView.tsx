@@ -75,9 +75,9 @@ export function ExplorerView() {
         : 'Enable a source to see situations'
 
   return (
-    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4">
+    <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-4 p-4 md:p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
             Dynamic Query & Network Builder
           </h1>
@@ -218,38 +218,45 @@ export function ExplorerView() {
         </div>
       </GlassCard>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <GlassCard title="Resolved Topology" hint="Nodes · edges · provenance badges">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <GlassCard
+          className="flex min-h-[24rem] flex-col"
+          title="Resolved Topology"
+          hint="Nodes · edges · provenance badges"
+        >
           {!lab.graph ? (
             <p className="text-sm text-slate-500">No network resolved yet.</p>
           ) : (
-            <>
-              <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-400">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="mb-3 flex shrink-0 flex-wrap gap-3 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-1.5">
                   <Network className="h-3.5 w-3.5 text-emerald-active" />
                   {Object.keys(nodes).length} nodes · {edges.length} edges
                 </span>
-                <span className="font-mono text-slate-500">{lab.graph.id}</span>
+                <span className="break-all font-mono text-slate-500">{lab.graph.id}</span>
               </div>
-              <div className="max-h-72 overflow-auto rounded-xl border border-slate-800">
-                <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-slate-950 text-slate-500">
+              <div className="min-h-[14rem] flex-1 overflow-auto rounded-xl border border-slate-800">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead className="sticky top-0 z-[1] bg-slate-950 text-slate-500 shadow-[0_1px_0_0_#1e293b]">
                     <tr>
-                      <th className="px-2 py-2">Source</th>
-                      <th className="px-2 py-2">Target</th>
-                      <th className="px-2 py-2">Sign</th>
-                      <th className="px-2 py-2">Provenance</th>
+                      <th className="px-2.5 py-2 font-semibold">Source</th>
+                      <th className="px-2.5 py-2 font-semibold">Target</th>
+                      <th className="px-2.5 py-2 font-semibold">Sign</th>
+                      <th className="px-2.5 py-2 font-semibold">Provenance</th>
                     </tr>
                   </thead>
                   <tbody>
                     {edges.map((e, i) => (
-                      <tr key={`${e.source}-${e.target}-${i}`} className="border-t border-slate-800/80">
-                        <td className="px-2 py-1.5 font-semibold text-slate-200">{e.source}</td>
-                        <td className="px-2 py-1.5 text-slate-300">{e.target}</td>
-                        <td className="px-2 py-1.5 font-mono text-emerald-300">
+                      <tr
+                        key={`${e.source}-${e.target}-${i}`}
+                        className="border-t border-slate-800/80 last:border-b-0"
+                      >
+                        <td className="px-2.5 py-2 font-semibold text-slate-200">{e.source}</td>
+                        <td className="px-2.5 py-2 text-slate-300">{e.target}</td>
+                        <td className="px-2.5 py-2 font-mono text-emerald-300">
                           {e.sign > 0 ? '+1' : '−1'}
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2.5 py-2">
                           <div className="flex flex-wrap gap-1">
                             {(e.sources?.length
                               ? e.sources
@@ -266,30 +273,34 @@ export function ExplorerView() {
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
         </GlassCard>
 
-        <GlassCard title="Kinetic Parameterizer" hint="τ enzymatic 1 min · transcriptional 120 min">
+        <GlassCard
+          className="flex min-h-[24rem] flex-col"
+          title="Kinetic Parameterizer"
+          hint="τ enzymatic 1 min · transcriptional 120 min"
+        >
           {!lab.graph ? (
             <p className="text-sm text-slate-500">Resolve a network to edit latencies.</p>
           ) : (
-            <div className="max-h-72 space-y-2 overflow-auto">
+            <div className="mb-4 min-h-[14rem] flex-1 space-y-2 overflow-auto pr-0.5">
               {Object.entries(nodes)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([sym, n]) => (
                   <div
                     key={sym}
-                    className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2.5 text-xs"
                   >
-                    <div>
-                      <div className="font-semibold text-slate-200">{sym}</div>
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-slate-200">{sym}</div>
                       <div className="text-slate-500">
                         y₀={Number(n.initial_concentration ?? 0.35).toFixed(2)} · w=
                         {Number(n.activity_weight ?? 1).toFixed(2)}
                       </div>
                     </div>
-                    <div className="inline-flex items-center gap-1.5 font-mono text-emerald-300">
+                    <div className="inline-flex shrink-0 items-center gap-1.5 font-mono text-emerald-300">
                       <Timer className="h-3.5 w-3.5" />τ={Number(n.tau_min).toFixed(0)} min
                     </div>
                   </div>
@@ -297,7 +308,7 @@ export function ExplorerView() {
             </div>
           )}
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-auto grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-slate-400">Driver</label>
               <select
