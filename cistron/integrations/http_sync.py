@@ -79,3 +79,35 @@ def cache_or_fetch_json(
     if payload is not None:
         cache.set_json(namespace, key, payload)
     return payload
+
+
+def http_post_json(
+    url: str,
+    payload: Dict[str, Any],
+    *,
+    headers: Optional[Dict[str, str]] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[Any]:
+    """POST JSON; return parsed JSON body or None on failure."""
+    body = json.dumps(payload).encode("utf-8")
+    hdrs = {
+        "User-Agent": _UA,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    if headers:
+        hdrs.update(headers)
+    req = urllib.request.Request(url, data=body, headers=hdrs, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if getattr(resp, "status", 200) >= 400:
+                return None
+            raw = resp.read()
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
+        logger.debug("HTTP POST failed %s: %s", url, exc)
+        return None
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        logger.debug("JSON decode failed for POST %s: %s", url, exc)
+        return None

@@ -229,7 +229,7 @@ class NodeInspectorResponse(BaseModel):
 
 
 class ProteinCardResponse(BaseModel):
-    """Plain-language + UniProt card for a graph node (non-biologist friendly)."""
+    """Plain-language + retrieved knowledge card for a graph node."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -245,6 +245,12 @@ class ProteinCardResponse(BaseModel):
     analogy: Optional[str] = None
     uniprot_url: Optional[str] = None
     alphafold_url: Optional[str] = None
+    entrez_url: Optional[str] = None
+    sources_used: List[str] = Field(default_factory=list)
+    narrative_mode: str = "template"
+    summary: Optional[str] = None
+    type_of_gene: Optional[str] = None
+    entrezgene: Optional[str] = None
 
 
 class ConditionSuggestion(BaseModel):

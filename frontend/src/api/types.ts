@@ -415,6 +415,12 @@ export interface ProteinMeta {
   analogy?: string | null
   uniprot_url?: string | null
   alphafold_url?: string | null
+  entrez_url?: string | null
+  sources_used?: string[]
+  narrative_mode?: string
+  summary?: string | null
+  type_of_gene?: string | null
+  entrezgene?: string | null
 }
 
 export interface LabControls {

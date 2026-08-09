@@ -272,7 +272,7 @@ export function NodeBiophysicsInspector({
             <p className="mt-0.5 truncate text-[11px] text-slate-400">{meta.full_name}</p>
           ) : loadingMeta ? (
             <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
-              <Loader2 className="h-3 w-3 animate-spin" /> Resolving UniProt…
+              <Loader2 className="h-3 w-3 animate-spin" /> Resolving MyGene · UniProt…
             </p>
           ) : null}
         </div>
@@ -289,7 +289,7 @@ export function NodeBiophysicsInspector({
       <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
         <GlassCard
           title="What is this protein?"
-          hint="Plain English · why it matters · role in your network"
+          hint="MyGene · UniProt grounded · optional BioGPT polish"
         >
           {loadingMeta && !meta?.plain_english ? (
             <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -297,6 +297,37 @@ export function NodeBiophysicsInspector({
             </p>
           ) : (
             <div className="space-y-2.5 text-[12px] leading-relaxed text-slate-200">
+              {(meta?.sources_used?.length || meta?.narrative_mode) && (
+                <div className="flex flex-wrap gap-1">
+                  {(meta?.sources_used ?? []).map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full border border-vcl-border bg-vcl-surface px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-vcl-muted"
+                    >
+                      {s.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                  {meta?.narrative_mode ? (
+                    <span
+                      className={
+                        meta.narrative_mode.includes('biogpt') ||
+                        meta.narrative_mode === 'cached' ||
+                        meta.narrative_mode === 'custom_llm'
+                          ? 'rounded-full border border-violet-hub/40 bg-violet-950/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-200'
+                          : 'rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-200/90'
+                      }
+                    >
+                      {meta.narrative_mode.includes('biogpt') || meta.narrative_mode === 'cached'
+                        ? 'BioGPT narrative'
+                        : meta.narrative_mode === 'custom_llm'
+                          ? 'Custom LLM'
+                          : meta.narrative_mode === 'template_curated'
+                            ? 'Curated explainer'
+                            : 'Fact template'}
+                    </span>
+                  ) : null}
+                </div>
+              )}
               <p>{meta?.plain_english || `${activeNode} is a network node in this experiment.`}</p>
               {meta?.analogy ? (
                 <p className="flex gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-50/95">
@@ -346,6 +377,16 @@ export function NodeBiophysicsInspector({
                     className="inline-flex items-center gap-1 rounded-md border border-vcl-border px-2 py-1 text-[10px] font-semibold text-vcl-link hover:bg-vcl-raised"
                   >
                     UniProt <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null}
+                {meta?.entrez_url ? (
+                  <a
+                    href={meta.entrez_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border border-vcl-border px-2 py-1 text-[10px] font-semibold text-vcl-link hover:bg-vcl-raised"
+                  >
+                    NCBI Gene <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : null}
                 {meta?.alphafold_url ? (

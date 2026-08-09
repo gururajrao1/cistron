@@ -40,6 +40,28 @@ Research-grade **virtual cellular laboratory** — Hill-cube ODE signalling, mul
 - Pathways uses same-origin `/proxy/reactome` and `/proxy/string-db`.
 - `Dockerfile` remains for local Docker / Fly / Hugging Face Spaces, **not** Render Free.
 
+### Gene / protein explainers (any symbol)
+
+Clicking a graph node calls `GET /api/v1/proteins/{symbol}` which:
+
+1. **Retrieves facts** from MyGene.info + UniProt (cached) — works for arbitrary human genes with **no API key**
+2. Builds a plain-English card (what / why / network role)
+3. Optionally polishes the narrative with **BioGPT** via Hugging Face Inference when `HF_TOKEN` is set
+
+| Env var | Required? | Purpose |
+| --- | --- | --- |
+| `HF_TOKEN` | No | Hugging Face token → BioGPT narrative on Render |
+| `HF_BIOMED_MODEL` | No | Default `microsoft/biogpt` |
+| `HF_INFERENCE_URL` | No | Override HF inference endpoint |
+| `BIOMED_LLM_URL` | No | Point at your own TGI/vLLM/OpenAI-compatible GPU host |
+
+Do **not** load BioGPT/BioBERT weights inside the free Render web dyno (OOM). Models run on HF GPUs or a separate paid GPU service.
+
+```bash
+# Render → cistron → Environment
+HF_TOKEN=hf_xxx
+```
+
 ### Local Docker (optional)
 
 ```bash

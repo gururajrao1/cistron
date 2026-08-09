@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence
 
+from cistron.api.biomed_llm import generate_biomed_narrative
 
-# Short lay explanations for frequent cancer / signaling genes (offline-first).
+
+# Short lay explanations for frequent cancer / signaling genes (boosters only).
 _LAY: Dict[str, Dict[str, str]] = {
     "HMGA1": {
         "plain": (
@@ -136,6 +138,18 @@ def _clean_sentences(text: str, *, max_chars: int = 420) -> str:
     return (cut or t[: max_chars - 1]) + "…"
 
 
+def _normalize_diseases(diseases_raw: Any) -> List[str]:
+    diseases: List[str] = []
+    for d in diseases_raw or []:
+        if isinstance(d, str) and d.strip():
+            diseases.append(d.strip())
+        elif isinstance(d, dict):
+            name = d.get("disease") or d.get("name") or d.get("value")
+            if name:
+                diseases.append(str(name))
+    return diseases[:12]
+
+
 def build_protein_card(
     symbol: str,
     meta: Dict[str, Any],
@@ -144,8 +158,9 @@ def build_protein_card(
     upstream: Optional[Sequence[str]] = None,
     downstream: Optional[Sequence[str]] = None,
     delta_y: Optional[float] = None,
+    use_llm: bool = True,
 ) -> Dict[str, Any]:
-    """Assemble identifiers + lay explanations for the node inspector."""
+    """Assemble identifiers + fact-grounded explanations for the node inspector."""
     sym = symbol.strip().upper() or symbol
     up = [u for u in (upstream or []) if u]
     down = [d for d in (downstream or []) if d]
@@ -154,35 +169,41 @@ def build_protein_card(
     full_name = str(meta.get("full_name") or "") or None
     localization = str(meta.get("localization") or "") or None
     function = str(meta.get("function") or "") or None
-    diseases_raw = meta.get("diseases") or []
-    diseases: List[str] = []
-    for d in diseases_raw:
-        if isinstance(d, str) and d.strip():
-            diseases.append(d.strip())
-        elif isinstance(d, dict):
-            name = d.get("disease") or d.get("name") or d.get("value")
-            if name:
-                diseases.append(str(name))
+    summary = str(meta.get("summary") or "") or None
+    diseases = _normalize_diseases(meta.get("diseases"))
+    sources_used = [str(s) for s in (meta.get("sources_used") or []) if s]
+    entrezgene = meta.get("entrezgene")
+    type_of_gene = meta.get("type_of_gene")
 
     accession = meta.get("uniprot_id") or meta.get("accession")
     accession_s = str(accession) if accession else None
 
+    prose_src = summary or function
+
+    # --- Template narrative (always available) ---
     if lay.get("plain"):
         plain = lay["plain"]
+        narrative_mode = "template_curated"
     else:
-        bits = [f"{sym} is a human gene/protein"]
+        bits = [f"{sym} is a human"]
+        if type_of_gene and str(type_of_gene).lower() not in {"", "unknown"}:
+            bits.append(f" {type_of_gene.replace('_', ' ')}")
+        else:
+            bits.append(" gene/protein")
         if full_name:
-            bits.append(f"({full_name})")
+            bits.append(f" ({full_name})")
         bits.append(".")
         if localization and localization.lower() != "unknown":
             bits.append(f" It is typically found in the {localization.lower()}.")
-        if function:
-            bits.append(f" Reported role: {_clean_sentences(function, max_chars=280)}")
+        if prose_src:
+            bits.append(f" {_clean_sentences(prose_src, max_chars=320)}")
         else:
             bits.append(
-                " Detailed function was not cached offline — UniProt may still fill this in on a live lookup."
+                " Public databases did not return a long summary yet — "
+                "identifiers and network neighbors below still place it in your experiment."
             )
         plain = "".join(bits)
+        narrative_mode = "template"
 
     if lay.get("why"):
         why = lay["why"]
@@ -194,6 +215,11 @@ def build_protein_card(
             why_parts.append(
                 f"In your current experiment («{condition_query.strip()}»), "
                 f"{sym} appears in the mapped disease network, so changing it can reshape the simulated outcome."
+            )
+        elif prose_src:
+            why_parts.append(
+                "Systems biologists track this molecule because shifts in its activity "
+                "can ripple through pathways that control growth, stress responses, or metabolism."
             )
         else:
             why_parts.append(
@@ -227,12 +253,32 @@ def build_protein_card(
         )
     in_network = " ".join(net_parts)
 
+    # Optional BioGPT / hosted LLM polish (never invents if call fails)
+    if use_llm:
+        llm = generate_biomed_narrative(
+            meta,
+            condition_query=condition_query,
+            upstream=up,
+            downstream=down,
+        )
+        if llm and llm.get("plain_english"):
+            plain = str(llm["plain_english"])
+            why = str(llm.get("why_it_matters") or why)
+            in_network = str(llm.get("in_this_network") or in_network)
+            narrative_mode = str(llm.get("narrative_mode") or "biogpt")
+            if "biogpt" not in sources_used and narrative_mode in {"biogpt", "cached", "custom_llm"}:
+                sources_used.append(narrative_mode)
+
+    entrez_url = (
+        f"https://www.ncbi.nlm.nih.gov/gene/{entrezgene}" if entrezgene else None
+    )
+
     return {
         "gene_symbol": sym,
         "uniprot_id": accession_s,
         "full_name": full_name,
         "localization": localization or "Unknown",
-        "function": function,
+        "function": function or summary,
         "diseases": diseases[:8],
         "plain_english": plain,
         "why_it_matters": why,
@@ -243,4 +289,10 @@ def build_protein_card(
         ),
         "alphafold_url": meta.get("alphafold_url")
         or (f"https://alphafold.ebi.ac.uk/entry/{accession_s}" if accession_s else None),
+        "entrez_url": entrez_url,
+        "sources_used": sources_used,
+        "narrative_mode": narrative_mode,
+        "summary": summary,
+        "type_of_gene": type_of_gene,
+        "entrezgene": str(entrezgene) if entrezgene else None,
     }

@@ -68,6 +68,7 @@ from cistron.api.schemas import (
     SimulateRequest,
     SimulateResponse,
 )
+from cistron.api.gene_knowledge import resolve_gene_knowledge
 from cistron.api.protein_explainer import build_protein_card
 from cistron.integrations.uniprot_client import LabUniProtClient
 
@@ -913,9 +914,18 @@ def _register_routes(router: APIRouter) -> None:
             default=None,
             description="Optional Δy from the latest simulation for this node",
         ),
+        use_llm: bool = Query(
+            default=True,
+            description="If true and HF_TOKEN/BIOMED_LLM_URL set, polish narrative via BioGPT",
+        ),
     ) -> ProteinCardResponse:
-        """Plain-language UniProt card for a clicked canvas node."""
-        meta = _protein_meta(symbol)
+        """Retrieve-grounded plain-language card for any clicked gene/protein node."""
+        # Prefer multi-source knowledge; fall back to legacy UniProt-only path.
+        try:
+            meta = resolve_gene_knowledge(symbol)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("gene_knowledge failed for %s: %s", symbol, exc)
+            meta = _protein_meta(symbol)
         up = [s.strip() for s in upstream.split(",") if s.strip()]
         down = [s.strip() for s in downstream.split(",") if s.strip()]
         card = build_protein_card(
@@ -925,6 +935,7 @@ def _register_routes(router: APIRouter) -> None:
             upstream=up,
             downstream=down,
             delta_y=delta_y,
+            use_llm=use_llm,
         )
         return ProteinCardResponse(**card)
 
