@@ -408,6 +408,13 @@ export interface ProteinMeta {
   full_name?: string | null
   localization?: string | null
   function?: string | null
+  diseases?: string[]
+  plain_english?: string
+  why_it_matters?: string
+  in_this_network?: string
+  analogy?: string | null
+  uniprot_url?: string | null
+  alphafold_url?: string | null
 }
 
 export interface LabControls {

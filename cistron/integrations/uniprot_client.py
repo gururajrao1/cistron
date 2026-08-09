@@ -96,7 +96,11 @@ class LabUniProtClient:
                 "query": f"(gene_exact:{gene_symbol}) AND (organism_id:9606)",
                 "format": "json",
                 "size": "1",
-                "fields": "accession,gene_names,protein_name,organism_name,cc_subcellular_location,ft_domain,ft_mod_res,xref_pdb",
+                "fields": (
+                    "accession,gene_names,protein_name,organism_name,"
+                    "cc_subcellular_location,cc_function,cc_disease,"
+                    "ft_domain,ft_mod_res,xref_pdb"
+                ),
             }
         )
         url = f"{self.BASE}/uniprotkb/search?{params}"
@@ -140,34 +144,53 @@ class LabUniProtClient:
                 if ftype.lower() in {"modified residue", "cross-link"}:
                     res = description.split(";")[0].strip() or f"site_{start}"
                     ptm_sites.append({"residue": res, "modification": "phosphorylation"})
-            # Subcellular location comments
             localization = None
+            function_bits: List[str] = []
+            diseases: List[str] = []
             for comment in entry.get("comments") or []:
-                if comment.get("commentType") == "SUBCELLULAR LOCATION":
+                ctype = str(comment.get("commentType") or "")
+                if ctype == "SUBCELLULAR LOCATION":
                     locs = comment.get("subcellularLocations") or []
                     if locs:
                         localization = (
                             (locs[0].get("location") or {}).get("value")
                             or None
                         )
+                elif ctype == "FUNCTION":
+                    texts = comment.get("texts") or []
+                    for t in texts:
+                        val = t.get("value") if isinstance(t, dict) else None
+                        if val:
+                            function_bits.append(str(val))
+                elif ctype == "DISEASE":
+                    dis = comment.get("disease") or {}
+                    dname = dis.get("diseaseId") or dis.get("diseaseName")
+                    if dname:
+                        diseases.append(str(dname))
+                    texts = comment.get("texts") or []
+                    for t in texts[:1]:
+                        val = t.get("value") if isinstance(t, dict) else None
+                        if val and not dname:
+                            diseases.append(str(val)[:80])
             pdb_ids = []
             for xref in entry.get("uniProtKBCrossReferences") or []:
                 if xref.get("database") == "PDB":
                     pid = xref.get("id")
                     if pid:
                         pdb_ids.append(str(pid))
+            function = " ".join(function_bits).strip()
             return {
                 "accession": accession,
                 "gene_symbol": gene_symbol or accession,
                 "full_name": full_name,
                 "organism": organism,
-                "function": "",
+                "function": function,
                 "domains": domains[:12],
                 "ptm_sites": ptm_sites[:12],
                 "localization": localization,
                 "pdb_ids": pdb_ids[:5],
                 "alphafold_url": f"https://alphafold.ebi.ac.uk/entry/{accession}",
-                "diseases": [],
+                "diseases": diseases[:8],
                 "mutations": [],
             }
         except (TypeError, ValueError, KeyError) as exc:

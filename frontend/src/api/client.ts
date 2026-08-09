@@ -270,9 +270,25 @@ export async function fetchSourceSituations(
 
 export async function fetchProteinMeta(
   symbol: string,
+  opts?: {
+    condition?: string
+    upstream?: string[]
+    downstream?: string[]
+    delta_y?: number | null
+  },
 ): Promise<import('./types').ProteinMeta> {
   return withApiErrors(async () => {
-    const { data } = await api.get(`${v1}/proteins/${encodeURIComponent(symbol)}`)
+    await ensureApiBase()
+    const params: Record<string, string | number> = {}
+    if (opts?.condition?.trim()) params.condition = opts.condition.trim()
+    if (opts?.upstream?.length) params.upstream = opts.upstream.join(',')
+    if (opts?.downstream?.length) params.downstream = opts.downstream.join(',')
+    if (typeof opts?.delta_y === 'number' && Number.isFinite(opts.delta_y)) {
+      params.delta_y = opts.delta_y
+    }
+    const { data } = await api.get(`${v1}/proteins/${encodeURIComponent(symbol)}`, {
+      params,
+    })
     return data
   })
 }

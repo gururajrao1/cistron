@@ -1,5 +1,16 @@
 import { memo, useEffect, useMemo, useState } from 'react'
-import { Ban, Box, Crosshair, GitBranch, Loader2, X } from 'lucide-react'
+import {
+  Ban,
+  BookOpen,
+  Box,
+  Crosshair,
+  ExternalLink,
+  GitBranch,
+  Lightbulb,
+  Loader2,
+  Network,
+  X,
+} from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import { GeneBadge, MetaLabel, SparkBar } from './ui'
 import { fetchProteinMeta } from '../api/client'
@@ -172,19 +183,48 @@ export function NodeBiophysicsInspector({
 }) {
   const activeNode = nodeId
   const navigate = useNavigate()
+  const lab = useLab()
+
+  const neighborCtx = useMemo(() => {
+    const edges = graph?.edges ?? []
+    const upstream = edges.filter((e) => e.target === activeNode).map((e) => e.source)
+    const downstream = edges.filter((e) => e.source === activeNode).map((e) => e.target)
+    return { upstream, downstream }
+  }, [graph, activeNode])
 
   const [meta, setMeta] = useState<ProteinMeta | null>(null)
   const [loadingMeta, setLoadingMeta] = useState(false)
 
+  const upstreamKey = neighborCtx.upstream.join(',')
+  const downstreamKey = neighborCtx.downstream.join(',')
+
   useEffect(() => {
     let cancelled = false
     setLoadingMeta(true)
-    fetchProteinMeta(activeNode)
+    const upstream = upstreamKey ? upstreamKey.split(',') : []
+    const downstream = downstreamKey ? downstreamKey.split(',') : []
+    fetchProteinMeta(activeNode, {
+      condition: lab.controls.conditionQuery,
+      upstream,
+      downstream,
+      delta_y: vector?.delta_y ?? null,
+    })
       .then((m) => {
         if (!cancelled) setMeta(m)
       })
       .catch(() => {
-        if (!cancelled) setMeta({ gene_symbol: activeNode, localization: 'Unknown' })
+        if (!cancelled)
+          setMeta({
+            gene_symbol: activeNode,
+            localization: 'Unknown',
+            plain_english: `${activeNode} is a node in your virtual cell network. Connect the API to load a plain-language UniProt explanation.`,
+            why_it_matters:
+              'When the API is live we explain what this protein does, why disease biologists care, and how it sits in your current pathway.',
+            in_this_network:
+              upstream.length || downstream.length
+                ? `Local links: ← ${upstream.slice(0, 4).join(', ') || '—'} · → ${downstream.slice(0, 4).join(', ') || '—'}`
+                : 'No local edges found for this node yet.',
+          })
       })
       .finally(() => {
         if (!cancelled) setLoadingMeta(false)
@@ -192,7 +232,9 @@ export function NodeBiophysicsInspector({
     return () => {
       cancelled = true
     }
-  }, [activeNode])
+    // Intentionally omit vector.delta_y — scrubbing must not re-hit UniProt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNode, lab.controls.conditionQuery, upstreamKey, downstreamKey])
 
   const shap: NodeShapAttribution | undefined = xai?.node_attributions.find(
     (a) => a.node === activeNode,
@@ -245,6 +287,82 @@ export function NodeBiophysicsInspector({
       </div>
 
       <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
+        <GlassCard
+          title="What is this protein?"
+          hint="Plain English · why it matters · role in your network"
+        >
+          {loadingMeta && !meta?.plain_english ? (
+            <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Looking up biology…
+            </p>
+          ) : (
+            <div className="space-y-2.5 text-[12px] leading-relaxed text-slate-200">
+              <p>{meta?.plain_english || `${activeNode} is a network node in this experiment.`}</p>
+              {meta?.analogy ? (
+                <p className="flex gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-50/95">
+                  <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                  <span>
+                    <span className="font-semibold text-amber-200">Analogy — </span>
+                    {meta.analogy}
+                  </span>
+                </p>
+              ) : null}
+              <div>
+                <MetaLabel className="mb-1 flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" /> Why it matters
+                </MetaLabel>
+                <p className="text-[11px] text-slate-300">
+                  {meta?.why_it_matters ||
+                    'This protein participates in signaling that can change disease-relevant cell behavior.'}
+                </p>
+              </div>
+              <div>
+                <MetaLabel className="mb-1 flex items-center gap-1">
+                  <Network className="h-3 w-3" /> In this network
+                </MetaLabel>
+                <p className="text-[11px] text-slate-300">
+                  {meta?.in_this_network ||
+                    'Open a built pathway graph to see who talks to whom.'}
+                </p>
+              </div>
+              {meta?.diseases?.length ? (
+                <div className="flex flex-wrap gap-1">
+                  {meta.diseases.map((d) => (
+                    <span
+                      key={d}
+                      className="rounded-full border border-rose-inhib/30 bg-rose-950/40 px-2 py-0.5 text-[10px] font-medium text-rose-100"
+                    >
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {meta?.uniprot_url ? (
+                  <a
+                    href={meta.uniprot_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border border-vcl-border px-2 py-1 text-[10px] font-semibold text-vcl-link hover:bg-vcl-raised"
+                  >
+                    UniProt <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null}
+                {meta?.alphafold_url ? (
+                  <a
+                    href={meta.alphafold_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border border-vcl-border px-2 py-1 text-[10px] font-semibold text-vcl-link hover:bg-vcl-raised"
+                  >
+                    AlphaFold <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </GlassCard>
+
         <GlassCard title="Identifiers" hint="Gene · UniProt · localization · provenance">
           <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5 text-[12px]">
             <dt className="lab-meta !normal-case !tracking-normal text-slate-500">Gene</dt>

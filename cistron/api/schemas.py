@@ -228,6 +228,25 @@ class NodeInspectorResponse(BaseModel):
     feature_attributions: List[Dict[str, Any]] = Field(default_factory=list)
 
 
+class ProteinCardResponse(BaseModel):
+    """Plain-language + UniProt card for a graph node (non-biologist friendly)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    gene_symbol: str
+    uniprot_id: Optional[str] = None
+    full_name: Optional[str] = None
+    localization: Optional[str] = None
+    function: Optional[str] = None
+    diseases: List[str] = Field(default_factory=list)
+    plain_english: str = ""
+    why_it_matters: str = ""
+    in_this_network: str = ""
+    analogy: Optional[str] = None
+    uniprot_url: Optional[str] = None
+    alphafold_url: Optional[str] = None
+
+
 class ConditionSuggestion(BaseModel):
     label: str
     query: str

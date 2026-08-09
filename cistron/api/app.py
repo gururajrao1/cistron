@@ -60,6 +60,7 @@ from cistron.api.schemas import (
     PresetSummary,
     PrioritizeRequest,
     PrioritizeResponse,
+    ProteinCardResponse,
     ReasonRequest,
     ReasonResponse,
     SearchAndSimulateRequest,
@@ -67,6 +68,8 @@ from cistron.api.schemas import (
     SimulateRequest,
     SimulateResponse,
 )
+from cistron.api.protein_explainer import build_protein_card
+from cistron.integrations.uniprot_client import LabUniProtClient
 
 logger = logging.getLogger(__name__)
 
@@ -117,30 +120,58 @@ _LOCALIZATION_FALLBACK: Dict[str, Dict[str, Optional[str]]] = {
 _DYNAMIC_GRAPHS: Dict[str, CausalActivityGraph] = {}
 
 
-def _protein_meta(symbol: str) -> Dict[str, Optional[str]]:
+def _protein_meta(symbol: str) -> Dict[str, Any]:
+    """Resolve UniProt-ish metadata: offline bank → localization fallback → live REST."""
     sym = symbol.strip().upper()
     row = OFFLINE_UNIPROT.get(sym) or OFFLINE_UNIPROT.get(symbol)
     if isinstance(row, dict):
         return {
             "uniprot_id": str(row.get("accession") or "") or None,
+            "accession": str(row.get("accession") or "") or None,
             "full_name": str(row.get("full_name") or "") or None,
             "localization": str(row.get("localization") or "") or None,
             "function": str(row.get("function") or "") or None,
+            "diseases": list(row.get("diseases") or []),
+            "alphafold_url": row.get("alphafold_url"),
         }
     fb = _LOCALIZATION_FALLBACK.get(sym) or _LOCALIZATION_FALLBACK.get(symbol)
     if fb:
         acc = fb.get("accession")
         return {
             "uniprot_id": str(acc) if acc else None,
+            "accession": str(acc) if acc else None,
             "full_name": fb.get("full_name"),
             "localization": fb.get("localization"),
             "function": fb.get("function"),
+            "diseases": [],
+            "alphafold_url": (
+                f"https://alphafold.ebi.ac.uk/entry/{acc}" if acc else None
+            ),
+        }
+    try:
+        live = LabUniProtClient().lookup(sym)
+    except Exception as exc:  # noqa: BLE001 — inspector must never 500 on UniProt blips
+        logger.debug("UniProt lookup failed for %s: %s", sym, exc)
+        live = None
+    if isinstance(live, dict):
+        acc = live.get("accession")
+        return {
+            "uniprot_id": str(acc) if acc else None,
+            "accession": str(acc) if acc else None,
+            "full_name": live.get("full_name"),
+            "localization": live.get("localization") or "Unknown",
+            "function": live.get("function") or None,
+            "diseases": list(live.get("diseases") or []),
+            "alphafold_url": live.get("alphafold_url"),
         }
     return {
         "uniprot_id": None,
+        "accession": None,
         "full_name": None,
         "localization": "Unknown",
         "function": None,
+        "diseases": [],
+        "alphafold_url": None,
     }
 
 
@@ -861,6 +892,41 @@ def _register_routes(router: APIRouter) -> None:
             [s.strip() for s in sources.split(",") if s.strip()] if sources else None
         )
         return list_source_situations(selected)
+
+    @router.get(
+        "/proteins/{symbol}",
+        response_model=ProteinCardResponse,
+        tags=["proteins"],
+    )
+    def protein_card(
+        symbol: str,
+        condition: str = Query(default="", description="Active disease / scenario query"),
+        upstream: str = Query(
+            default="",
+            description="Comma-separated upstream gene symbols from the live graph",
+        ),
+        downstream: str = Query(
+            default="",
+            description="Comma-separated downstream gene symbols from the live graph",
+        ),
+        delta_y: Optional[float] = Query(
+            default=None,
+            description="Optional Δy from the latest simulation for this node",
+        ),
+    ) -> ProteinCardResponse:
+        """Plain-language UniProt card for a clicked canvas node."""
+        meta = _protein_meta(symbol)
+        up = [s.strip() for s in upstream.split(",") if s.strip()]
+        down = [s.strip() for s in downstream.split(",") if s.strip()]
+        card = build_protein_card(
+            symbol,
+            meta,
+            condition_query=condition,
+            upstream=up,
+            downstream=down,
+            delta_y=delta_y,
+        )
+        return ProteinCardResponse(**card)
 
     @router.post(
         "/search-and-simulate",
