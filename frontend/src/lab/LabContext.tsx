@@ -57,8 +57,61 @@ const STAGE_LABELS = [
 const EMPTY_PATH: string[] = []
 const EMPTY_SUGGESTIONS: ConditionSuggestion[] = []
 
+/** Topology from Pathways Reactome·STRING builds — KO/Run must reuse this, not re-resolve. */
+type StoredDynamicTopology = {
+  query: string
+  pathway_id?: string | null
+  pathway_name?: string | null
+  profile_id: string
+  nodes: DynamicGraphSimulateRequest['nodes']
+  edges: DynamicGraphSimulateRequest['edges']
+}
+
 /** Survives React StrictMode remount — prevents double bootstrap. */
 let bootOnce = false
+
+function isDynamicGraphId(id: string | null | undefined): boolean {
+  return Boolean(id && String(id).startsWith('dynamic_'))
+}
+
+/** Rebuild a dynamic-graph request from the live Studio PresetDetail (fallback). */
+function topologyFromResolvedGraph(
+  graph: PresetDetail,
+  query: string,
+  profileId: string,
+): StoredDynamicTopology | null {
+  const nodeIds = Object.keys(graph.nodes ?? {})
+  if (nodeIds.length < 2 || !(graph.edges?.length > 0)) return null
+  return {
+    query: query.trim() || graph.name || 'dynamic disease',
+    pathway_id:
+      typeof graph.provenance?.pathway_id === 'string'
+        ? graph.provenance.pathway_id
+        : null,
+    pathway_name:
+      typeof graph.provenance?.pathway_name === 'string'
+        ? graph.provenance.pathway_name
+        : graph.name,
+    profile_id: profileId || 'cistron-dynamic',
+    nodes: nodeIds.map((id) => {
+      const n = graph.nodes[id]
+      return {
+        id,
+        symbol: n?.gene_symbol || id,
+        y0:
+          typeof n?.initial_concentration === 'number'
+            ? n.initial_concentration
+            : 0.35,
+      }
+    }),
+    edges: graph.edges.map((e) => ({
+      source: e.source,
+      target: e.target,
+      weight: typeof e.evidence_score === 'number' ? e.evidence_score : 0.5,
+      type: e.is_inhibition ? 'inhibition' : 'activation',
+    })),
+  }
+}
 
 function initialControls(): LabControls {
   return {
@@ -190,6 +243,12 @@ export function LabProvider({ children }: { children: ReactNode }) {
   activeOmicsProfileRef.current = activeOmicsProfile
   const simBusyRef = useRef(false)
   const dynamicBusyRef = useRef(false)
+  /** Last Pathways interactome — KO/Run must reuse this (not search-and-simulate → hypoxia). */
+  const dynamicTopologyRef = useRef<StoredDynamicTopology | null>(null)
+  const graphRef = useRef<PresetDetail | null>(null)
+  graphRef.current = graph
+  const profileIdRef = useRef(profileId)
+  profileIdRef.current = profileId
   const [dynamicPending, setDynamicPending] = useState(false)
   const mutateRef = useRef<
     (
@@ -448,6 +507,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!healthQ.isSuccess || bootOnce) return
     bootOnce = true
+    dynamicTopologyRef.current = null
     mutateRef.current({
       query: 'Hypoxia-induced angiogenesis',
       selectedSources: ['local'],
@@ -461,6 +521,102 @@ export function LabProvider({ children }: { children: ReactNode }) {
     setControls((prev) => ({ ...prev, ...partial }))
   }, [])
 
+  /** Resolve active Pathways topology (stored interactome, or rebuild from dynamic graph id). */
+  const resolveDynamicTopology = useCallback((): StoredDynamicTopology | null => {
+    if (dynamicTopologyRef.current) return dynamicTopologyRef.current
+    const g = graphRef.current
+    if (g && isDynamicGraphId(g.id)) {
+      const rebuilt = topologyFromResolvedGraph(
+        g,
+        controlsRef.current.conditionQuery,
+        profileIdRef.current,
+      )
+      if (rebuilt) {
+        dynamicTopologyRef.current = rebuilt
+        return rebuilt
+      }
+    }
+    return null
+  }, [])
+
+  /** Re-run Hill-cube on the current Reactome·STRING graph with KOs/clamps (no query re-resolve). */
+  const runDynamicResim = useCallback(
+    async (
+      override?: Partial<LabControls> & {
+        query?: string
+        includeSyntheticLethality?: boolean
+      },
+    ) => {
+      const topo = resolveDynamicTopology()
+      if (!topo) return false
+      if (simBusyRef.current || dynamicBusyRef.current) return true
+
+      const c = { ...controlsRef.current, ...override }
+      const pert = perturbationsRef.current
+      const pertKos = Object.entries(pert)
+        .filter(([, v]) => v <= 1e-6)
+        .map(([k]) => k)
+      const knockouts = Array.from(new Set([...c.knockouts, ...pertKos]))
+      const clamps: Record<string, number> = { ...pert }
+      if (c.clampNode && Number.isFinite(c.clampValue)) {
+        clamps[c.clampNode] = c.clampValue
+      }
+
+      simBusyRef.current = true
+      dynamicBusyRef.current = true
+      setDynamicPending(true)
+      startStageTicker()
+      setStatusStage('Re-solving Pathways interactome with perturbations…')
+
+      try {
+        const bodyReq: DynamicGraphSimulateRequest = {
+          query: (override?.query ?? c.conditionQuery ?? topo.query).trim() || topo.query,
+          pathway_id: topo.pathway_id,
+          pathway_name: topo.pathway_name,
+          profile_id: topo.profile_id,
+          nodes: topo.nodes,
+          edges: topo.edges,
+          custom_knockouts: knockouts,
+          custom_clamps: clamps,
+          drugs: c.drugEnabled
+            ? [{ target: c.drugTarget, c_drug: c.cDrug, ki: c.ki }]
+            : [],
+          dense_output_points: 61,
+          t_end: 60,
+          source_node: c.sourceNode || undefined,
+          target_node: c.targetNode || undefined,
+          simulation_id: `dyn_${Date.now().toString(36)}`,
+          previous_state_summary: stateSummaryRef.current,
+          ...(override?.includeSyntheticLethality
+            ? {
+                include_synthetic_lethality: true,
+                sl_candidate_nodes: Object.keys(pert),
+              }
+            : {}),
+        }
+        const body = await simulateDynamicGraph(bodyReq)
+        // Keep topology pinned even if server returns a new dynamic_* graph id.
+        dynamicTopologyRef.current = {
+          ...topo,
+          query: body.query || topo.query,
+          profile_id: body.profile_id || topo.profile_id,
+        }
+        applySearchResult(body)
+      } catch (err) {
+        console.warn('Dynamic re-sim failed; keeping current Pathways graph', err)
+        setStatusStage(null)
+      } finally {
+        simBusyRef.current = false
+        dynamicBusyRef.current = false
+        setDynamicPending(false)
+        clearStageTimer()
+        setStatusStage(null)
+      }
+      return true
+    },
+    [applySearchResult, clearStageTimer, resolveDynamicTopology, startStageTicker],
+  )
+
   const runSimulation = useCallback(
     (
       override?: Partial<LabControls> & {
@@ -468,17 +624,25 @@ export function LabProvider({ children }: { children: ReactNode }) {
         includeSyntheticLethality?: boolean
       },
     ) => {
-      if (simBusyRef.current || runMutation.isPending) return
+      if (simBusyRef.current || runMutation.isPending || dynamicBusyRef.current) return
+      // Pathways disease graphs must not go through search-and-simulate (unknown
+      // queries like "kuru" re-resolve to the hypoxia preset).
+      if (resolveDynamicTopology()) {
+        void runDynamicResim(override)
+        return
+      }
       runMutation.mutate(override)
     },
-    [runMutation],
+    [resolveDynamicTopology, runDynamicResim, runMutation],
   )
 
   const runQuery = useCallback(
     (query: string, opts?: { selectedSources?: string[] }) => {
-      if (simBusyRef.current || runMutation.isPending) return
+      if (simBusyRef.current || runMutation.isPending || dynamicBusyRef.current) return
       const q = query.trim()
       if (!q) return
+      // Leaving Pathways mode — drop stored interactome so search can resolve presets.
+      dynamicTopologyRef.current = null
       // Scenario switch: drop prior topology KOs / omics so the new cascade hydrates cleanly.
       setPerturbations({})
       perturbationsRef.current = {}
@@ -557,7 +721,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
               label
             ).slice(0, 80)
 
-      // Scenario switch — clear prior lab state.
+      // Scenario switch — clear prior lab state + previous Pathways topology.
+      dynamicTopologyRef.current = null
       setPerturbations({})
       perturbationsRef.current = {}
       setActiveOmicsProfile(null)
@@ -595,19 +760,32 @@ export function LabProvider({ children }: { children: ReactNode }) {
               : await buildDynamicInteractome(input, { query: provenanceQuery })
 
           setStatusStage('Solving Hill-cube ODEs (t₀→t₆₀)…')
-          const bodyReq: DynamicGraphSimulateRequest = {
+          const stored: StoredDynamicTopology = {
             query: interactome.query,
             pathway_id: interactome.pathwayId,
             pathway_name: interactome.pathwayName,
             profile_id: interactome.provenance,
             nodes: interactome.nodes,
             edges: interactome.edges,
+          }
+          const bodyReq: DynamicGraphSimulateRequest = {
+            query: stored.query,
+            pathway_id: stored.pathway_id,
+            pathway_name: stored.pathway_name,
+            profile_id: stored.profile_id,
+            nodes: stored.nodes,
+            edges: stored.edges,
             dense_output_points: 61,
             t_end: 60,
             simulation_id: `dyn_${Date.now().toString(36)}`,
             previous_state_summary: stateSummaryRef.current,
           }
           const body = await simulateDynamicGraph(bodyReq)
+          dynamicTopologyRef.current = {
+            ...stored,
+            query: body.query || stored.query,
+            profile_id: body.profile_id || stored.profile_id,
+          }
           applySearchResult(body)
           setStatusStage(null)
           dynamicBusyRef.current = false
@@ -615,6 +793,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
           simBusyRef.current = false
         } catch (err) {
           console.warn('Dynamic Reactome/STRING load failed — falling back to local resolve', err)
+          dynamicTopologyRef.current = null
           dynamicBusyRef.current = false
           setDynamicPending(false)
           // runMutation.onMutate / onSettled own simBusyRef for the fallback path.
@@ -641,6 +820,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
         runMutation.reset()
       }
       simBusyRef.current = false
+      dynamicTopologyRef.current = null
       const provenanced = withOmicsProvenance(profile)
       // Upsert into library + set active instantly so provenance badge updates on switch.
       setOmicsProfiles((prev) => {

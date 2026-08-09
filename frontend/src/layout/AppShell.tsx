@@ -217,15 +217,13 @@ export function AppShell() {
           xai={lab.xai}
           onClose={() => lab.setSelectedNode(null)}
           onKnockout={(node) => {
-            const nextKos = Array.from(new Set([...lab.controls.knockouts, node]))
-            lab.patchControls({ knockouts: nextKos })
             lab.setSelectedNode(null)
-            lab.runSimulation({ knockouts: nextKos })
+            // Shared path with CRISPR KO / shift-click — respects Pathways dynamic topology.
+            lab.setNodePerturbation(node, 0)
           }}
           onClamp={(node) => {
-            lab.patchControls({ clampNode: node, clampValue: 1 })
             lab.setSelectedNode(null)
-            lab.runSimulation({ clampNode: node, clampValue: 1 })
+            lab.setNodePerturbation(node, 1)
           }}
         />
       ) : null}
