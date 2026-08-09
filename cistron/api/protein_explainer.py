@@ -266,8 +266,9 @@ def build_protein_card(
             why = str(llm.get("why_it_matters") or why)
             in_network = str(llm.get("in_this_network") or in_network)
             narrative_mode = str(llm.get("narrative_mode") or "biogpt")
-            if "biogpt" not in sources_used and narrative_mode in {"biogpt", "cached", "custom_llm"}:
-                sources_used.append(narrative_mode)
+            if narrative_mode in {"biogpt", "hf_llm", "cached", "custom_llm"}:
+                if narrative_mode not in sources_used:
+                    sources_used.append(narrative_mode)
 
     entrez_url = (
         f"https://www.ncbi.nlm.nih.gov/gene/{entrezgene}" if entrezgene else None

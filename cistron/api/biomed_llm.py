@@ -1,4 +1,9 @@
-"""Optional biomedical LLM narrative (HF Inference BioGPT or custom endpoint)."""
+"""Optional biomedical LLM narrative via Hugging Face Inference Providers.
+
+``microsoft/biogpt`` is no longer hosted on HF serverless Inference, so we use
+the OpenAI-compatible router (``router.huggingface.co/v1``) with a small
+instruct model and a biomedical education prompt grounded in retrieved facts.
+"""
 
 from __future__ import annotations
 
@@ -13,11 +18,10 @@ from cistron.integrations.http_sync import http_post_json
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_HF_MODEL = "microsoft/biogpt"
-# HF router inference (2025+); override with HF_INFERENCE_URL if needed.
-DEFAULT_HF_URL = (
-    "https://router.huggingface.co/hf-inference/models/" + DEFAULT_HF_MODEL
-)
+# Default: small instruct model on HF Inference Providers (not BioGPT weights —
+# BioGPT is not deployed on serverless providers as of 2026).
+DEFAULT_HF_MODEL = "HuggingFaceTB/SmolLM3-3B-Instruct"
+DEFAULT_HF_CHAT_URL = "https://router.huggingface.co/v1/chat/completions"
 
 
 def llm_available() -> bool:
@@ -63,7 +67,7 @@ def _build_prompt(
         facts.append("Downstream neighbors in network: " + ", ".join(list(downstream)[:8]))
 
     return (
-        "You are a biomedical educator explaining a gene/protein to a curious non-biologist.\n"
+        "Explain this gene/protein to a curious non-biologist.\n"
         "Use ONLY the facts below. Do not invent UniProt IDs, drugs, or clinical claims.\n"
         "Write exactly three short paragraphs labeled WHAT:, WHY:, NETWORK:.\n"
         "- WHAT: what the molecule is / does in plain English\n"
@@ -71,12 +75,14 @@ def _build_prompt(
         "- NETWORK: how it fits the listed neighbors and experiment context\n\n"
         "FACTS:\n- "
         + "\n- ".join(facts)
-        + "\n\nAnswer:\n"
     )
 
 
 def _extract_generated_text(payload: Any) -> Optional[str]:
     if payload is None:
+        return None
+    if isinstance(payload, dict) and payload.get("error"):
+        logger.warning("HF LLM error: %s", payload.get("error"))
         return None
     if isinstance(payload, str):
         return payload.strip() or None
@@ -89,13 +95,9 @@ def _extract_generated_text(payload: Any) -> Optional[str]:
         if isinstance(first, str):
             return first.strip()
     if isinstance(payload, dict):
-        if payload.get("error"):
-            logger.debug("LLM error payload: %s", payload.get("error"))
-            return None
         for key in ("generated_text", "summary_text", "text", "content"):
             if payload.get(key):
                 return str(payload[key]).strip()
-        # OpenAI-ish
         choices = payload.get("choices")
         if isinstance(choices, list) and choices:
             msg = choices[0].get("message") if isinstance(choices[0], dict) else None
@@ -107,9 +109,7 @@ def _extract_generated_text(payload: Any) -> Optional[str]:
 
 
 def _parse_labeled_sections(text: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """Pull WHAT / WHY / NETWORK sections when present."""
     cleaned = text.strip()
-    # Strip echoed prompt if model returns full text
     if "Answer:" in cleaned:
         cleaned = cleaned.split("Answer:")[-1].strip()
 
@@ -121,7 +121,6 @@ def _parse_labeled_sections(text: str) -> Tuple[Optional[str], Optional[str], Op
     if found:
         return found.get("WHAT"), found.get("WHY"), found.get("NETWORK")
 
-    # Fallback: split into ~3 paragraphs
     paras = [p.strip() for p in re.split(r"\n\s*\n", cleaned) if p.strip()]
     if len(paras) >= 3:
         return paras[0], paras[1], paras[2]
@@ -132,64 +131,73 @@ def _parse_labeled_sections(text: str) -> Tuple[Optional[str], Optional[str], Op
     return None, None, None
 
 
-def _call_hf(prompt: str, token: str) -> Optional[str]:
-    url = os.environ.get("HF_INFERENCE_URL") or DEFAULT_HF_URL
+def _call_hf_chat(prompt: str, token: str) -> Optional[str]:
+    """Hugging Face Inference Providers — OpenAI-compatible chat API."""
+    url = os.environ.get("HF_CHAT_URL") or DEFAULT_HF_CHAT_URL
     model = os.environ.get("HF_BIOMED_MODEL") or DEFAULT_HF_MODEL
-    if "HF_INFERENCE_URL" not in os.environ and model != DEFAULT_HF_MODEL:
-        url = f"https://router.huggingface.co/hf-inference/models/{model}"
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 280,
-            "temperature": 0.4,
-            "return_full_text": False,
-        },
-        "options": {"wait_for_model": True},
-    }
     data = http_post_json(
         url,
-        payload,
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a biomedical educator. Explain genes plainly. "
+                        "Never invent accession IDs or unsupported medical claims."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 360,
+            "temperature": 0.35,
+        },
         headers={"Authorization": f"Bearer {token}"},
-        timeout=28.0,
+        timeout=45.0,
     )
     return _extract_generated_text(data)
 
 
 def _call_custom_endpoint(prompt: str, endpoint: str) -> Optional[str]:
-    """POST to BIOMED_LLM_URL — accepts HF-style or OpenAI chat completions shape."""
+    """POST to BIOMED_LLM_URL — OpenAI chat or HF-style inputs."""
     token = os.environ.get("HF_TOKEN") or os.environ.get("BIOMED_LLM_TOKEN") or ""
     headers = {"Authorization": f"Bearer {token}"} if token else None
+    model = os.environ.get("BIOMED_LLM_MODEL") or os.environ.get("HF_BIOMED_MODEL") or DEFAULT_HF_MODEL
 
-    # Try OpenAI chat first if URL looks like it
-    if "chat/completions" in endpoint or endpoint.rstrip("/").endswith("v1"):
-        chat_url = endpoint if endpoint.endswith("chat/completions") else endpoint.rstrip("/") + "/chat/completions"
-        data = http_post_json(
-            chat_url,
-            {
-                "model": os.environ.get("BIOMED_LLM_MODEL") or DEFAULT_HF_MODEL,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "Explain genes plainly; never invent accessions.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                "max_tokens": 320,
-                "temperature": 0.4,
-            },
-            headers=headers,
-            timeout=28.0,
-        )
-        text = _extract_generated_text(data)
-        if text:
-            return text
+    chat_url = endpoint
+    if not endpoint.endswith("chat/completions"):
+        if endpoint.rstrip("/").endswith("v1"):
+            chat_url = endpoint.rstrip("/") + "/chat/completions"
+        elif "chat/completions" not in endpoint:
+            # try as chat base
+            chat_url = endpoint.rstrip("/") + "/v1/chat/completions"
+
+    data = http_post_json(
+        chat_url,
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Explain genes plainly; never invent accessions.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 360,
+            "temperature": 0.35,
+        },
+        headers=headers,
+        timeout=45.0,
+    )
+    text = _extract_generated_text(data)
+    if text:
+        return text
 
     data = http_post_json(
         endpoint,
         {"inputs": prompt, "parameters": {"max_new_tokens": 280, "return_full_text": False}},
         headers=headers,
-        timeout=28.0,
+        timeout=45.0,
     )
     return _extract_generated_text(data)
 
@@ -227,7 +235,7 @@ def generate_biomed_narrative(
     )
 
     text: Optional[str] = None
-    mode = "biogpt"
+    mode = "hf_llm"
     custom = os.environ.get("BIOMED_LLM_URL", "").strip()
     try:
         if custom:
@@ -236,17 +244,19 @@ def generate_biomed_narrative(
         else:
             token = os.environ.get("HF_TOKEN", "").strip()
             if token:
-                text = _call_hf(prompt, token)
+                text = _call_hf_chat(prompt, token)
     except Exception as exc:  # noqa: BLE001
-        logger.debug("Biomed LLM call failed: %s", exc)
+        logger.warning("Biomed LLM call failed: %s", exc)
         return None
 
     if not text:
+        logger.warning("Biomed LLM returned empty text for %s", sym)
         return None
 
     what, why, network = _parse_labeled_sections(text)
     if not what:
-        return None
+        # Still surface raw model text as WHAT if labels missing
+        what = " ".join(text.split())[:500]
 
     result = {
         "plain_english": what,

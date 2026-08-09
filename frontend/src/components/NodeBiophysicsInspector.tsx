@@ -307,9 +307,10 @@ export function NodeBiophysicsInspector({
                       {s.replace(/_/g, ' ')}
                     </span>
                   ))}
-                  {meta?.narrative_mode ? (
+                      {meta?.narrative_mode ? (
                     <span
                       className={
+                        meta.narrative_mode === 'hf_llm' ||
                         meta.narrative_mode.includes('biogpt') ||
                         meta.narrative_mode === 'cached' ||
                         meta.narrative_mode === 'custom_llm'
@@ -317,8 +318,10 @@ export function NodeBiophysicsInspector({
                           : 'rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-200/90'
                       }
                     >
-                      {meta.narrative_mode.includes('biogpt') || meta.narrative_mode === 'cached'
-                        ? 'BioGPT narrative'
+                      {meta.narrative_mode === 'hf_llm' ||
+                      meta.narrative_mode.includes('biogpt') ||
+                      meta.narrative_mode === 'cached'
+                        ? 'HF LLM narrative'
                         : meta.narrative_mode === 'custom_llm'
                           ? 'Custom LLM'
                           : meta.narrative_mode === 'template_curated'
