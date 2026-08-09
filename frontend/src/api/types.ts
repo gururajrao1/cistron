@@ -402,6 +402,14 @@ AKT1,0.02,0.71,P31749
 O2,0.20,0.33,
 `
 
+export interface DiseaseImpact {
+  overview?: string
+  if_activity_up?: string
+  if_activity_down?: string
+  structure_or_interaction?: string
+  mode?: string
+}
+
 export interface ProteinMeta {
   gene_symbol: string
   uniprot_id?: string | null
@@ -421,6 +429,7 @@ export interface ProteinMeta {
   summary?: string | null
   type_of_gene?: string | null
   entrezgene?: string | null
+  disease_impact?: DiseaseImpact | null
 }
 
 export interface LabControls {

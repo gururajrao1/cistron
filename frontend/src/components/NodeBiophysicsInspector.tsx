@@ -1,5 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import {
+  ArrowDown,
+  ArrowUp,
   Ban,
   BookOpen,
   Box,
@@ -9,6 +11,7 @@ import {
   Lightbulb,
   Loader2,
   Network,
+  Shuffle,
   X,
 } from 'lucide-react'
 import { GlassCard } from './GlassCard'
@@ -289,7 +292,7 @@ export function NodeBiophysicsInspector({
       <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
         <GlassCard
           title="What is this protein?"
-          hint="MyGene · UniProt grounded · optional BioGPT polish"
+          hint="MyGene · UniProt grounded · optional HF LLM polish"
         >
           {loadingMeta && !meta?.plain_english ? (
             <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -406,6 +409,65 @@ export function NodeBiophysicsInspector({
             </div>
           )}
         </GlassCard>
+
+        {meta?.disease_impact?.overview ? (
+          <GlassCard
+            title="If this protein changes…"
+            hint={
+              lab.controls.conditionQuery
+                ? `Disease path: ${lab.controls.conditionQuery}`
+                : 'Works for any Pathways disease — not just hypoxia'
+            }
+          >
+            <div className="space-y-2.5 text-[12px] leading-relaxed text-slate-200">
+              {meta.disease_impact.mode &&
+              (meta.disease_impact.mode === 'hf_llm' ||
+                meta.disease_impact.mode === 'cached' ||
+                meta.disease_impact.mode === 'custom_llm') ? (
+                <span className="inline-flex rounded-full border border-violet-hub/40 bg-violet-950/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-200">
+                  {meta.disease_impact.mode === 'custom_llm'
+                    ? 'Custom LLM impact'
+                    : 'HF LLM impact'}
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-200/90">
+                  Network template
+                </span>
+              )}
+              <p className="text-[11px] text-slate-300">{meta.disease_impact.overview}</p>
+              {meta.disease_impact.if_activity_up ? (
+                <div>
+                  <MetaLabel className="mb-1 flex items-center gap-1">
+                    <ArrowUp className="h-3 w-3 text-emerald-400" /> Activity up
+                  </MetaLabel>
+                  <p className="text-[11px] text-slate-300">
+                    {meta.disease_impact.if_activity_up}
+                  </p>
+                </div>
+              ) : null}
+              {meta.disease_impact.if_activity_down ? (
+                <div>
+                  <MetaLabel className="mb-1 flex items-center gap-1">
+                    <ArrowDown className="h-3 w-3 text-rose-300" /> Activity down / KO
+                  </MetaLabel>
+                  <p className="text-[11px] text-slate-300">
+                    {meta.disease_impact.if_activity_down}
+                  </p>
+                </div>
+              ) : null}
+              {meta.disease_impact.structure_or_interaction ? (
+                <div>
+                  <MetaLabel className="mb-1 flex items-center gap-1">
+                    <Shuffle className="h-3 w-3 text-amber-300" /> Structure / interactions
+                  </MetaLabel>
+                  <p className="text-[11px] text-slate-300">
+                    {meta.disease_impact.structure_or_interaction}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </GlassCard>
+        ) : null}
 
         <GlassCard title="Identifiers" hint="Gene · UniProt · localization · provenance">
           <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5 text-[12px]">

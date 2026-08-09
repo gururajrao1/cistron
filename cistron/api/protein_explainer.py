@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Sequence
 
 from cistron.api.biomed_llm import generate_biomed_narrative
+from cistron.api.disease_impact import build_disease_impact
 
 
 # Short lay explanations for frequent cancer / signaling genes (boosters only).
@@ -274,6 +275,20 @@ def build_protein_card(
         f"https://www.ncbi.nlm.nih.gov/gene/{entrezgene}" if entrezgene else None
     )
 
+    disease_impact = build_disease_impact(
+        sym,
+        meta,
+        condition_query=condition_query,
+        upstream=up,
+        downstream=down,
+        delta_y=delta_y,
+        use_llm=use_llm,
+    )
+    if disease_impact.get("mode") in {"hf_llm", "cached", "custom_llm"}:
+        tag = f"disease_impact_{disease_impact['mode']}"
+        if tag not in sources_used:
+            sources_used.append(tag)
+
     return {
         "gene_symbol": sym,
         "uniprot_id": accession_s,
@@ -296,4 +311,5 @@ def build_protein_card(
         "summary": summary,
         "type_of_gene": type_of_gene,
         "entrezgene": str(entrezgene) if entrezgene else None,
+        "disease_impact": disease_impact,
     }

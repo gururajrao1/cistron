@@ -46,8 +46,11 @@ Clicking a graph node calls `GET /api/v1/proteins/{symbol}` which:
 
 1. **Retrieves facts** from MyGene.info + UniProt (cached) — works for arbitrary human genes with **no API key**
 2. Builds a plain-English card (what / why / network role)
-3. Optionally polishes the narrative with an **HF Inference Providers** chat model when `HF_TOKEN` is set  
+3. Adds a disease-agnostic **“If this protein changes…”** block (activity up/down, structure / PPI rewiring) grounded in the current Pathways query + graph neighbors — same idea for hypoxia *or* any other disease you built
+4. Optionally polishes both narratives with an **HF Inference Providers** chat model when `HF_TOKEN` is set  
    (`microsoft/biogpt` is **not** on HF serverless anymore — we use a small instruct model + biomedical prompt)
+
+This is a BioIE-style *retrieve → explain* loop (same spirit as tools listed in [awesome-bioie](https://github.com/caufieldjh/awesome-bioie)), not a drop-in of that repo. We do **not** load BioBERT weights on free Render.
 
 | Env var | Required? | Purpose |
 | --- | --- | --- |

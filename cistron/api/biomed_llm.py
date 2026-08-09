@@ -271,3 +271,146 @@ def generate_biomed_narrative(
     }
     cache.set_json("biomed_narrative", cache_key, result, ttl=3 * 86_400.0)
     return result
+
+
+def _build_disease_impact_prompt(
+    knowledge: Dict[str, Any],
+    *,
+    condition_query: str,
+    upstream: Sequence[str],
+    downstream: Sequence[str],
+    delta_y: Optional[float],
+    role: str,
+) -> str:
+    sym = knowledge.get("gene_symbol") or "GENE"
+    disease = condition_query.strip() or "the mapped pathway disease"
+    facts = [
+        f"Gene: {sym}",
+        f"Full name: {knowledge.get('full_name') or 'unknown'}",
+        f"Disease / pathway context: {disease}",
+        f"Network role guess: {role}",
+        f"Upstream: {', '.join(list(upstream)[:8]) or 'none listed'}",
+        f"Downstream: {', '.join(list(downstream)[:8]) or 'none listed'}",
+    ]
+    summary = knowledge.get("summary") or knowledge.get("function") or ""
+    if summary:
+        facts.append(f"Curated summary: {str(summary)[:500]}")
+    if delta_y is not None:
+        facts.append(f"Latest simulation Δy: {float(delta_y):+.3f}")
+
+    return (
+        "You explain how changing this protein could matter in a disease pathway.\n"
+        "Use ONLY the facts. No invented drugs, clinical advice, or accessions.\n"
+        "Write exactly four short paragraphs labeled OVERVIEW:, UP:, DOWN:, STRUCTURE:.\n"
+        f"- OVERVIEW: how {sym} sits in «{disease}» (1-2 sentences)\n"
+        "- UP: if activity/expression goes up, what likely happens to the network\n"
+        "- DOWN: if activity is reduced or knocked out, what likely happens\n"
+        "- STRUCTURE: if structure or protein–protein interactions change "
+        "(mutation, binding, PTM), how that could rewire the same edges\n\n"
+        "FACTS:\n- "
+        + "\n- ".join(facts)
+    )
+
+
+def _parse_disease_impact_sections(text: str) -> Dict[str, Optional[str]]:
+    cleaned = text.strip()
+    if "Answer:" in cleaned:
+        cleaned = cleaned.split("Answer:")[-1].strip()
+    pattern = re.compile(
+        r"(?:^|\n)\s*(OVERVIEW|UP|DOWN|STRUCTURE)\s*:\s*(.+?)(?=(?:\n\s*(?:OVERVIEW|UP|DOWN|STRUCTURE)\s*:)|$)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    found = {
+        m.group(1).upper(): " ".join(m.group(2).split()) for m in pattern.finditer(cleaned)
+    }
+    if found:
+        return {
+            "overview": found.get("OVERVIEW"),
+            "if_activity_up": found.get("UP"),
+            "if_activity_down": found.get("DOWN"),
+            "structure_or_interaction": found.get("STRUCTURE"),
+        }
+    paras = [p.strip() for p in re.split(r"\n\s*\n", cleaned) if p.strip()]
+    keys = ["overview", "if_activity_up", "if_activity_down", "structure_or_interaction"]
+    out: Dict[str, Optional[str]] = {k: None for k in keys}
+    for i, k in enumerate(keys):
+        if i < len(paras):
+            out[k] = paras[i]
+    return out
+
+
+def generate_disease_impact_narrative(
+    knowledge: Dict[str, Any],
+    *,
+    condition_query: str = "",
+    upstream: Optional[Sequence[str]] = None,
+    downstream: Optional[Sequence[str]] = None,
+    delta_y: Optional[float] = None,
+    role: str = "connector",
+) -> Optional[Dict[str, Any]]:
+    """
+    LLM polish for disease-context impact paragraphs.
+    Returns keys matching ``build_disease_impact`` or None on failure.
+    """
+    if not llm_available():
+        return None
+
+    up = [u for u in (upstream or []) if u]
+    down = [d for d in (downstream or []) if d]
+    sym = str(knowledge.get("gene_symbol") or "").upper()
+    dy = "" if delta_y is None else f"{float(delta_y):.3f}"
+    cache = IntegrationCache()
+    cache_key = f"impact:{sym}:{_neighbor_hash(up, down, condition_query)}:{role}:{dy}"
+    cached = cache.get_json("disease_impact", cache_key)
+    if isinstance(cached, dict) and cached.get("overview"):
+        out = dict(cached)
+        out["mode"] = "cached"
+        return out
+
+    prompt = _build_disease_impact_prompt(
+        knowledge,
+        condition_query=condition_query,
+        upstream=up,
+        downstream=down,
+        delta_y=delta_y,
+        role=role,
+    )
+
+    text: Optional[str] = None
+    mode = "hf_llm"
+    custom = os.environ.get("BIOMED_LLM_URL", "").strip()
+    try:
+        if custom:
+            mode = "custom_llm"
+            text = _call_custom_endpoint(prompt, custom)
+        else:
+            token = os.environ.get("HF_TOKEN", "").strip()
+            if token:
+                text = _call_hf_chat(prompt, token)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Disease-impact LLM call failed: %s", exc)
+        return None
+
+    if not text:
+        return None
+
+    sections = _parse_disease_impact_sections(text)
+    if not sections.get("overview"):
+        sections["overview"] = " ".join(text.split())[:420]
+
+    result = {
+        "overview": sections.get("overview") or "",
+        "if_activity_up": sections.get("if_activity_up") or "",
+        "if_activity_down": sections.get("if_activity_down") or "",
+        "structure_or_interaction": sections.get("structure_or_interaction") or "",
+        "mode": mode,
+        "raw_excerpt": text[:1200],
+    }
+    # Require at least overview + one change scenario
+    if not result["overview"] or not (
+        result["if_activity_up"] or result["if_activity_down"] or result["structure_or_interaction"]
+    ):
+        return None
+
+    cache.set_json("disease_impact", cache_key, result, ttl=3 * 86_400.0)
+    return result

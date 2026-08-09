@@ -228,6 +228,18 @@ class NodeInspectorResponse(BaseModel):
     feature_attributions: List[Dict[str, Any]] = Field(default_factory=list)
 
 
+class DiseaseImpactBlock(BaseModel):
+    """What-if impact of activity / structure / interaction changes in a disease path."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    overview: str = ""
+    if_activity_up: str = ""
+    if_activity_down: str = ""
+    structure_or_interaction: str = ""
+    mode: str = "template"
+
+
 class ProteinCardResponse(BaseModel):
     """Plain-language + retrieved knowledge card for a graph node."""
 
@@ -251,6 +263,7 @@ class ProteinCardResponse(BaseModel):
     summary: Optional[str] = None
     type_of_gene: Optional[str] = None
     entrezgene: Optional[str] = None
+    disease_impact: Optional[DiseaseImpactBlock] = None
 
 
 class ConditionSuggestion(BaseModel):

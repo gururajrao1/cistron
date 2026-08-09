@@ -46,6 +46,11 @@ def test_build_card_from_mygene_shaped_facts() -> None:
     assert card["narrative_mode"] in {"template", "template_curated"}
     assert "mygene" in card["sources_used"]
     assert card["entrez_url"]
+    impact = card["disease_impact"]
+    assert impact["overview"]
+    assert "Colorectal" in impact["overview"] or "Colorectal" in impact["if_activity_up"]
+    assert "RB1" in impact["if_activity_up"] or "CCNE1" in impact["if_activity_down"]
+    assert impact["mode"] == "template"
 
 
 def test_proteins_endpoint_arbitrary_symbol() -> None:
@@ -64,3 +69,4 @@ def test_proteins_endpoint_arbitrary_symbol() -> None:
         assert body["plain_english"]
         assert body["narrative_mode"]
         assert isinstance(body["sources_used"], list)
+        assert body.get("disease_impact", {}).get("overview")
