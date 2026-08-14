@@ -152,17 +152,12 @@ export function Header({ onOpenPalette }: Props) {
               />
             </svg>
           </div>
-          <div className="flex flex-col leading-none">
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-display text-[15px] font-bold tracking-tight text-vcl-text">
-                CISTRON
-              </span>
-              <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-phosphor">
-                VCL
-              </span>
-            </div>
-            <span className="mt-0.5 font-mono text-[8.5px] font-semibold uppercase tracking-[0.16em] text-cyan-flux/90">
-              Life sciences lab
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-[15px] font-bold tracking-tight text-vcl-text">
+              CISTRON
+            </span>
+            <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-phosphor">
+              VCL
             </span>
           </div>
         </div>
