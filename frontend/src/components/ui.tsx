@@ -25,16 +25,16 @@ export function GeneBadge({
   const tones: Record<string, string> = {
     emerald:
       'bg-emerald-950/60 text-emerald-400 border-emerald-800/50',
-    cyan: 'bg-cyan-950/60 text-cyan-300 border-cyan-800/50',
+    cyan: 'bg-cyan-950/60 text-cyan-flux border-cyan-flux/40',
     amber: 'bg-amber-950/60 text-amber-300 border-amber-800/50',
-    violet: 'bg-violet-950/60 text-violet-300 border-violet-800/50',
+    violet: 'bg-cyan-950/60 text-cyan-300 border-cyan-flux/35',
     coral: 'bg-rose-950/60 text-rose-300 border-rose-800/50',
     slate: 'bg-slate-900/80 text-slate-300 border-slate-700/70',
   }
   return (
     <span
       className={clsx(
-        'inline-flex max-w-full items-center rounded-full border px-2 py-0.5 font-mono text-xs font-semibold tracking-tight',
+        'inline-flex max-w-full items-center rounded-md border px-2 py-0.5 font-mono text-xs font-semibold tracking-tight',
         tones[tone],
         className,
       )}

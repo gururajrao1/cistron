@@ -125,17 +125,44 @@ export function Header({ onOpenPalette }: Props) {
 
   return (
     <>
-      <header className="flex h-[46px] shrink-0 items-center gap-3 border-b border-vcl-border bg-obsidian-panel px-3">
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="relative grid h-5 w-5 place-items-center rounded-[5px] border border-vcl-border-strong bg-vcl-surface">
-            <span className="h-[7px] w-[7px] rounded-full bg-emerald-active" />
+      <header className="relative flex h-[48px] shrink-0 items-center gap-3 border-b border-cyan-flux/25 bg-[#041820]/95 px-3 backdrop-blur-md">
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] lab-membrane-bar"
+          aria-hidden
+        />
+        <div className="flex shrink-0 items-center gap-2.5">
+          {/* Helix mark — life-sciences brand cue */}
+          <div
+            className="relative grid h-7 w-7 place-items-center rounded-md border border-cyan-flux/45 bg-[#0a2834] shadow-[0_0_18px_rgba(45,212,191,0.35)]"
+            aria-hidden
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M4 2c3 2.5 5 2.5 8 0M4 8c3 2.5 5 2.5 8 0M4 14c3 2.5 5 2.5 8 0"
+                stroke="#2dd4bf"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+              <path
+                d="M12 2c-3 2.5-5 2.5-8 0M12 8c-3 2.5-5 2.5-8 0M12 14c-3 2.5-5 2.5-8 0"
+                stroke="#c8f542"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                opacity="0.85"
+              />
+            </svg>
           </div>
-          <div className="flex items-baseline gap-1">
-            <span className="font-mono text-[13px] font-bold tracking-[0.04em] text-vcl-text">
-              CISTRON
-            </span>
-            <span className="font-mono text-[11px] font-semibold tracking-widest text-vcl-muted">
-              ·VCL
+          <div className="flex flex-col leading-none">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-[15px] font-bold tracking-tight text-vcl-text">
+                CISTRON
+              </span>
+              <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-phosphor">
+                VCL
+              </span>
+            </div>
+            <span className="mt-0.5 font-mono text-[8.5px] font-semibold uppercase tracking-[0.16em] text-cyan-flux/90">
+              Life sciences lab
             </span>
           </div>
         </div>
@@ -143,7 +170,7 @@ export function Header({ onOpenPalette }: Props) {
         <button
           type="button"
           onClick={() => onOpenPalette?.()}
-          className="flex h-7 min-w-[10rem] max-w-xs flex-[0_1_280px] items-center gap-2 rounded-md border border-vcl-border bg-obsidian px-2.5 text-left transition hover:border-vcl-border-strong"
+          className="vcl-focus-ring flex h-7 min-w-[10rem] max-w-xs flex-[0_1_280px] items-center gap-2 rounded-md border border-vcl-border bg-obsidian px-2.5 text-left transition hover:border-cyan-flux/35 hover:bg-vcl-surface/60 active:scale-[0.99]"
         >
           <span className="truncate font-mono text-[11px] text-vcl-dim">
             Search targets, pathways, commands…
@@ -163,7 +190,7 @@ export function Header({ onOpenPalette }: Props) {
               if (engineLive && !busy) runQuery(v)
             }}
             title={controls.conditionQuery}
-            className="h-7 max-w-[13rem] rounded-md border border-vcl-border bg-vcl-surface px-2 font-mono text-[11px] text-vcl-text outline-none focus:border-emerald-active/50"
+            className="vcl-focus-ring h-7 max-w-[13rem] rounded-md border border-vcl-border bg-vcl-surface px-2 font-mono text-[11px] text-vcl-text outline-none transition hover:border-vcl-border-strong focus:border-cyan-flux/50"
           >
             {scenarioValue === '__custom__' ? (
               <option value="__custom__">
@@ -207,7 +234,7 @@ export function Header({ onOpenPalette }: Props) {
           type="button"
           disabled={!engineLive || busy}
           onClick={runSim}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-emerald-active/45 bg-[#14361F] px-3 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#6EE7A0] transition hover:brightness-110 disabled:opacity-40"
+          className="vcl-focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-phosphor/40 bg-[#1a2a0a] px-3 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-phosphor transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>▶</span>}
           Run
@@ -239,18 +266,18 @@ export function Header({ onOpenPalette }: Props) {
                 setSnapOpen((o) => !o)
               }}
               title="Experiment snapshots"
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-vcl-border px-2 font-mono text-[10px] text-vcl-soft hover:bg-vcl-raised"
+              className="vcl-focus-ring inline-flex h-7 items-center gap-1 rounded-md border border-vcl-border px-2 font-mono text-[10px] text-vcl-soft transition hover:border-vcl-border-strong hover:bg-vcl-raised active:scale-[0.98]"
             >
               <Bookmark className="h-3 w-3" />
               Snap
             </button>
             {snapOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-md border border-vcl-border bg-obsidian-panel p-2 shadow-xl">
+              <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-vcl-border bg-obsidian-panel/95 p-2 shadow-2xl backdrop-blur-md">
                 <button
                   type="button"
                   disabled={!graph}
                   onClick={saveCurrent}
-                  className="mb-2 w-full rounded-[5px] border border-emerald-active/40 bg-[#0d2818] px-2 py-1.5 text-[11px] font-semibold text-emerald-soft disabled:opacity-40"
+                  className="vcl-focus-ring mb-2 w-full rounded-[5px] border border-cyan-flux/40 bg-[#0a1f28] px-2 py-1.5 text-[11px] font-semibold text-cyan-flux transition hover:brightness-110 disabled:opacity-40"
                 >
                   Save current experiment
                 </button>
@@ -261,12 +288,12 @@ export function Header({ onOpenPalette }: Props) {
                     snaps.map((s) => (
                       <li
                         key={s.id}
-                        className="flex items-center gap-1 rounded border border-vcl-border/80 px-1.5 py-1"
+                        className="flex items-center gap-1 rounded-md border border-vcl-border/80 px-1.5 py-1 transition hover:border-vcl-border-strong"
                       >
                         <button
                           type="button"
                           onClick={() => restore(s)}
-                          className="min-w-0 flex-1 text-left"
+                          className="vcl-focus-ring min-w-0 flex-1 rounded text-left"
                         >
                           <div className="truncate text-[11px] text-vcl-text">{s.name}</div>
                           <div className="truncate font-mono text-[9px] text-vcl-dim">
@@ -279,7 +306,7 @@ export function Header({ onOpenPalette }: Props) {
                             deleteSnapshot(s.id)
                             setSnaps(listSnapshots())
                           }}
-                          className="px-1 text-[10px] text-vcl-dim hover:text-coral-action"
+                          className="vcl-focus-ring rounded px-1 text-[10px] text-vcl-dim hover:text-coral-action"
                         >
                           ×
                         </button>
@@ -299,7 +326,7 @@ export function Header({ onOpenPalette }: Props) {
               markFirstRunExportDone()
             }}
             title={graph ? 'Export scientific report (PDF / Markdown)' : 'Run a scenario first'}
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-vcl-border bg-transparent px-2.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-vcl-text transition hover:bg-vcl-raised disabled:opacity-40"
+            className="vcl-focus-ring inline-flex h-7 items-center gap-1.5 rounded-md border border-vcl-border bg-transparent px-2.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-vcl-text transition hover:border-vcl-border-strong hover:bg-vcl-raised active:scale-[0.98] disabled:opacity-40"
           >
             <Download className="h-3 w-3 text-vcl-muted" />
             Export

@@ -130,18 +130,19 @@ export function PathwaysView() {
 
   return (
     <div className="mx-auto flex w-full max-w-[88rem] flex-col gap-4 p-4 md:p-5">
-      <div>
-        <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
+      <div className="relative max-w-2xl">
+        <p className="lab-meta text-cyan-flux/80">PW · Reactome · STRING</p>
+        <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight text-vcl-text md:text-[1.75rem]">
           Disease Pathways
         </h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Type a disease — we auto-pick the best Reactome pathway. Click Build (or an example)
-          and go straight to Studio.
+        <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-vcl-muted">
+          Type a disease — we auto-pick the best Reactome pathway. Build, then open Studio with
+          the interactome intact.
         </p>
       </div>
 
       <GlassCard className="space-y-3">
-        <MetaLabel className="text-cyan-300/90">Disease / condition</MetaLabel>
+        <MetaLabel className="text-cyan-flux/90">Disease / condition</MetaLabel>
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -150,7 +151,7 @@ export function PathwaysView() {
           }}
         >
           <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vcl-dim" />
             <input
               value={draft}
               onChange={(e) => {
@@ -160,13 +161,13 @@ export function PathwaysView() {
               placeholder="e.g. Alzheimer Disease, Colorectal Cancer…"
               disabled={lab.busy}
               spellCheck={false}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950/80 py-2.5 pl-10 pr-4 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-flux/50 disabled:opacity-50"
+              className="vcl-focus-ring w-full rounded-lg border border-vcl-border bg-obsidian/80 py-2.5 pl-10 pr-4 text-sm text-vcl-text outline-none placeholder:text-vcl-dim transition hover:border-vcl-border-strong focus:border-cyan-flux/50 disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
             disabled={lab.busy || !draft.trim() || !lab.engineLive || searching}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-bold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-40"
+            className="vcl-focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-phosphor/40 bg-[#1a2a0a] px-4 py-2 text-sm font-bold text-phosphor transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
           >
             {lab.busy || searching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -184,7 +185,7 @@ export function PathwaysView() {
               disabled={lab.busy}
               onClick={() => quickBuild(ex)}
               title="Search and auto-build the best Reactome match"
-              className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-[11px] font-medium text-slate-300 hover:border-cyan-flux/40 hover:text-cyan-100 disabled:opacity-40"
+              className="rounded-md border border-vcl-border bg-vcl-surface px-2 py-1 text-[11px] font-medium text-vcl-soft transition hover:border-cyan-flux/40 hover:text-cyan-flux disabled:opacity-40"
             >
               {ex}
             </button>
@@ -378,7 +379,7 @@ export function PathwaysView() {
                 Reactome pathway search + rank
               </li>
               <li className="flex items-center gap-2">
-                <GitBranch className="h-3.5 w-3.5 text-violet-300" />
+                <GitBranch className="h-3.5 w-3.5 text-cyan-flux" />
                 Participating gene symbols
               </li>
               <li className="flex items-center gap-2">

@@ -83,10 +83,10 @@ export function OrganelleCompartments({
   }
 
   return (
-    <div className="shrink-0 rounded-xl border border-violet-hub/30 bg-violet-950/20 px-3 py-2">
+    <div className="shrink-0 rounded-xl border border-violet-hub/30 bg-cyan-950/20 px-3 py-2">
       <div className="mb-1.5 flex flex-wrap items-center gap-2">
-        <FlaskConical className="h-3.5 w-3.5 text-violet-300" />
-        <MetaLabel className="!text-violet-300">Organelle compartments</MetaLabel>
+        <FlaskConical className="h-3.5 w-3.5 text-cyan-300" />
+        <MetaLabel className="!text-cyan-300">Organelle compartments</MetaLabel>
         <GeneBadge name={symbol} tone="violet" />
         <span className="lab-mono text-[10px] text-slate-500">
           t={meshTime.toFixed(1)} min

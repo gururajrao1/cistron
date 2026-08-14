@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Dna,
   FileSpreadsheet,
   FlaskConical,
   Loader2,
@@ -153,40 +152,37 @@ export function OmicsUploader() {
 
   return (
     <div className="mx-auto flex max-w-[88rem] flex-col gap-4 p-4 lg:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="mb-1 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-flux/35 bg-cyan-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
-              <Dna className="h-3 w-3" /> Phase 2 · Omics
-            </span>
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-vcl-border/80 pb-4">
+        <div className="min-w-0 max-w-2xl">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="lab-meta text-cyan-flux/80">OM · RNA-seq · PTM</span>
             {lab.activeOmicsProfile ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200 shadow-[0_0_14px_rgba(16,185,129,0.2)]">
+              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
                 <Sparkles className="h-3 w-3" /> Profile live
               </span>
             ) : null}
             {fitScore != null ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-kinase/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
                 Fit {fitScore.toFixed(0)}%
               </span>
             ) : null}
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-50">
-            Multi-Omics Profile Mapper
+          <h1 className="font-display text-xl font-semibold tracking-tight text-vcl-text md:text-[1.65rem]">
+            Multi-Omics Mapper
           </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-vcl-muted">
             Upload differential RNA-seq / proteomics CSV. Fold-changes map to Hill-cube
-            baselines <span className="lab-mono text-slate-400">y₀</span> and re-run the
-            hypoxia cascade on the Studio canvas. Switch conditions to compare fit.
+            baselines <span className="lab-mono text-vcl-soft">y₀</span> and re-run on Studio.
           </p>
         </div>
         <button
           type="button"
           disabled={!lab.activeOmicsProfile || busy}
           onClick={() => navigate('/studio')}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[12px] font-semibold text-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="vcl-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-cyan-flux/40 bg-[#0a1f28] px-3 py-2 text-[12px] font-semibold text-cyan-flux transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FlaskConical className="h-3.5 w-3.5" />
-          Open Studio canvas
+          Open Studio
         </button>
       </header>
 
@@ -269,7 +265,7 @@ export function OmicsUploader() {
               type="button"
               disabled={busy || !lab.engineLive}
               onClick={() => void loadExample('hypoxia')}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-violet-hub/40 bg-violet-950/40 px-3 py-2 text-[11px] font-semibold text-violet-200 shadow-[0_0_14px_rgba(139,92,246,0.15)] hover:bg-violet-900/40 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-violet-hub/40 bg-cyan-950/40 px-3 py-2 text-[11px] font-semibold text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.15)] hover:bg-cyan-900/40 disabled:opacity-40"
             >
               <FileSpreadsheet className="h-3.5 w-3.5" />
               Load Hypoxia Core

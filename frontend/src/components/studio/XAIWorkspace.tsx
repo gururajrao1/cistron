@@ -16,6 +16,7 @@ import { Loader2, Radar } from 'lucide-react'
 import { GlassCard } from '../GlassCard'
 import { ScientistPanel } from '../ScientistPanel'
 import { TopologyPanel } from '../TopologyPanel'
+import { PageHeader, VclButton } from '../PageHeader'
 import { ApplyToStudioButton } from './ApplyToStudioButton'
 import { useLab } from '../../lab/LabContext'
 import {
@@ -96,29 +97,21 @@ export function XAIWorkspace() {
   const scatterData = useMemo(() => local?.scatter ?? [], [local])
 
   return (
-    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-            XAI & Global Sensitivity
-          </h1>
-          <p className="text-sm text-slate-500">
-            Sobol Sᵢ / S_Ti · SHAP-force kinetic parameters · GAT prioritization
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!lab.graph || busy}
-            onClick={runSobol}
-            className="inline-flex items-center gap-2 rounded-xl border border-cyan-flux/40 bg-cyan-950/40 px-4 py-2.5 text-sm font-bold text-cyan-100 disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
-            Run Sobol / SHAP-force
-          </button>
-          <ApplyToStudioButton disabled={!lab.graph} />
-        </div>
-      </div>
+    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
+      <PageHeader
+        code="XA · Sobol · SHAP · GAT"
+        title="XAI & Global Sensitivity"
+        description="Sobol Sᵢ / S_Ti, SHAP-force kinetic parameters, and GAT prioritization."
+        actions={
+          <>
+            <VclButton variant="secondary" disabled={!lab.graph || busy} onClick={runSobol}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
+              Run Sobol / SHAP-force
+            </VclButton>
+            <ApplyToStudioButton disabled={!lab.graph} />
+          </>
+        }
+      />
 
       {status ? <p className="text-[11px] text-cyan-200/90">{status}</p> : null}
 

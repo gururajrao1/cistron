@@ -15,8 +15,7 @@ import {
 const SUGGESTIONS = ['TP53', 'EGFR', 'BRCA1', 'HIF1A', 'VEGFA', 'KRAS', 'MYC', 'AKT1']
 
 /**
- * Full-page 3D Structural Inspector workspace (sidebar → 3D Structure).
- * Supports PTM residue selection via ?resi= and phospho-site chips.
+ * Full-bleed 3D Structural Inspector — left rail + maximized mol viewer.
  */
 export function StructureView() {
   const lab = useLab()
@@ -62,7 +61,7 @@ export function StructureView() {
         .map((s) => ({
           position: s.position,
           label: s.label,
-          color: selectedResi === s.position ? '#f43f5e' : '#a855f7',
+          color: selectedResi === s.position ? '#fb7185' : '#22d3ee',
         })),
     [geneSites, selectedResi],
   )
@@ -92,76 +91,81 @@ export function StructureView() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-3 lg:flex-row lg:gap-4 lg:p-4">
-      <aside className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto lg:w-[300px]">
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-            3D Structure
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Full-viewport UniProt / PDB / AlphaFold inspector · click residues for PTM sites.
-          </p>
-        </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
+      {/* Compact control rail — scrolls independently; viewer gets the rest */}
+      <aside className="flex max-h-[38vh] w-full shrink-0 flex-col overflow-y-auto border-b border-vcl-border bg-obsidian-panel/80 lg:max-h-none lg:w-[272px] lg:border-b-0 lg:border-r">
+        <div className="space-y-2.5 p-2.5">
+          <div>
+            <p className="lab-meta text-cyan-flux/80">3D · UniProt · PDB · AlphaFold</p>
+            <h1 className="font-display mt-0.5 text-[15px] font-semibold tracking-tight text-vcl-text">
+              Structure
+            </h1>
+          </div>
 
-        <GlassCard className="space-y-3">
-          <MetaLabel className="text-cyan-300/90">Gene symbol</MetaLabel>
-          <form onSubmit={onSubmit} className="flex gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.toUpperCase())}
-              placeholder="e.g. TP53"
-              spellCheck={false}
-              className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 font-mono text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-flux/50"
-            />
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-flux/40 bg-cyan-950/50 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-900/50"
-            >
-              <Search className="h-3.5 w-3.5" />
-              Load
-            </button>
-          </form>
-          <p className="text-[10px] leading-relaxed text-slate-500">
-            Resolves human Swiss-Prot entries, prefers best-resolution experimental PDB, else
-            AlphaFold.
-          </p>
-        </GlassCard>
-
-        {geneSites.length > 0 ? (
-          <GlassCard className="space-y-2">
-            <MetaLabel className="!text-violet-300">Phospho / PTM sites</MetaLabel>
-            <p className="text-[10px] text-slate-500">
-              Select an active phosphorylation residue on the structure.
-            </p>
-            <div className="flex flex-col gap-1">
-              {geneSites.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => loadSymbol(s.symbol, s.position)}
-                  className={clsx(
-                    'rounded-lg border px-2 py-1.5 text-left font-mono text-[11px] font-semibold',
-                    selectedResi === s.position
-                      ? 'border-violet-400/50 bg-violet-950/50 text-violet-100'
-                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-violet-500/40',
-                  )}
-                >
-                  {s.label}
-                  <span className="ml-2 text-slate-500">×{s.phosphoRatio.toFixed(2)}</span>
-                </button>
-              ))}
-            </div>
+          <GlassCard className="!rounded-lg !p-2.5 space-y-2">
+            <MetaLabel className="text-cyan-flux/90">Gene</MetaLabel>
+            <form onSubmit={onSubmit} className="flex gap-1.5">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value.toUpperCase())}
+                placeholder="TP53"
+                spellCheck={false}
+                className="vcl-focus-ring min-w-0 flex-1 rounded-md border border-vcl-border bg-obsidian/80 px-2 py-1.5 font-mono text-[12px] text-vcl-text outline-none placeholder:text-vcl-dim focus:border-cyan-flux/50"
+              />
+              <button
+                type="submit"
+                className="vcl-focus-ring inline-flex items-center gap-1 rounded-md border border-cyan-flux/40 bg-[#0a1f28] px-2.5 py-1.5 text-[11px] font-semibold text-cyan-flux hover:brightness-110"
+              >
+                <Search className="h-3.5 w-3.5" />
+                Load
+              </button>
+            </form>
           </GlassCard>
-        ) : null}
 
-        {scenarioGenes.length > 0 ? (
-          <GlassCard className="space-y-2">
-            <MetaLabel>Scenario proteins</MetaLabel>
-            <p className="text-[11px] text-slate-500">
-              From active network · {lab.profileId || 'unresolved'}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {scenarioGenes.map((sym) => (
+          {geneSites.length > 0 ? (
+            <GlassCard className="!rounded-lg !p-2.5 space-y-1.5">
+              <MetaLabel className="!text-cyan-flux/80">PTM sites</MetaLabel>
+              <div className="flex max-h-[9rem] flex-col gap-1 overflow-y-auto">
+                {geneSites.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => loadSymbol(s.symbol, s.position)}
+                    className={clsx(
+                      'vcl-focus-ring rounded-md border px-2 py-1 text-left font-mono text-[11px] font-semibold transition',
+                      selectedResi === s.position
+                        ? 'border-rose-inhib/50 bg-rose-950/40 text-rose-100'
+                        : 'border-vcl-border bg-vcl-surface text-vcl-soft hover:border-cyan-flux/40',
+                    )}
+                  >
+                    {s.label}
+                    <span className="ml-1.5 text-vcl-dim">×{s.phosphoRatio.toFixed(2)}</span>
+                  </button>
+                ))}
+              </div>
+            </GlassCard>
+          ) : null}
+
+          {scenarioGenes.length > 0 ? (
+            <GlassCard className="!rounded-lg !p-2.5 space-y-1.5">
+              <MetaLabel>Scenario</MetaLabel>
+              <div className="flex flex-wrap gap-1">
+                {scenarioGenes.map((sym) => (
+                  <GeneChip
+                    key={sym}
+                    label={sym}
+                    active={active === sym}
+                    onClick={() => loadSymbol(sym)}
+                  />
+                ))}
+              </div>
+            </GlassCard>
+          ) : null}
+
+          <GlassCard className="!rounded-lg !p-2.5 space-y-1.5">
+            <MetaLabel>Quick load</MetaLabel>
+            <div className="flex flex-wrap gap-1">
+              {SUGGESTIONS.map((sym) => (
                 <GeneChip
                   key={sym}
                   label={sym}
@@ -170,33 +174,20 @@ export function StructureView() {
                 />
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => navigate('/studio')}
+              className="vcl-focus-ring mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-vcl-dim hover:text-cyan-flux"
+            >
+              <Box className="h-3 w-3" />
+              Back to Studio
+            </button>
           </GlassCard>
-        ) : null}
-
-        <GlassCard className="space-y-2">
-          <MetaLabel>Quick load</MetaLabel>
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGESTIONS.map((sym) => (
-              <GeneChip
-                key={sym}
-                label={sym}
-                active={active === sym}
-                onClick={() => loadSymbol(sym)}
-              />
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/studio')}
-            className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 hover:text-emerald-300"
-          >
-            <Box className="h-3 w-3" />
-            Back to Simulation Studio
-          </button>
-        </GlassCard>
+        </div>
       </aside>
 
-      <div className="min-h-[420px] min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-800/80 bg-obsidian-panel shadow-[inset_0_0_0_1px_rgba(15,23,42,0.6)] lg:min-h-0">
+      {/* Maximized mol viewport — fills remaining height */}
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-[#071018]">
         <ProteinStructureCanvas
           symbol={active}
           className="h-full"
@@ -223,10 +214,10 @@ function GeneChip({
       type="button"
       onClick={onClick}
       className={clsx(
-        'rounded-md border px-2 py-1 font-mono text-[11px] font-semibold transition',
+        'vcl-focus-ring rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] font-semibold transition',
         active
-          ? 'border-cyan-flux/50 bg-cyan-950/60 text-cyan-100'
-          : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500 hover:text-slate-100',
+          ? 'border-cyan-flux/50 bg-[#0a1f28] text-cyan-flux'
+          : 'border-vcl-border bg-vcl-surface text-vcl-soft hover:border-vcl-border-strong hover:text-vcl-text',
       )}
     >
       {label}

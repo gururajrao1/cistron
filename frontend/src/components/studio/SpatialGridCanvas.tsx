@@ -540,7 +540,7 @@ function ToolBtn({
       onClick={onClick}
       className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold ${
         active
-          ? 'border-violet-hub/50 bg-violet-500/15 text-violet-100'
+          ? 'border-cyan-flux/50 bg-cyan-flux/15 text-cyan-100'
           : 'border-slate-700 text-slate-400 hover:bg-slate-800'
       }`}
     >

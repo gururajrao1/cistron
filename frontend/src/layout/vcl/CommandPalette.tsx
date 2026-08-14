@@ -109,12 +109,12 @@ export function CommandPalette({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-start justify-center bg-black/55 pt-[12vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[80] flex items-start justify-center bg-black/60 pt-[12vh] backdrop-blur-[3px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-[604px] overflow-hidden rounded-lg border border-vcl-border bg-obsidian-panel shadow-2xl">
+      <div className="w-full max-w-[604px] overflow-hidden rounded-xl border border-vcl-border bg-obsidian-panel/95 shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(34,211,238,0.08)] backdrop-blur-md">
         <div className="flex items-center gap-2 border-b border-vcl-border px-3 py-2">
           <input
             autoFocus
@@ -141,8 +141,10 @@ export function CommandPalette({ open, onClose }: Props) {
                     onClose()
                   }}
                   className={clsx(
-                    'flex w-full items-center justify-between gap-3 px-3 py-2 text-left',
-                    i === active ? 'bg-vcl-surface' : 'hover:bg-vcl-surface/50',
+                    'flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition',
+                    i === active
+                      ? 'bg-vcl-surface shadow-[inset_3px_0_0_0_var(--color-cyan-flux)]'
+                      : 'hover:bg-vcl-surface/50',
                   )}
                 >
                   <div>
@@ -151,7 +153,7 @@ export function CommandPalette({ open, onClose }: Props) {
                     </div>
                     <div className="text-[10px] text-vcl-dim">{it.group}</div>
                   </div>
-                  <span className="font-mono text-[10px] text-vcl-muted">{it.hint}</span>
+                  <span className="font-mono text-[10px] text-cyan-flux/70">{it.hint}</span>
                 </button>
               </li>
             ))

@@ -65,7 +65,7 @@ function OrganelleTab() {
               <tr key={sym} className="border-t border-vcl-border/80 hover:bg-vcl-surface/40">
                 <td className="px-2 py-1.5 font-semibold text-vcl-text">{sym}</td>
                 <td className="px-2 py-1.5 text-vcl-muted">{cyto.toFixed(3)}</td>
-                <td className="px-2 py-1.5 text-violet-hub">{nuc.toFixed(3)}</td>
+                <td className="px-2 py-1.5 text-cyan-flux">{nuc.toFixed(3)}</td>
                 <td className="px-2 py-1.5 text-amber-kinase">{mito.toFixed(3)}</td>
                 <td
                   className={clsx(

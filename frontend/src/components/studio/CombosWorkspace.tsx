@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Crosshair, Loader2, Play } from 'lucide-react'
 import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
+import { PageHeader, VclButton } from '../PageHeader'
 import { HypothesisCardList } from './HypothesisCard'
 import { TopologyPanel } from '../TopologyPanel'
 import { ApplyToStudioButton } from './ApplyToStudioButton'
@@ -83,43 +84,34 @@ export function CombosWorkspace() {
   }, [matrix])
 
   return (
-    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-            Combination Therapy & Synthetic Lethality
-          </h1>
-          <p className="text-sm text-slate-500">
-            Pairwise Bliss synergy matrix · click a cell to dual-titrate on Studio
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!lab.graph || busy}
-            onClick={runClientScreen}
-            className="inline-flex items-center gap-2 rounded-xl border border-violet-hub/40 bg-violet-950/50 px-4 py-2.5 text-sm font-bold text-violet-100 disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
-            Client Dual Screen
-          </button>
-          <button
-            type="button"
-            disabled={!lab.engineLive || lab.busy}
-            onClick={runServerScreen}
-            className="inline-flex items-center gap-2 rounded-xl bg-coral-action px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-          >
-            <Play className="h-4 w-4" />
-            Server SL scan
-          </button>
-          <ApplyToStudioButton
-            disabled={!selected}
-            onBeforeNavigate={() => {
-              if (selected) applyDual(selected)
-            }}
-          />
-        </div>
-      </div>
+    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
+      <PageHeader
+        code="CB · Bliss · Dual KO"
+        title="Combination Therapy"
+        description="Pairwise Bliss synergy matrix — click a cell to dual-titrate on Studio."
+        actions={
+          <>
+            <VclButton
+              variant="secondary"
+              disabled={!lab.graph || busy}
+              onClick={runClientScreen}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+              Client Dual Screen
+            </VclButton>
+            <VclButton variant="danger" disabled={!lab.engineLive || lab.busy} onClick={runServerScreen}>
+              <Play className="h-4 w-4" />
+              Server SL scan
+            </VclButton>
+            <ApplyToStudioButton
+              disabled={!selected}
+              onBeforeNavigate={() => {
+                if (selected) applyDual(selected)
+              }}
+            />
+          </>
+        }
+      />
 
       {status ? (
         <p className="text-[11px] text-cyan-200/90">{status}</p>
@@ -194,7 +186,7 @@ export function CombosWorkspace() {
             </div>
           ) : (
             <p className="text-sm text-slate-500">
-              Run <span className="font-semibold text-violet-200">Client Dual Screen</span> to build
+              Run <span className="font-semibold text-cyan-200">Client Dual Screen</span> to build
               the N×N Bliss matrix from the active graph.
             </p>
           )}
@@ -246,9 +238,9 @@ export function CombosWorkspace() {
                       type="button"
                       onClick={() => setSelected(p)}
                       onDoubleClick={() => applyDual(p)}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/40 px-2 py-1.5 text-left text-[11px] hover:border-violet-500/40"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/40 px-2 py-1.5 text-left text-[11px] hover:border-cyan-flux/40"
                     >
-                      <span className="font-mono text-violet-100">
+                      <span className="font-mono text-cyan-100">
                         {p.a} + {p.b}
                       </span>
                       <span className="lab-mono text-slate-400">
@@ -263,7 +255,7 @@ export function CombosWorkspace() {
                   const pair = Array.isArray(p.pair) ? p.pair : []
                   return (
                     <li key={pair.join('+')} className="text-[11px] text-slate-400">
-                      <span className="font-mono text-violet-200">{pair.join(' + ')}</span>
+                      <span className="font-mono text-cyan-200">{pair.join(' + ')}</span>
                       <span className="lab-mono text-slate-500">
                         {' '}
                         · syn={Number(p.synergy_score ?? 0).toFixed(2)}

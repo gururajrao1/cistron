@@ -42,15 +42,15 @@ export function StudioView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex h-[34px] shrink-0 items-center gap-2 border-b border-vcl-border bg-obsidian-panel px-2.5">
+      <div className="flex h-[34px] shrink-0 items-center gap-2 border-b border-vcl-border bg-obsidian-panel/90 px-2.5 backdrop-blur-sm">
         <div className="inline-flex h-7 items-center rounded-md border border-vcl-border bg-obsidian p-0.5">
           <button
             type="button"
             onClick={() => setMeshMode('topology')}
             className={clsx(
-              'inline-flex h-full items-center gap-1.5 rounded-[5px] px-2.5 font-mono text-[10.5px] font-semibold transition',
+              'vcl-focus-ring inline-flex h-full items-center gap-1.5 rounded-[5px] px-2.5 font-mono text-[10.5px] font-semibold transition',
               meshMode === 'topology'
-                ? 'bg-[#1A2635] text-vcl-text'
+                ? 'bg-vcl-raised text-vcl-text shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)]'
                 : 'text-vcl-muted hover:text-vcl-text',
             )}
           >
@@ -61,9 +61,9 @@ export function StudioView() {
             type="button"
             onClick={() => setMeshMode('spatial')}
             className={clsx(
-              'inline-flex h-full items-center gap-1.5 rounded-[5px] px-2.5 font-mono text-[10.5px] font-semibold transition',
+              'vcl-focus-ring inline-flex h-full items-center gap-1.5 rounded-[5px] px-2.5 font-mono text-[10.5px] font-semibold transition',
               meshMode === 'spatial'
-                ? 'bg-[#1A2635] text-vcl-text'
+                ? 'bg-vcl-raised text-vcl-text shadow-[inset_0_0_0_1px_rgba(34,211,238,0.25)]'
                 : 'text-vcl-muted hover:text-vcl-text',
             )}
           >
@@ -87,10 +87,10 @@ export function StudioView() {
             <span className="h-0.5 w-3 bg-coral-action" /> inhibition / KO
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-0.5 w-3 bg-cyan-flux" /> phosphorylation
+            <span className="h-0.5 w-3 bg-amber-kinase" /> phosphorylation
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-0.5 w-3 bg-violet-hub" /> translocation
+            <span className="h-0.5 w-3 bg-cyan-flux" /> translocation
           </span>
         </div>
       </div>

@@ -1,26 +1,31 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
-/* Cistron VCL Systems Biology IDE — design tokens from mockup */
+/*
+  Cistron VCL — life-sciences lab bench
+  Cytosol ink · membrane teal · phosphor lime (no purple chrome)
+*/
 @theme {
-  --color-obsidian: #07111d;
-  --color-obsidian-panel: #0a1520;
-  --color-vcl-surface: #101a28;
-  --color-vcl-raised: #16212f;
-  --color-vcl-border: #233042;
-  --color-vcl-border-strong: #33455c;
-  --color-vcl-muted: #7c8da3;
-  --color-vcl-dim: #4e6479;
-  --color-vcl-text: #e6edf5;
-  --color-vcl-soft: #a9b8c9;
-  --color-vcl-link: #a9c8ec;
-  --color-emerald-active: #22c55e;
-  --color-emerald-soft: #6ee7a0;
-  --color-cyan-flux: #3b82f6;
-  --color-coral-action: #ef4444;
+  --color-obsidian: #031016;
+  --color-obsidian-panel: #061820;
+  --color-vcl-surface: #0a2430;
+  --color-vcl-raised: #0f3040;
+  --color-vcl-border: #1a4a5c;
+  --color-vcl-border-strong: #2a6a7c;
+  --color-vcl-muted: #7aa0ae;
+  --color-vcl-dim: #4d7384;
+  --color-vcl-text: #e8f6f4;
+  --color-vcl-soft: #a8cfd4;
+  --color-vcl-link: #5eead4;
+  --color-emerald-active: #34d399;
+  --color-emerald-soft: #6ee7b7;
+  --color-cyan-flux: #2dd4bf;
+  --color-phosphor: #c8f542;
+  --color-coral-action: #fb7185;
   --color-rose-inhib: #f43f5e;
-  --color-amber-kinase: #f59e0b;
-  --color-violet-hub: #c084fc;
+  --color-amber-kinase: #fbbf24;
+  --color-violet-hub: #5eead4;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
@@ -38,37 +43,72 @@ body,
 
 body {
   background-color: var(--color-obsidian);
-  background-image: radial-gradient(circle at 50% 40%, #0b1724 0%, #07111d 70%);
+  background-image:
+    radial-gradient(ellipse 90% 55% at 0% -10%, rgb(45 212 191 / 0.22), transparent 52%),
+    radial-gradient(ellipse 70% 45% at 100% 0%, rgb(200 245 66 / 0.12), transparent 48%),
+    radial-gradient(ellipse 80% 50% at 50% 120%, rgb(20 184 166 / 0.14), transparent 50%),
+    radial-gradient(circle at 50% 40%, #0a2834 0%, #031016 72%);
   background-attachment: fixed;
 }
 
+/* Film grain — lab glass feel */
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 @keyframes pulseDot {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.72);
-  }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.72); }
+}
+
+@keyframes vclShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes membraneGlow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 @layer utilities {
+  .font-display { font-family: var(--font-display); }
+
   .lab-glass {
-    background: rgb(16 26 40 / 0.92);
-    border: 1px solid var(--color-vcl-border);
-    backdrop-filter: blur(10px);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+    background: linear-gradient(165deg, rgb(10 36 48 / 0.92) 0%, rgb(6 24 32 / 0.88) 100%);
+    border: 1px solid rgb(45 212 191 / 0.22);
+    backdrop-filter: blur(12px);
+    box-shadow:
+      inset 0 1px 0 rgb(94 234 212 / 0.08),
+      0 0 0 1px rgb(0 0 0 / 0.35),
+      0 8px 28px rgb(0 0 0 / 0.35);
+  }
+
+  .lab-glass-interactive {
+    transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  }
+  .lab-glass-interactive:hover {
+    border-color: rgb(45 212 191 / 0.4);
+  }
+  .lab-glass-interactive:focus-within {
+    border-color: rgb(45 212 191 / 0.55);
+    box-shadow: inset 0 1px 0 rgb(94 234 212 / 0.08), 0 0 0 2px rgb(45 212 191 / 0.2);
   }
 
   .lab-meta {
     font-size: 10px;
     line-height: 1.2;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     font-weight: 600;
-    color: var(--color-vcl-dim);
+    color: rgb(45 212 191 / 0.75);
   }
 
   .lab-mono {
@@ -77,11 +117,32 @@ body {
   }
 
   .lab-grid-panel {
-    background-color: rgb(7 17 29 / 0.95);
+    background-color: rgb(3 16 22 / 0.85);
     background-image:
-      linear-gradient(rgba(16, 28, 42, 0.9) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(16, 28, 42, 0.9) 1px, transparent 1px);
-    background-size: 24px 24px;
+      linear-gradient(rgba(45 212 191 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45 212 191 / 0.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 78% 72% at 50% 42%, #000 18%, transparent 78%);
+  }
+
+  .vcl-stage-wash {
+    background-image:
+      radial-gradient(ellipse 50% 40% at 90% -5%, rgb(45 212 191 / 0.16), transparent 58%),
+      radial-gradient(ellipse 45% 35% at 0% 100%, rgb(200 245 66 / 0.08), transparent 55%);
+  }
+
+  /* Thin membrane accent bar (header / docks) */
+  .lab-membrane-bar {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(45 212 191 / 0.15) 12%,
+      rgb(45 212 191 / 0.85) 42%,
+      rgb(200 245 66 / 0.75) 58%,
+      rgb(45 212 191 / 0.15) 88%,
+      transparent 100%
+    );
+    animation: membraneGlow 4.5s ease-in-out infinite;
   }
 
   .vcl-rail-btn {
@@ -92,67 +153,61 @@ body {
     place-items: center;
     border-radius: 7px;
     cursor: pointer;
+    outline: none;
+  }
+  .vcl-rail-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-obsidian), 0 0 0 4px rgb(45 212 191 / 0.55);
   }
 
-  .vcl-pulse {
-    animation: pulseDot 1.6s ease-in-out infinite;
+  .vcl-pulse { animation: pulseDot 1.6s ease-in-out infinite; }
+
+  .vcl-skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(10 40 52 / 0.9) 0%,
+      rgb(30 80 90 / 0.95) 45%,
+      rgb(10 40 52 / 0.9) 100%
+    );
+    background-size: 200% 100%;
+    animation: vclShimmer 1.4s ease-in-out infinite;
+    border-radius: 6px;
   }
 
-  .glow-emerald {
-    box-shadow: 0 0 14px rgb(34 197 94 / 0.28);
+  .vcl-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-obsidian), 0 0 0 4px rgb(45 212 191 / 0.5);
   }
 
-  .glow-cyan {
-    box-shadow: 0 0 14px rgb(59 130 246 / 0.25);
-  }
-
-  .glow-violet {
-    box-shadow: 0 0 14px rgb(192 132 252 / 0.28);
-  }
-
-  .glow-coral {
-    box-shadow: 0 0 14px rgb(239 68 68 / 0.25);
-  }
+  .glow-emerald { box-shadow: 0 0 14px rgb(52 211 153 / 0.4); }
+  .glow-cyan { box-shadow: 0 0 16px rgb(45 212 191 / 0.45); }
+  .glow-violet { box-shadow: 0 0 14px rgb(45 212 191 / 0.35); }
+  .glow-coral { box-shadow: 0 0 14px rgb(251 113 133 / 0.32); }
+  .glow-phosphor { box-shadow: 0 0 18px rgb(200 245 66 / 0.35); }
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #233042 #0a1520;
-}
-
-*::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: #233042;
-  border-radius: 6px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: #33455c;
-}
-
-*::-webkit-scrollbar-track {
-  background: #0a1520;
-}
+* { scrollbar-width: thin; scrollbar-color: #1a4a5c #061820; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: #1a4a5c; border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: #2a6a7c; }
+*::-webkit-scrollbar-track { background: #061820; }
 
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   height: 3px;
-  background: #233042;
+  background: #1a4a5c;
   border-radius: 2px;
   outline: none;
 }
-
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: #e6edf5;
-  border: 2px solid #07111d;
+  background: #c8f542;
+  border: 2px solid #031016;
   cursor: ew-resize;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgb(45 212 191 / 0.45);
 }

@@ -29,7 +29,7 @@ export const PRIMARY_NAV: NavItem[] = [
 export const FUTURE_NAV: NavItem[] = []
 
 /**
- * Compact 54px icon rail — matches Cistron VCL Systems Biology IDE mockup.
+ * Compact 54px icon rail — Cistron VCL Systems Biology IDE.
  */
 export function SidebarNav({
   collapsed: _collapsed,
@@ -54,7 +54,11 @@ export function SidebarNav({
   }, [navigate])
 
   return (
-    <aside className="relative z-20 flex h-full w-[54px] shrink-0 flex-col items-center border-r border-vcl-border bg-obsidian-panel py-2">
+    <aside className="relative z-20 flex h-full w-[54px] shrink-0 flex-col items-center border-r border-cyan-flux/20 bg-[#041820]/95 py-2 backdrop-blur-sm">
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-cyan-flux via-phosphor/70 to-emerald-active"
+        aria-hidden
+      />
       <nav className="flex flex-1 flex-col items-center gap-1">
         {PRIMARY_NAV.map((item) => (
           <NavLink
@@ -65,8 +69,8 @@ export function SidebarNav({
               clsx(
                 'vcl-rail-btn font-mono text-[10.5px] font-semibold tracking-wide transition',
                 isActive
-                  ? 'bg-vcl-surface text-vcl-text'
-                  : 'text-vcl-muted hover:bg-vcl-surface/60 hover:text-vcl-text',
+                  ? 'bg-[#0a3040] text-cyan-flux shadow-[inset_0_0_0_1px_rgba(45,212,191,0.45),0_0_14px_rgba(45,212,191,0.2)]'
+                  : 'text-vcl-muted hover:bg-vcl-surface/70 hover:text-phosphor',
               )
             }
           >
@@ -74,8 +78,8 @@ export function SidebarNav({
               <>
                 <span
                   className={clsx(
-                    'absolute -left-2 top-[9px] h-4 w-0.5 rounded-sm',
-                    isActive ? 'bg-emerald-active' : 'bg-transparent',
+                    'absolute -left-[5px] top-[9px] h-4 w-0.5 rounded-sm transition',
+                    isActive ? 'bg-phosphor glow-phosphor' : 'bg-transparent',
                   )}
                 />
                 {item.code}
@@ -85,7 +89,7 @@ export function SidebarNav({
         ))}
       </nav>
       <div
-        className="mb-1 grid h-[26px] w-[26px] place-items-center rounded-full border border-vcl-border-strong bg-vcl-raised font-mono text-[9.5px] text-vcl-muted"
+        className="mb-1 grid h-[26px] w-[26px] place-items-center rounded-md border border-cyan-flux/35 bg-[#0a2834] font-mono text-[9.5px] font-semibold text-phosphor"
         title="Operator"
       >
         AV

@@ -108,22 +108,21 @@ export function ReportExportModal({
         aria-label="Close report export backdrop"
         onClick={onClose}
       />
-      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-obsidian-panel shadow-2xl">
-        <header className="flex items-start justify-between gap-3 border-b border-slate-800/80 px-4 py-3">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-vcl-border bg-obsidian-panel/95 shadow-2xl backdrop-blur-md">
+        <header className="flex items-start justify-between gap-3 border-b border-vcl-border px-4 py-3">
           <div>
-            <MetaLabel className="text-emerald-300/90">Automated Scientific Report</MetaLabel>
-            <h2 className="mt-1 text-lg font-extrabold tracking-tight text-slate-50">
+            <MetaLabel className="text-cyan-flux/80">Automated Scientific Report</MetaLabel>
+            <h2 className="font-display mt-1 text-lg font-semibold tracking-tight text-vcl-text">
               Export manuscript
             </h2>
-            <p className="mt-0.5 text-[12px] text-slate-500">
-              Abstract · Network Topology · Biophysical Trajectory · Target Identification ·
-              Provenance
+            <p className="mt-0.5 text-[12px] text-vcl-muted">
+              Abstract · Topology · Trajectory · Targets · Provenance
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-700/80 p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="vcl-focus-ring rounded-lg border border-vcl-border p-1.5 text-vcl-muted transition hover:bg-vcl-raised hover:text-vcl-text"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

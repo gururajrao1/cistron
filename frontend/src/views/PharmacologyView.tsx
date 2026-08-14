@@ -12,6 +12,7 @@ import {
 import { Play } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
+import { PageHeader, VclButton } from '../components/PageHeader'
 import { useLab } from '../lab/LabContext'
 
 function occupancy(c: number, ki: number): number {
@@ -61,43 +62,37 @@ export function PharmacologyView() {
   const applyAndRun = () => lab.runSimulation()
 
   return (
-    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-            Pharmacology & Perturbation Lab
-          </h1>
-          <p className="text-sm text-slate-500">
-            Dose–response θ = C/(C+Kᵢ) · knockouts wᵢ=0 · environmental clamps
-          </p>
-          <p className="mt-1 font-mono text-[11px] text-emerald-300/90">
-            Scenario · {controls.conditionQuery || '—'} · profile{' '}
-            <span className="rounded-md border border-violet-hub/40 bg-violet-950/40 px-1.5 py-0.5 text-violet-200">
-              {profileId || '—'}
-            </span>
-            {' · '}
-            {nodes.length} nodes
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!lab.engineLive || lab.busy}
-            onClick={applyAndRun}
-            className="inline-flex items-center gap-2 rounded-xl bg-coral-action px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-          >
-            <Play className="h-4 w-4" /> Apply & Resimulate
-          </button>
-          <ApplyToStudioButton
-            label="Apply → Studio"
-            disabled={!lab.engineLive || lab.busy}
-            busy={lab.busy}
-            onBeforeNavigate={async () => {
-              applyAndRun()
-            }}
-          />
-        </div>
-      </div>
+    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
+      <PageHeader
+        code="PH · Dose · KO · Clamp"
+        title="Pharmacology Lab"
+        description={`θ = C/(C+Kᵢ) · knockouts wᵢ=0 · ${nodes.length} nodes · ${controls.conditionQuery || 'no scenario'}`}
+        actions={
+          <>
+            <VclButton
+              variant="danger"
+              disabled={!lab.engineLive || lab.busy}
+              onClick={applyAndRun}
+            >
+              <Play className="h-4 w-4" /> Apply & Resimulate
+            </VclButton>
+            <ApplyToStudioButton
+              label="Apply → Studio"
+              disabled={!lab.engineLive || lab.busy}
+              busy={lab.busy}
+              onBeforeNavigate={async () => {
+                applyAndRun()
+              }}
+            />
+          </>
+        }
+      />
+      <p className="font-mono text-[11px] text-vcl-muted">
+        Profile{' '}
+        <span className="rounded-md border border-cyan-flux/35 bg-[#0a1f28] px-1.5 py-0.5 text-cyan-flux">
+          {profileId || '—'}
+        </span>
+      </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassCard title="Drug Dose–Response" hint="Occupancy θ and residual capacity 1−θ">

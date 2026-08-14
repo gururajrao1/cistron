@@ -34,7 +34,7 @@ export function ApplyToStudioButton({
         })()
       }}
       className={clsx(
-        'inline-flex h-[28px] items-center gap-1.5 rounded-[5px] border border-emerald-active/45 bg-[#0d2818] px-3 text-[11px] font-semibold text-emerald-soft transition hover:border-emerald-active disabled:opacity-40',
+        'inline-flex h-[28px] items-center gap-1.5 rounded-[5px] border border-cyan-flux/45 bg-[#0a1f28] px-3 text-[11px] font-semibold text-cyan-flux transition hover:border-cyan-flux hover:brightness-110 active:scale-[0.98] disabled:opacity-40 vcl-focus-ring',
         className,
       )}
     >

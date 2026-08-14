@@ -194,25 +194,25 @@ export function ProteinStructureCanvas({
 
   return (
     <div className={clsx('flex min-h-0 flex-col overflow-hidden', className)}>
-      <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2 border-b border-slate-800/80 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-2 border-b border-vcl-border px-3 py-1.5">
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-slate-100">
+          <div className="font-display truncate text-[13px] font-semibold text-vcl-text">
             {symbol.trim() || 'Select a gene'}
           </div>
-          <p className="mt-0.5 font-mono text-[11px] text-slate-500">
+          <p className="mt-0.5 font-mono text-[11px] text-vcl-dim">
             {resolved ? (
               <>
                 {resolved.accession}
                 {' · '}
                 <a
-                  className="text-cyan-300 hover:underline"
+                  className="text-cyan-flux hover:underline"
                   href={resolved.structureUrl}
                   target="_blank"
                   rel="noreferrer"
                 >
                   {resolved.structureId}
                 </a>
-                <span className="text-slate-600">
+                <span className="text-vcl-dim">
                   {' '}
                   (
                   {resolved.source === 'pdb'
@@ -232,27 +232,27 @@ export function ProteinStructureCanvas({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 bg-[#0b1220]">
+      <div className="relative min-h-0 flex-1 bg-[#050d12]">
         <div ref={hostRef} className="absolute inset-0 h-full w-full" />
         {empty ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center p-8 text-center text-sm text-slate-400">
-            Enter a gene symbol or pick a node from the active scenario to load a structure.
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-8 text-center text-sm text-vcl-muted">
+            Enter a gene symbol or pick a scenario protein to load a fold.
           </div>
         ) : null}
         {!empty && status === 'loading' ? (
-          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0b1220]/85 px-6 text-center text-sm text-slate-300">
+          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#050d12]/85 px-6 text-center text-sm text-vcl-soft">
             <Loader2 className="h-7 w-7 animate-spin text-cyan-flux" />
-            Resolving 3D structure for {symbol} via UniProt/PDB…
+            Resolving structure for {symbol}…
           </div>
         ) : null}
         {!empty && status === 'error' ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center p-8 text-center text-sm text-red-200">
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-8 text-center text-sm text-rose-200">
             {error ?? `No 3D structural model found for ${symbol}`}
           </div>
         ) : null}
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-slate-800/80 px-3 py-2.5">
+      <div className="shrink-0 space-y-1.5 border-t border-vcl-border px-3 py-1.5">
         <div className="flex flex-wrap gap-1.5">
           <ControlBtn
             label="Reset camera"
@@ -300,12 +300,11 @@ export function ProteinStructureCanvas({
             onClick={() => setShowLigands((v) => !v)}
           />
         </div>
-        <p className="text-[10px] leading-relaxed text-slate-500">
-          Drag to rotate · scroll to zoom · click a residue to select phospho / PTM sites
+        <p className="text-[10px] leading-relaxed text-vcl-dim">
+          Drag rotate · scroll zoom · click residue for PTM
           {highlightResidues?.length
-            ? ` · ${highlightResidues.length} PTM site(s) highlighted`
+            ? ` · ${highlightResidues.length} site(s) lit`
             : ''}
-          .
         </p>
       </div>
     </div>
@@ -360,8 +359,8 @@ function applyStyles(
     viewer.setStyle(
       { resi: h.position },
       {
-        cartoon: { color: h.color ?? (isSel ? '#f43f5e' : '#a855f7') },
-        stick: { radius: isSel ? 0.28 : 0.18, color: h.color ?? '#e9d5ff' },
+        cartoon: { color: h.color ?? (isSel ? '#f43f5e' : '#2dd4bf') },
+        stick: { radius: isSel ? 0.28 : 0.18, color: h.color ?? '#5eead4' },
       },
     )
   }
@@ -398,8 +397,8 @@ function ControlBtn({
       className={clsx(
         'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-40',
         active
-          ? 'border-cyan-flux/50 bg-cyan-950/50 text-cyan-100'
-          : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500',
+          ? 'border-cyan-flux/50 bg-[#0a1f28] text-cyan-flux'
+          : 'border-vcl-border bg-vcl-surface text-vcl-soft hover:border-vcl-border-strong',
       )}
     >
       {icon}

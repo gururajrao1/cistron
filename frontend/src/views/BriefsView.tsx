@@ -1,5 +1,6 @@
 import { Download, FileJson, FileText } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
+import { PageHeader, VclButton } from '../components/PageHeader'
 import { useLab } from '../lab/LabContext'
 
 function downloadBlob(filename: string, content: string, type: string) {
@@ -105,33 +106,36 @@ h1{font-size:22px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #cbd
   }
 
   return (
-    <div className="mx-auto flex max-w-[76rem] flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-            Research Briefs & Export
-          </h1>
-          <p className="text-sm text-slate-500">
-            Grounded narratives · JSON dump · publication-ready print/PDF
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ExportBtn icon={FileJson} label="JSON" onClick={exportJson} />
-          <ExportBtn icon={FileText} label="Markdown" onClick={exportMarkdown} />
-          <ExportBtn icon={Download} label="Print / PDF" onClick={exportPdfFriendly} />
-        </div>
-      </div>
+    <div className="mx-auto flex max-w-[76rem] flex-col gap-4 p-4 md:p-5">
+      <PageHeader
+        code="BR · Narrative · Export"
+        title="Research Briefs"
+        description="Grounded narratives, JSON dump, and print-ready manuscript export."
+        actions={
+          <>
+            <VclButton variant="ghost" onClick={exportJson}>
+              <FileJson className="h-3.5 w-3.5" /> JSON
+            </VclButton>
+            <VclButton variant="ghost" onClick={exportMarkdown}>
+              <FileText className="h-3.5 w-3.5" /> Markdown
+            </VclButton>
+            <VclButton variant="secondary" onClick={exportPdfFriendly}>
+              <Download className="h-3.5 w-3.5" /> Print / PDF
+            </VclButton>
+          </>
+        }
+      />
 
       <GlassCard title="Scenario" hint="Active laboratory context">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-          <dt className="text-slate-500">Condition</dt>
-          <dd className="font-semibold text-slate-100">{lab.controls.conditionQuery}</dd>
-          <dt className="text-slate-500">Profile</dt>
-          <dd className="font-mono text-emerald-300">{lab.profileId}</dd>
-          <dt className="text-slate-500">Simulation</dt>
-          <dd className="font-mono text-slate-300">{lab.payload?.simulation_id ?? '—'}</dd>
-          <dt className="text-slate-500">ODE cycle</dt>
-          <dd className="font-mono text-slate-300">
+          <dt className="text-vcl-dim">Condition</dt>
+          <dd className="font-semibold text-vcl-text">{lab.controls.conditionQuery}</dd>
+          <dt className="text-vcl-dim">Profile</dt>
+          <dd className="font-mono text-cyan-flux">{lab.profileId}</dd>
+          <dt className="text-vcl-dim">Simulation</dt>
+          <dd className="font-mono text-vcl-soft">{lab.payload?.simulation_id ?? '—'}</dd>
+          <dt className="text-vcl-dim">ODE cycle</dt>
+          <dd className="font-mono text-vcl-soft">
             {lab.latencyMs != null ? `${lab.latencyMs.toFixed(1)} ms` : '—'}
           </dd>
         </dl>
@@ -173,26 +177,5 @@ h1{font-size:22px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #cbd
         ) : null}
       </GlassCard>
     </div>
-  )
-}
-
-function ExportBtn({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: typeof FileJson
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500/40 hover:text-emerald-200"
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
   )
 }

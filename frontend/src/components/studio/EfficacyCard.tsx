@@ -233,7 +233,7 @@ export function EfficacyCard({
           type="button"
           disabled={!lab.engineLive || lab.busy}
           onClick={() => lab.runDualTargetScreen()}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-violet-hub/40 bg-violet-950/40 px-3 py-2.5 text-[12px] font-bold text-violet-100 shadow-[0_0_16px_rgba(139,92,246,0.15)] hover:bg-violet-900/50 disabled:opacity-40"
+          className="vcl-focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-flux/40 bg-[#0a1f28] px-3 py-2.5 text-[12px] font-bold text-cyan-flux transition hover:brightness-110 disabled:opacity-40"
         >
           {lab.busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -244,18 +244,18 @@ export function EfficacyCard({
         </button>
 
         {pairs.length > 0 ? (
-          <div className="rounded-lg border border-violet-hub/30 bg-violet-950/30 px-2.5 py-2">
-            <MetaLabel className="mb-1.5 !text-violet-300">SL pairs</MetaLabel>
+          <div className="rounded-lg border border-cyan-flux/25 bg-[#0a1f28]/50 px-2.5 py-2">
+            <MetaLabel className="mb-1.5 !text-cyan-flux/80">SL pairs</MetaLabel>
             <ul className="space-y-1.5">
               {pairs.slice(0, 4).map((p) => {
                 const pair = Array.isArray(p.pair) ? p.pair : []
                 const key = pair.join('+') || String(p.synergy_score ?? Math.random())
                 return (
-                  <li key={key} className="text-[11px] leading-snug text-slate-300">
-                    <span className="font-mono font-semibold text-violet-200">
+                  <li key={key} className="text-[11px] leading-snug text-vcl-soft">
+                    <span className="font-mono font-semibold text-cyan-flux">
                       {pair.join(' + ') || '—'}
                     </span>
-                    <span className="lab-mono text-slate-500">
+                    <span className="lab-mono text-vcl-dim">
                       {' '}
                       · syn={Number(p.synergy_score ?? 0).toFixed(2)}
                     </span>

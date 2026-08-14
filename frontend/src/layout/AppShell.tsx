@@ -108,6 +108,11 @@ export function AppShell() {
   const location = useLocation()
   const lab = useLab()
   const isStudio = location.pathname === '/studio' || location.pathname === '/'
+  /** Full-bleed fill stages (no page scroll / empty bottom strip). */
+  const fillStage =
+    isStudio ||
+    location.pathname === '/biophysics' ||
+    location.pathname.startsWith('/biophysics/')
 
   const [bottomH, setBottomH] = useState(258)
   const [dockW, setDockW] = useState(344)
@@ -138,14 +143,15 @@ export function AppShell() {
           {/* Studio fills the stage; other routes must scroll or the bottom clips. */}
           <main
             className={
-              isStudio
+              fillStage
                 ? 'relative min-h-0 flex-1 overflow-hidden'
                 : 'relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto'
             }
           >
-            {isStudio ? (
+            {fillStage ? (
               <>
-                <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-30" />
+                <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-35" />
+                <div className="pointer-events-none absolute inset-0 vcl-stage-wash" />
                 <div className="relative h-full min-h-0 overflow-hidden">
                   <StudioErrorBoundary>
                     <Outlet />
@@ -153,8 +159,9 @@ export function AppShell() {
                 </div>
               </>
             ) : (
-              <div className="relative min-h-full bg-obsidian/40">
-                <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-30" />
+              <div className="relative min-h-full">
+                <div className="pointer-events-none absolute inset-0 lab-grid-panel opacity-25" />
+                <div className="pointer-events-none absolute inset-0 vcl-stage-wash" />
                 <div className="relative pb-8">
                   <StudioErrorBoundary>
                     <Outlet />
@@ -174,10 +181,10 @@ export function AppShell() {
                 onPointerMove={bottomDrag.onPointerMove}
                 onPointerUp={bottomDrag.onPointerUp}
               >
-                <span className="h-px w-[34px] rounded bg-vcl-border-strong group-hover:bg-emerald-active/60" />
+                <span className="h-px w-[34px] rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
               </div>
               <div
-                className="shrink-0 overflow-hidden border-t border-vcl-border bg-obsidian-panel"
+                className="shrink-0 overflow-hidden border-t border-cyan-flux/20 bg-[#041820]/95"
                 style={{ height: bottomH }}
               >
                 <BottomAnalysisDock />
@@ -196,10 +203,10 @@ export function AppShell() {
               onPointerMove={rightDrag.onPointerMove}
               onPointerUp={rightDrag.onPointerUp}
             >
-              <span className="h-[34px] w-px rounded bg-vcl-border-strong group-hover:bg-emerald-active/60" />
+              <span className="h-[34px] w-px rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
             </div>
             <aside
-              className="flex shrink-0 flex-col overflow-hidden border-l border-vcl-border bg-obsidian-panel"
+              className="flex shrink-0 flex-col overflow-hidden border-l border-cyan-flux/20 bg-[#041820]/95 backdrop-blur-sm"
               style={{ width: dockW }}
             >
               <RightInspectorDock />

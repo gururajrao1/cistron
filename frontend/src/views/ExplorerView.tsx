@@ -4,6 +4,7 @@ import { Network, Play, Timer } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { ProvenanceBadge, SOURCE_COLORS } from '../components/ProvenanceBadge'
 import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
+import { PageHeader } from '../components/PageHeader'
 import { fetchKnowledgeSources, fetchSourceSituations } from '../api/client'
 import { useLab } from '../lab/LabContext'
 import { ALL_KNOWLEDGE_SOURCES } from '../api/types'
@@ -76,17 +77,12 @@ export function ExplorerView() {
 
   return (
     <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-4 p-4 md:p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-lg font-extrabold tracking-tight text-slate-50">
-            Dynamic Query & Network Builder
-          </h1>
-          <p className="text-sm text-slate-500">
-            Multi-source knowledge search · consensus fusion · τ parameterization
-          </p>
-        </div>
-        <ApplyToStudioButton disabled={!lab.graph} busy={lab.busy} />
-      </div>
+      <PageHeader
+        code="EX · Multi-source · τ"
+        title="Network Builder"
+        description="Toggle knowledge sources, pick a situation, resolve consensus topology."
+        actions={<ApplyToStudioButton disabled={!lab.graph} busy={lab.busy} />}
+      />
 
       <GlassCard title="Knowledge Sources" hint="Toggle databases included in resolve_multisource_network">
         <div className="flex flex-wrap gap-2">
@@ -99,11 +95,11 @@ export function ExplorerView() {
                 type="button"
                 disabled={s.id === 'local'}
                 onClick={() => toggleSource(s.id)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                className={`vcl-focus-ring inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
                   on
                     ? SOURCE_COLORS[s.id] ??
-                      'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
-                    : 'border-slate-800 bg-slate-950/50 text-slate-600'
+                      'border-cyan-flux/40 bg-[#0a1f28] text-cyan-flux'
+                    : 'border-vcl-border bg-obsidian/50 text-vcl-dim hover:border-vcl-border-strong'
                 }`}
                 title={status ? `Last status: ${status}` : s.label}
               >

@@ -66,7 +66,7 @@ export function PerturbationPanel({
                     : 'bg-transparent'
                   : isPerturbed(sym)
                     ? 'border-coral-action/35 bg-coral-action/[0.06]'
-                    : 'border-slate-800/80 bg-obsidian/40',
+                    : 'border-vcl-border bg-obsidian/40',
               )}
             >
               <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">

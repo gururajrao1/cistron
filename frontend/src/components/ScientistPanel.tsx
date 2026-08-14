@@ -49,7 +49,7 @@ function BriefText({ text, className }: { text: string; className?: string }) {
           return (
             <span
               key={i}
-              className="mx-0.5 inline-flex items-center rounded-full border border-emerald-800/50 bg-emerald-950/60 px-1.5 py-px font-mono text-[0.8em] font-semibold text-emerald-400"
+              className="mx-0.5 inline-flex items-center rounded-md border border-cyan-flux/30 bg-[#0a1f28] px-1.5 py-px font-mono text-[0.8em] font-semibold text-cyan-flux"
             >
               {p.t}
             </span>
@@ -94,38 +94,26 @@ export function ScientistPanel({
   const accent =
     sentiment === 'up'
       ? {
-          ring: 'border-emerald-500/45',
-          glow: 'shadow-[0_0_28px_rgba(16,185,129,0.28)]',
-          wash: 'from-emerald-500/18 via-emerald-500/5 to-transparent',
+          ring: 'border-l-emerald-active',
           icon: 'text-emerald-active',
-          pill: 'border-emerald-500/35 bg-emerald-500/15 text-emerald-200',
-          bar: 'bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400',
+          pill: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200',
         }
       : sentiment === 'down'
         ? {
-            ring: 'border-coral-action/45',
-            glow: 'shadow-[0_0_28px_rgba(255,82,82,0.28)]',
-            wash: 'from-coral-action/16 via-coral-action/5 to-transparent',
+            ring: 'border-l-coral-action',
             icon: 'text-coral-action',
-            pill: 'border-coral-action/35 bg-coral-action/15 text-red-200',
-            bar: 'bg-gradient-to-r from-coral-action via-orange-400 to-amber-300',
+            pill: 'border-coral-action/35 bg-coral-action/10 text-red-200',
           }
         : sentiment === 'mixed'
           ? {
-              ring: 'border-amber-400/40',
-              glow: 'shadow-[0_0_28px_rgba(251,191,36,0.22)]',
-              wash: 'from-amber-400/14 via-amber-400/4 to-transparent',
-              icon: 'text-amber-300',
-              pill: 'border-amber-400/35 bg-amber-400/12 text-amber-100',
-              bar: 'bg-gradient-to-r from-amber-300 via-emerald-400 to-sky-400',
+              ring: 'border-l-amber-kinase',
+              icon: 'text-amber-kinase',
+              pill: 'border-amber-400/35 bg-amber-400/10 text-amber-100',
             }
           : {
-              ring: 'border-slate-700/90',
-              glow: 'shadow-[0_0_20px_rgba(16,185,129,0.12)]',
-              wash: 'from-emerald-500/10 via-sky-500/5 to-transparent',
-              icon: 'text-emerald-active',
-              pill: 'border-slate-600/60 bg-slate-800/60 text-slate-300',
-              bar: 'bg-gradient-to-r from-emerald-500/70 via-sky-500/50 to-transparent',
+              ring: 'border-l-cyan-flux',
+              icon: 'text-cyan-flux',
+              pill: 'border-vcl-border bg-vcl-raised text-vcl-muted',
             }
 
   const deltas = Object.entries(scientist?.top_node_deltas ?? {}).slice(0, 4)
@@ -133,42 +121,39 @@ export function ScientistPanel({
 
   return (
     <div
-      className={`lab-glass relative overflow-hidden rounded-2xl transition-shadow duration-500 ${accent.ring} ${
-        pulse ? accent.glow : ''
+      className={`lab-glass relative overflow-hidden rounded-xl border-l-2 transition-shadow duration-300 ${accent.ring} ${
+        pulse ? 'shadow-[0_0_20px_rgba(34,211,238,0.12)]' : ''
       }`}
     >
-      <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${accent.wash}`} />
-      <div className={`absolute inset-x-0 top-0 h-px ${accent.bar}`} />
-
       <div className={`relative ${compact ? 'p-3' : 'p-3.5'}`}>
         <div className="mb-2.5 flex items-center gap-2.5">
           <div
-            className={`flex h-8 w-8 items-center justify-center rounded-xl border border-white/5 bg-slate-900/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${accent.icon}`}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border border-vcl-border bg-vcl-surface ${accent.icon}`}
           >
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <div className="text-sm font-extrabold tracking-tight text-slate-50">
+              <div className="font-display text-[13px] font-semibold tracking-tight text-vcl-text">
                 AI Scientist
               </div>
               {scientist ? (
                 <span
-                  className={`rounded-full border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${accent.pill}`}
+                  className={`rounded-md border px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${accent.pill}`}
                 >
                   {sentimentLabel(sentiment)}
                 </span>
               ) : null}
             </div>
             {scientist?.perturbation_summary ? (
-              <div className="truncate text-[0.65rem] text-slate-500">
+              <div className="truncate text-[0.65rem] text-vcl-dim">
                 {scientist.perturbation_summary}
               </div>
             ) : null}
           </div>
               {scientist ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-900/70 px-1.5 py-1 font-mono text-[0.62rem] text-slate-400">
-                  <Zap className="h-3 w-3 text-emerald-400/80" />
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-vcl-border bg-vcl-raised px-1.5 py-1 font-mono text-[0.62rem] text-vcl-muted">
+                  <Zap className="h-3 w-3 text-cyan-flux/80" />
                   {Number(scientist.elapsed_ms ?? 0).toFixed(1)} ms
                 </span>
               ) : null}
@@ -248,7 +233,7 @@ export function ScientistPanel({
             Synthesizing live reasoning…
           </div>
         ) : (
-          <p className="text-sm text-slate-500">Run a condition to hear the AI Scientist.</p>
+          <p className="text-sm text-vcl-dim">Run a condition to hear the AI Scientist.</p>
         )}
 
         {!compact && (hypotheses?.length || hypothesesLoading) ? (

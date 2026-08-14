@@ -30,9 +30,9 @@ export function RightInspectorDock() {
             type="button"
             onClick={() => setTab(t.id)}
             className={clsx(
-              'h-full border-b-2 px-2 font-mono text-[10.5px] font-semibold transition',
+              'vcl-focus-ring h-full border-b-2 px-2 font-mono text-[10.5px] font-semibold transition',
               tab === t.id
-                ? 'border-emerald-active text-vcl-text'
+                ? 'border-cyan-flux text-vcl-text'
                 : 'border-transparent text-vcl-muted hover:text-vcl-text',
             )}
           >

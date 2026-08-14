@@ -304,7 +304,7 @@ export function MultiOmicsDrawer({
               type="button"
               disabled={busy}
               onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-hub/40 bg-violet-950/40 px-2.5 py-1.5 text-[11px] font-bold text-violet-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-hub/40 bg-cyan-950/40 px-2.5 py-1.5 text-[11px] font-bold text-cyan-100"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
               Upload PTM CSV
@@ -346,7 +346,7 @@ export function MultiOmicsDrawer({
                       className={clsx(
                         'flex w-full items-center justify-between gap-2 rounded-lg border px-2 py-1 text-left text-[11px]',
                         active
-                          ? 'border-violet-400/40 bg-violet-950/40 text-violet-100'
+                          ? 'border-cyan-flux/40 bg-cyan-950/40 text-cyan-100'
                           : 'border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-600',
                       )}
                     >
@@ -578,7 +578,7 @@ function OverlayChart({
           <span className="inline-block h-1.5 w-3 rounded bg-sky-400" /> Transcript abundance
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-1.5 w-3 rounded bg-violet-400" /> Phospho-active form
+          <span className="inline-block h-1.5 w-3 rounded bg-cyan-flux" /> Phospho-active form
         </span>
         <span className="inline-flex items-center gap-1">
           <Activity className="h-3 w-3" /> scrub t={scrubT.toFixed(0)}

@@ -110,21 +110,21 @@ export function FirstRunChecklist() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-3 left-[66px] z-30 inline-flex items-center gap-1.5 rounded-md border border-vcl-border bg-obsidian-panel px-2.5 py-1.5 font-mono text-[10px] text-vcl-soft shadow-lg hover:border-vcl-border-strong"
+        className="vcl-focus-ring fixed bottom-3 left-[66px] z-30 inline-flex items-center gap-1.5 rounded-md border border-vcl-border bg-obsidian-panel/95 px-2.5 py-1.5 font-mono text-[10px] text-vcl-soft shadow-lg backdrop-blur-md transition hover:border-cyan-flux/40"
         title="First-run checklist"
       >
-        <ListChecks className="h-3.5 w-3.5 text-emerald-active" />
+        <ListChecks className="h-3.5 w-3.5 text-cyan-flux" />
         Guide {completed}/{STEPS.length}
       </button>
     )
   }
 
   return (
-    <div className="fixed bottom-3 left-[66px] z-30 w-[280px] rounded-lg border border-vcl-border bg-obsidian-panel shadow-2xl">
+    <div className="fixed bottom-3 left-[66px] z-30 w-[280px] rounded-lg border border-vcl-border bg-obsidian-panel/95 shadow-2xl backdrop-blur-md">
       <div className="flex items-center gap-2 border-b border-vcl-border px-3 py-2">
-        <ListChecks className="h-3.5 w-3.5 text-emerald-active" />
+        <ListChecks className="h-3.5 w-3.5 text-cyan-flux" />
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-semibold text-vcl-text">First run</div>
+          <div className="font-display text-[12px] font-semibold text-vcl-text">First run</div>
           <div className="font-mono text-[10px] text-vcl-dim">
             {completed}/{STEPS.length} complete
           </div>
