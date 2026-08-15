@@ -279,9 +279,20 @@ def _normalize_query(query: str) -> str:
     return re.sub(r"\s+", " ", q).strip()
 
 
-def match_condition_profile(query: str) -> ConditionProfile:
-    """Score curated profiles by keyword overlap; default to hypoxia."""
+class UnmatchedConditionError(ValueError):
+    """Raised when a free-text query matches no curated condition profile."""
+
+    def __init__(self, query: str, suggestions: Optional[List[Dict[str, str]]] = None) -> None:
+        self.query = query
+        self.suggestions = list(suggestions or [])
+        super().__init__(f"No curated condition matched «{query}»")
+
+
+def match_condition_profile(query: str) -> Optional[ConditionProfile]:
+    """Score curated profiles by keyword overlap. Returns None when unmatched (no hypoxia default)."""
     q = _normalize_query(query)
+    if not q:
+        return None
     best: Optional[ConditionProfile] = None
     best_score = 0
     for profile in _CONDITION_LIBRARY:
@@ -297,10 +308,7 @@ def match_condition_profile(query: str) -> ConditionProfile:
             best_score = score
             best = profile
     if best is None or best_score == 0:
-        # free-text gene tokens as soft hypoxia fallback with mapk if egf-like
-        if any(tok in q for tok in ("egfr", "ras", "erk", "cancer")):
-            return next(p for p in _CONDITION_LIBRARY if p.id == "tnbc_egfr")
-        return next(p for p in _CONDITION_LIBRARY if p.id == "hypoxia")
+        return None
     return best
 
 
@@ -513,8 +521,15 @@ def resolve_condition_network(
     3. Optionally enrich with OmniPath partners (short timeout); ignore on failure.
     """
     t0 = time.perf_counter()
-    q = (query_str if query_str is not None else query).strip() or "hypoxia"
+    q = (query_str if query_str is not None else query).strip()
+    if not q:
+        raise UnmatchedConditionError(
+            "",
+            suggestions=list_condition_suggestions(),
+        )
     profile = match_condition_profile(q)
+    if profile is None:
+        raise UnmatchedConditionError(q, suggestions=list_condition_suggestions())
     extras = _extract_gene_tokens(q)
     graph = local_network_expansion(profile, extra_genes=extras)
 
@@ -1051,7 +1066,9 @@ async def resolve_multisource_network_async(
 
     t0 = time.perf_counter()
     cut = _clamp_http_timeout(timeout_per_source)
-    q = (query_str or query or "").strip() or "hypoxia"
+    q = (query_str or query or "").strip()
+    if not q:
+        raise UnmatchedConditionError("", suggestions=list_condition_suggestions())
 
     if selected_sources is None or (
         isinstance(selected_sources, Sequence) and len(list(selected_sources)) == 0
@@ -1066,6 +1083,8 @@ async def resolve_multisource_network_async(
         sources = ["local", *sources]
 
     profile = match_condition_profile(q)
+    if profile is None:
+        raise UnmatchedConditionError(q, suggestions=list_condition_suggestions())
     base = local_network_expansion(profile)
     seeds = list(profile.seed_genes)
     source_status: Dict[str, str] = {"local": "ok"}
@@ -1555,25 +1574,10 @@ def resolve_multisource_network(
         try:
             return fut.result(timeout=EXTERNAL_HTTP_TIMEOUT_S + 3.0)
         except concurrent.futures.TimeoutError:
-            logger.error("resolve_multisource_network hard wall timeout — presets")
-            profile = match_condition_profile(
-                (query_str or query or "").strip() or "hypoxia"
-            )
-            graph = _preset_fallback_graph(profile.id, query_str or query or "hypoxia")
-            return ResolvedCondition(
-                query=(query_str or query or "hypoxia").strip() or "hypoxia",
-                profile_id=profile.id,
-                graph=graph,
-                default_clamps=dict(profile.default_clamps),
-                source_node=profile.trigger_nodes[0],
-                target_node=profile.readout_nodes[0],
-                seed_genes=list(profile.seed_genes),
-                provenance={
-                    "fallback": "presets.wall_timeout",
-                    "builder": "resolve_multisource_network",
-                },
-                resolve_ms=(EXTERNAL_HTTP_TIMEOUT_S + 3.0) * 1000.0,
-            )
+            logger.error("resolve_multisource_network hard wall timeout")
+            raise TimeoutError(
+                "Multi-source resolve timed out — retry with fewer sources or a curated query"
+            ) from None
 
 
 __all__ = [
@@ -1581,6 +1585,7 @@ __all__ = [
     "EXTERNAL_HTTP_TIMEOUT_S",
     "MAX_TOPOLOGY_NODES",
     "ResolvedCondition",
+    "UnmatchedConditionError",
     "graph_from_edge_specs",
     "list_condition_suggestions",
     "local_network_expansion",

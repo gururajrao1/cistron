@@ -135,7 +135,7 @@ export function ScientistPanel({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <div className="font-display text-[13px] font-semibold tracking-tight text-vcl-text">
-                AI Scientist
+                Mechanistic Brief
               </div>
               {scientist ? (
                 <span
@@ -233,7 +233,7 @@ export function ScientistPanel({
             Synthesizing live reasoning…
           </div>
         ) : (
-          <p className="text-sm text-vcl-dim">Run a condition to hear the AI Scientist.</p>
+          <p className="text-sm text-vcl-dim">Run a condition to generate a mechanistic brief.</p>
         )}
 
         {!compact && (hypotheses?.length || hypothesesLoading) ? (

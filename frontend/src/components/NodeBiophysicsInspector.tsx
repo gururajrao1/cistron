@@ -536,8 +536,8 @@ export function NodeBiophysicsInspector({
           </table>
           {shap ? (
             <div className="mt-2 flex items-center justify-between rounded-lg border border-violet-hub/25 bg-violet-950/30 px-2.5 py-1.5 text-[11px]">
-              <span className="lab-meta text-violet-300/80">SHAP</span>
-              <span className="lab-mono text-violet-200">
+              <span className="lab-meta text-cyan-flux/80">Node importance</span>
+              <span className="lab-mono text-cyan-100">
                 #{shap.rank} · {shap.importance >= 0 ? '+' : ''}
                 {shap.importance.toFixed(3)}
               </span>

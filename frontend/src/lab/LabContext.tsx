@@ -47,10 +47,10 @@ import {
 const STAGE_LABELS = [
   'Fetching multi-source topology',
   'Solving Hill-cube ODEs',
-  'Calculating GAT Attention',
-  'Computing XAI attributions',
-  'Building BioReasoner Brief',
-  'AI Scientist reasoning',
+  'Computing flux attention',
+  'Computing sensitivity attributions',
+  'Building BioReasoner brief',
+  'Mechanistic brief',
   'Topological vulnerability analysis',
 ]
 
@@ -79,9 +79,11 @@ function topologyFromResolvedGraph(
   graph: PresetDetail,
   query: string,
   profileId: string,
+  opts?: { allowEmptyEdges?: boolean },
 ): StoredDynamicTopology | null {
   const nodeIds = Object.keys(graph.nodes ?? {})
-  if (nodeIds.length < 2 || !(graph.edges?.length > 0)) return null
+  if (nodeIds.length < 2) return null
+  if (!(graph.edges?.length > 0) && !opts?.allowEmptyEdges) return null
   return {
     query: query.trim() || graph.name || 'dynamic disease',
     pathway_id:
@@ -104,7 +106,7 @@ function topologyFromResolvedGraph(
             : 0.35,
       }
     }),
-    edges: graph.edges.map((e) => ({
+    edges: (graph.edges ?? []).map((e) => ({
       source: e.source,
       target: e.target,
       weight: typeof e.evidence_score === 'number' ? e.evidence_score : 0.5,
@@ -169,6 +171,10 @@ export type LabContextValue = {
   omicsClamps: Record<string, number>
   /** Last Omics Fit Score (%) from /omics/simulate. */
   omicsAlignmentScore: number | null
+  /** Genes in the omics profile that are not on the active graph. */
+  omicsUnmapped: string[]
+  /** FAIR sim_id from last successful simulate response. */
+  lastSimId: string | null
   /** Interactive node clamps / titrations y∈[0,1]; 0 = knockout. */
   perturbations: Record<string, number>
   setNodePerturbation: (symbol: string, value: number, opts?: { resim?: boolean }) => void
@@ -230,6 +236,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const [omicsProfiles, setOmicsProfiles] = useState<OmicsProfile[]>([])
   const [omicsClamps, setOmicsClamps] = useState<Record<string, number>>({})
   const [omicsAlignmentScore, setOmicsAlignmentScore] = useState<number | null>(null)
+  const [omicsUnmapped, setOmicsUnmapped] = useState<string[]>([])
+  const [lastSimId, setLastSimId] = useState<string | null>(null)
   const [perturbations, setPerturbations] = useState<Record<string, number>>({})
 
   const stageTimer = useRef<number | null>(null)
@@ -335,6 +343,13 @@ export function LabProvider({ children }: { children: ReactNode }) {
     setProfileId(body.profile_id)
     setScrubT(0)
     setStatusStage(null)
+    const simId =
+      typeof body.metadata?.sim_id === 'string' ? body.metadata.sim_id : null
+    setLastSimId(simId)
+    const unmapped = Array.isArray(body.metadata?.omics_unmapped)
+      ? (body.metadata.omics_unmapped as string[])
+      : []
+    setOmicsUnmapped(unmapped)
     const clamps = body.default_clamps
     setOmicsClamps(clamps)
     const clampNode =
@@ -450,6 +465,15 @@ export function LabProvider({ children }: { children: ReactNode }) {
         .filter(([, v]) => v <= 1e-6)
         .map(([k]) => k)
       const knockouts = Array.from(new Set([...c.knockouts, ...pertKos]))
+      const g = graphRef.current
+      const topo = g
+        ? topologyFromResolvedGraph(
+            g,
+            c.conditionQuery,
+            profileIdRef.current,
+            { allowEmptyEdges: true },
+          )
+        : null
       return await simulateOmicsProfile(profile, {
         t_end: 60,
         knockouts,
@@ -461,6 +485,9 @@ export function LabProvider({ children }: { children: ReactNode }) {
         target_node: c.targetNode || undefined,
         simulation_id: `omics_${Date.now().toString(36)}`,
         previous_state_summary: stateSummaryRef.current,
+        graph_id: g?.id,
+        nodes: topo?.nodes,
+        edges: topo?.edges,
         ...params,
       })
     },
@@ -626,7 +653,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
     ) => {
       if (simBusyRef.current || runMutation.isPending || dynamicBusyRef.current) return
       // Pathways disease graphs must not go through search-and-simulate (unknown
-      // queries like "kuru" re-resolve to the hypoxia preset).
+      // queries now return HTTP 422 instead of silently resolving to hypoxia).
       if (resolveDynamicTopology()) {
         void runDynamicResim(override)
         return
@@ -648,6 +675,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
       perturbationsRef.current = {}
       setActiveOmicsProfile(null)
       setOmicsAlignmentScore(null)
+      setOmicsUnmapped([])
       setTreatedRun(null)
       setSelectedNode(null)
       const sources =
@@ -727,6 +755,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
       perturbationsRef.current = {}
       setActiveOmicsProfile(null)
       setOmicsAlignmentScore(null)
+      setOmicsUnmapped([])
       setTreatedRun(null)
       setSelectedNode(null)
       patchControls({
@@ -1005,6 +1034,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
       omicsProfiles,
       omicsClamps,
       omicsAlignmentScore,
+      omicsUnmapped,
+      lastSimId,
       perturbations,
       setNodePerturbation,
       clearPerturbation,
@@ -1050,6 +1081,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
       omicsProfiles,
       omicsClamps,
       omicsAlignmentScore,
+      omicsUnmapped,
+      lastSimId,
       perturbations,
       setNodePerturbation,
       clearPerturbation,

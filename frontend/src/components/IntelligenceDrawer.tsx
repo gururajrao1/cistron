@@ -99,7 +99,7 @@ function ScientistFeed({
             sentiment === 'down' ? 'text-coral-action' : 'text-emerald-active'
           }`}
         />
-        <div className="text-sm font-extrabold text-slate-50">AI Scientist</div>
+        <div className="text-sm font-extrabold text-slate-50">Mechanistic Brief</div>
         {scientist ? (
           <span className="ml-auto font-mono text-[0.65rem] text-slate-500">
             {scientist.elapsed_ms.toFixed(1)} ms
@@ -128,7 +128,7 @@ function ScientistFeed({
           Synthesizing live reasoning…
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Run a condition to hear the AI Scientist.</p>
+        <p className="text-sm text-slate-500">Run a condition to generate a mechanistic brief.</p>
       )}
     </div>
   )
@@ -179,7 +179,7 @@ export function IntelligenceDrawer({
 
       <ScientistFeed scientist={scientist ?? null} loading={loading} />
 
-      <GlassCard title="XAI · SHAP Node Importance" hint="Marginal contribution to ΣΔy_output">
+      <GlassCard title="Node importance" hint="Marginal contribution to ΣΔy_output">
         {shapChart.length ? (
           <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -214,7 +214,7 @@ export function IntelligenceDrawer({
         ) : loading ? (
           <SkeletonRows rows={4} />
         ) : (
-          <p className="text-sm text-slate-500">No SHAP attributions yet.</p>
+          <p className="text-sm text-slate-500">No node-importance attributions yet.</p>
         )}
         {xai?.counterfactuals?.[0]?.narrative ? (
           <p className="mt-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-2.5 text-xs leading-relaxed text-emerald-100/90">
@@ -223,7 +223,7 @@ export function IntelligenceDrawer({
         ) : null}
       </GlassCard>
 
-      <GlassCard title="XAI · GAT Edge Flow" hint="Attentive flow decomposition αᵢⱼ">
+      <GlassCard title="Flux edge attention" hint="Attentive flow decomposition αᵢⱼ">
         {edgeChart.length ? (
           <div className="h-[170px] w-full">
             <ResponsiveContainer width="100%" height="100%">

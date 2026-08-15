@@ -215,7 +215,7 @@ class HillCubeConfig:
     ec50: float = DEFAULT_EC50
     t_start: float = 0.0
     t_end: float = DEFAULT_T_END_MIN
-    method: str = "RK45"
+    method: str = "LSODA"
     rtol: float = 1e-5
     atol: float = 1e-7
     max_step: float = 1.0

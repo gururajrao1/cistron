@@ -321,9 +321,24 @@ export function OmicsUploader() {
             </label>
             <p className="text-[10px] leading-relaxed text-slate-500">
               Switching re-runs <span className="lab-mono text-slate-400">POST /omics/simulate</span>{' '}
-              with the selected profile.
+              on the <span className="text-slate-400">active Studio/Pathways graph</span> (not a silent hypoxia preset).
             </p>
           </div>
+
+          {lab.omicsUnmapped.length > 0 ? (
+            <div className="mb-3 rounded-lg border border-amber-kinase/30 bg-amber-950/20 px-2.5 py-2">
+              <MetaLabel className="mb-1 text-amber-kinase/90">Unmapped genes</MetaLabel>
+              <p className="text-[10px] leading-relaxed text-vcl-muted">
+                Present in the omics profile but not on the active graph — ignored for clamps:
+              </p>
+              <p className="mt-1 font-mono text-[10.5px] text-amber-100/90">
+                {lab.omicsUnmapped.slice(0, 24).join(', ')}
+                {lab.omicsUnmapped.length > 24
+                  ? ` (+${lab.omicsUnmapped.length - 24} more)`
+                  : ''}
+              </p>
+            </div>
+          ) : null}
 
           {active ? (
             <div className="space-y-3">

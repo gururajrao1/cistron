@@ -16,6 +16,7 @@ from cistron.data.omnipath import (
     to_signaling_network,
 )
 from cistron.data.resolver import (
+    UnmatchedConditionError,
     list_condition_suggestions,
     match_condition_profile,
     resolve_condition_network,
@@ -43,6 +44,7 @@ __all__ = [
     "list_condition_suggestions",
     "list_source_situations",
     "match_condition_profile",
+    "UnmatchedConditionError",
     "offline_mapk_activity_graph",
     "parse_activity_flow_rows",
     "resolve_condition_network",

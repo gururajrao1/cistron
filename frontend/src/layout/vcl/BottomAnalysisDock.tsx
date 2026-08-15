@@ -6,6 +6,7 @@ import { FOCUS_SERIES } from '../../api/types'
 import {
   metabolicAtTime,
   simulateMetabolicBridge,
+  solveMiniFbaLite,
 } from '../../engine/metabolicBridge'
 import { stepHif1aTranslocation } from '../../components/studio/OrganelleCompartments'
 
@@ -101,6 +102,13 @@ function FluxTab() {
   }, [lab.payload])
 
   const point = bridge ? metabolicAtTime(bridge, lab.scrubT) : null
+  const fba = useMemo(() => {
+    try {
+      return solveMiniFbaLite(lab.payload, { t: lab.scrubT })
+    } catch {
+      return null
+    }
+  }, [lab.payload, lab.scrubT])
   const atp = point?.atpYield ?? 0
   const lac = point?.lactateExport ?? 0
   const nad = point?.nadRatio ?? 1
@@ -114,6 +122,14 @@ function FluxTab() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+      <p className="shrink-0 text-[10px] leading-relaxed text-vcl-dim">
+        Illustrative metabolic bridge + mini FBA-lite (not genome-scale COBRA).{' '}
+        {fba ? (
+          <span className="text-cyan-flux/90">
+            FBA obj={fba.objective.toFixed(3)} · residual={fba.residual.toFixed(3)}
+          </span>
+        ) : null}
+      </p>
       <div className="grid shrink-0 grid-cols-3 gap-2">
         {[
           { label: 'ATP yield', value: atp.toFixed(3), tone: 'text-emerald-active' },

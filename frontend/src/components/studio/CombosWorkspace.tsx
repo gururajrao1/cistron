@@ -86,9 +86,9 @@ export function CombosWorkspace() {
   return (
     <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
       <PageHeader
-        code="CB · Bliss · Dual KO"
+        code="CB · Bliss · Loewe · Dual KO"
         title="Combination Therapy"
-        description="Pairwise Bliss synergy matrix — click a cell to dual-titrate on Studio."
+        description="Pairwise Bliss and Loewe synergy — click a cell to dual-titrate on Studio."
         actions={
           <>
             <VclButton
@@ -119,7 +119,7 @@ export function CombosWorkspace() {
 
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <GlassCard
-          title="Bliss synergy heatmap"
+          title="Bliss / Loewe synergy heatmap"
           hint="S = E_A + E_B − E_AB · red = synergistic / SL"
         >
           {candidates.length >= 2 ? (

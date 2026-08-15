@@ -365,6 +365,10 @@ export interface OmicsSimulateParams {
   previous_state_summary?: PreviousStateSummary | null
   include_synthetic_lethality?: boolean
   sl_candidate_nodes?: string[]
+  /** Active Studio graph id from last simulate metadata / resolved_graph.id */
+  graph_id?: string
+  nodes?: Array<{ id: string; symbol?: string; y0?: number }>
+  edges?: Array<{ source: string; target: string; weight?: number; type?: string }>
 }
 
 /** Soft y₀ bounds used by the backend sigmoid mapper. */

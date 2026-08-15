@@ -8,8 +8,10 @@ graph-attention prioritization, and Causal BioReasoner briefs.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 import logging
 import time
 import traceback
@@ -32,8 +34,11 @@ from cistron.data.multisource import (
     list_source_situations,
 )
 from cistron.data.omics_parser import parse_omics_csv
-from cistron.data.resolver import list_condition_suggestions, resolve_condition_network
-
+from cistron.data.resolver import (
+    UnmatchedConditionError,
+    list_condition_suggestions,
+    resolve_condition_network,
+)
 from cistron.engine import DrugDose, HillCubeConfig, HillCubeEngine
 from cistron.integrations.offline_data import OFFLINE_UNIPROT
 from cistron.models.graph import (
@@ -70,6 +75,9 @@ from cistron.api.schemas import (
 )
 from cistron.api.gene_knowledge import resolve_gene_knowledge
 from cistron.api.protein_explainer import build_protein_card
+from cistron.api.literature import retrieve_literature
+from cistron.api.jobs import get_job, submit_job
+from cistron.ai.saltelli_lite import saltelli_lite
 from cistron.integrations.uniprot_client import LabUniProtClient
 
 logger = logging.getLogger(__name__)
@@ -119,6 +127,35 @@ _LOCALIZATION_FALLBACK: Dict[str, Dict[str, Optional[str]]] = {
 }
 
 _DYNAMIC_GRAPHS: Dict[str, CausalActivityGraph] = {}
+
+
+def _spa_dist_dir() -> Path:
+    return Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+
+def _spa_built() -> bool:
+    dist = _spa_dist_dir()
+    return dist.is_dir() and (dist / "index.html").is_file()
+
+
+def _sim_id_hash(payload: Dict[str, Any]) -> str:
+    raw = json.dumps(payload, sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def _unmatched_http(exc: UnmatchedConditionError) -> HTTPException:
+    return HTTPException(
+        status_code=422,
+        detail={
+            "code": "unmatched_condition",
+            "message": (
+                f"No curated condition matched «{exc.query or '(empty)'}». "
+                "Use a suggested disease / stress query — silent hypoxia fallback is disabled."
+            ),
+            "suggestions": exc.suggestions
+            or list_condition_suggestions(),
+        },
+    )
 
 
 def _protein_meta(symbol: str) -> Dict[str, Any]:
@@ -221,7 +258,11 @@ def _run_engine(
 ):
     eng = HillCubeEngine(
         graph,
-        config=HillCubeConfig(t_end=float(t_end), dense_output_points=int(dense_output_points)),
+        config=HillCubeConfig(
+            t_end=float(t_end),
+            dense_output_points=int(dense_output_points),
+            method="LSODA",
+        ),
     )
     # Omics / custom baselines — soft initial conditions (ODE may evolve).
     if y0:
@@ -254,31 +295,49 @@ def _run_engine(
 
 
 def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimulateResponse:
-    """Hypoxia preset + omics-mapped y₀ baselines → full lab response."""
+    """Active-graph omics clamps → full lab response (never silent hypoxia)."""
     t0 = time.perf_counter()
     stages: List[str] = []
     # Re-validate so sample/condition are normalized and provenance is dynamic.
     profile = OmicsProfile.model_validate(req.profile.model_dump())
 
-    stages.append("Resolving local hypoxia preset graph")
-    graph = hypoxia_network_preset()
-    graph_id = f"omics_{profile.profile_id}"
-    _DYNAMIC_GRAPHS[graph_id] = graph
+    graph: Optional[CausalActivityGraph] = None
+    graph_id = ""
+    if req.graph_id and req.graph_id in _DYNAMIC_GRAPHS:
+        stages.append(f"Resolving active graph {req.graph_id}")
+        graph = _DYNAMIC_GRAPHS[req.graph_id]
+        graph_id = req.graph_id
+    elif req.nodes and len(req.nodes) >= 2:
+        stages.append("Constructing topology from omics request")
+        topo_req = DynamicGraphSimulateRequest(
+            query=f"omics:{profile.condition}:{profile.sample_name}",
+            profile_id=profile.provenance or profile.profile_id or "omics",
+            nodes=req.nodes,
+            edges=list(req.edges or []),
+        )
+        graph = _topology_to_causal(topo_req)
+        graph_id = f"omics_topo_{profile.profile_id}"
+        _DYNAMIC_GRAPHS[graph_id] = graph
+    if graph is None:
+        raise ValueError(
+            "NO_ACTIVE_GRAPH: Run Studio or Pathways first, then re-run omics on that graph."
+        )
 
-    stages.append("Mapping omics log2_fc → y₀ baselines")
-    # Soft clamps / initial activities — hard-clamping every node would freeze the ODE.
+    stages.append("Mapping omics log2_fc → y₀ baselines on active graph")
+    node_syms = list(graph.nodes.keys())
     baselines = profile.map_to_initial_states(
-        list(graph.nodes.keys()),
+        node_syms,
         baseline_y0=float(req.baseline_y0),
         scaling_factor=float(req.scaling_factor),
     )
-    # Measured features are held as clamps; unmapped nodes keep soft y₀ only.
+    feature_syms = [str(s).strip().upper() for s in profile.features.keys()]
+    mapped = [s for s in feature_syms if s in graph.nodes]
+    unmapped = [s for s in feature_syms if s not in graph.nodes]
     clamps = {
         sym: float(baselines[sym])
-        for sym in profile.features
-        if sym in baselines and sym in graph.nodes
+        for sym in mapped
+        if sym in baselines
     }
-    # Interactive UI perturbations override omics clamps (0 = CRISPR KO).
     knockouts = list(req.knockouts)
     for sym, val in (req.perturbations or {}).items():
         if sym not in graph.nodes:
@@ -287,11 +346,12 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
         if val <= 1e-6 and sym not in knockouts:
             knockouts.append(sym)
 
-    source = req.source_node if req.source_node in graph.nodes else next(iter(graph.nodes), "O2")
-    if "O2" in graph.nodes and req.source_node is None:
-        source = "O2"
+    source = req.source_node if req.source_node in graph.nodes else next(iter(graph.nodes))
     target = req.target_node if req.target_node in graph.nodes else (
-        "VEGFA" if "VEGFA" in graph.nodes else next(iter(graph.nodes), source)
+        next(
+            (c for c in ("VEGFA", "MAPK1", "TNF", "MYC") if c in graph.nodes),
+            source,
+        )
     )
 
     stages.append("Solving Hill-cube ODEs")
@@ -312,6 +372,8 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
             "graph_id": graph_id,
             "n_omics_features": len(profile.features),
             "n_omics_clamps": len(clamps),
+            "omics_mapped": mapped,
+            "omics_unmapped": unmapped,
             "perturbations": dict(req.perturbations or {}),
         },
         y0=baselines,
@@ -433,6 +495,19 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
             "n_nodes": len(graph.nodes),
             "n_edges": len(graph.edges),
             "n_omics_features": len(profile.features),
+            "n_omics_clamps": len(clamps),
+            "omics_mapped": mapped,
+            "omics_unmapped": unmapped,
+            "sim_id": _sim_id_hash(
+                {
+                    "graph_id": graph_id,
+                    "profile": profile.profile_id,
+                    "clamps": clamps,
+                    "knockouts": knockouts,
+                    "t_end": req.t_end,
+                }
+            ),
+            "synthetic_edges": False,
             "xai_ms": xai.elapsed_ms,
             "scientist_ms": scientist.elapsed_ms,
             "topology_ms": topo.elapsed_ms,
@@ -603,6 +678,17 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
             "provenance": dict(resolved.provenance or {"source": "condition_resolver"}),
             "n_nodes": len(graph.nodes),
             "n_edges": len(graph.edges),
+            "sim_id": _sim_id_hash(
+                {
+                    "graph_id": graph_id,
+                    "profile_id": profile_id,
+                    "query": req.condition_query,
+                    "clamps": clamps,
+                    "knockouts": knockouts,
+                    "t_end": req.t_end,
+                }
+            ),
+            "synthetic_edges": False,
             "xai_ms": xai.elapsed_ms,
             "scientist_ms": scientist.elapsed_ms,
             "topology_ms": topo.elapsed_ms,
@@ -662,22 +748,7 @@ def _topology_to_causal(req: DynamicGraphSimulateRequest) -> CausalActivityGraph
 
     if len(nodes) < 2:
         raise ValueError("Dynamic topology needs at least 2 nodes")
-    if not edges:
-        # Fully disconnected — add a soft chain so the ODE still has structure.
-        ordered = list(nodes.keys())
-        for i in range(len(ordered) - 1):
-            edges.append(
-                ActivityFlowEdge(
-                    source=ordered[i],
-                    target=ordered[i + 1],
-                    sign=1,
-                    is_stimulation=True,
-                    is_inhibition=False,
-                    mechanism=MechanismKind.ENZYMATIC,
-                    sources=["synthetic"],
-                    evidence_score=0.4,
-                )
-            )
+    # Disconnected nodes stay disconnected — no synthetic A→B→C chains.
 
     profile = str(req.profile_id).strip() or "cistron-dynamic"
     return CausalActivityGraph(
@@ -693,6 +764,7 @@ def _topology_to_causal(req: DynamicGraphSimulateRequest) -> CausalActivityGraph
             "query": req.query,
             "n_nodes": len(nodes),
             "n_edges": len(edges),
+            "synthetic_edges": False,
         },
     )
 
@@ -843,6 +915,17 @@ def _execute_dynamic_graph_pipeline(req: DynamicGraphSimulateRequest) -> SearchA
             "pathway_id": req.pathway_id,
             "n_nodes": len(graph.nodes),
             "n_edges": len(graph.edges),
+            "sim_id": _sim_id_hash(
+                {
+                    "graph_id": graph_id,
+                    "profile_id": profile_id,
+                    "query": req.query,
+                    "clamps": clamps,
+                    "knockouts": knockouts,
+                    "t_end": req.t_end,
+                }
+            ),
+            "synthetic_edges": False,
             "xai_ms": xai.elapsed_ms,
             "scientist_ms": scientist.elapsed_ms,
             "topology_ms": topo.elapsed_ms,
@@ -865,6 +948,7 @@ def _register_routes(router: APIRouter) -> None:
                 "condition_suggestions": 8,
                 "omnipath_client": "ready",
                 "hill_cube_engine": "ready",
+                "spa_built": _spa_built(),
             },
         )
 
@@ -946,16 +1030,30 @@ def _register_routes(router: APIRouter) -> None:
     )
     async def search_and_simulate(req: SearchAndSimulateRequest) -> SearchAndSimulateResponse:
         if not req.condition_query.strip():
-            raise HTTPException(status_code=400, detail="condition_query is empty")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "unmatched_condition",
+                    "message": "condition_query is empty. Pick a curated disease / stress suggestion.",
+                    "suggestions": list_condition_suggestions(),
+                },
+            )
         try:
             return await asyncio.wait_for(
                 asyncio.to_thread(_execute_search_and_simulate_pipeline, req),
                 timeout=4.0,
             )
+        except UnmatchedConditionError as exc:
+            raise _unmatched_http(exc) from exc
         except asyncio.TimeoutError:
-            logger.warning("Simulation hit timeout cutoff, returning fallback local graph.")
-            fallback_req = req.model_copy(update={"selected_sources": ["local"]})
-            return _execute_search_and_simulate_pipeline(fallback_req)
+            logger.warning("search-and-simulate timed out (no silent local fallback)")
+            raise HTTPException(
+                status_code=504,
+                detail=(
+                    "Simulation timed out. Narrow the graph, disable live sources, "
+                    "or retry — silent hypoxia fallback is disabled."
+                ),
+            ) from None
         except Exception as exc:
             logger.exception("search-and-simulate failed")
             raise HTTPException(
@@ -1038,6 +1136,11 @@ def _register_routes(router: APIRouter) -> None:
                 status_code=504,
                 detail="omics/simulate timed out",
             ) from None
+        except ValueError as exc:
+            msg = str(exc)
+            if msg.startswith("NO_ACTIVE_GRAPH"):
+                raise HTTPException(status_code=422, detail=msg) from exc
+            raise HTTPException(status_code=422, detail=msg) from exc
         except HTTPException:
             raise
         except Exception as exc:
@@ -1046,6 +1149,71 @@ def _register_routes(router: APIRouter) -> None:
                 status_code=500,
                 detail=f"omics/simulate failed ({type(exc).__name__}): {exc}",
             ) from exc
+
+    @router.get("/literature/copilot", tags=["literature"])
+    def literature_copilot(
+        gene: str = Query(default=""),
+        partner: str = Query(default=""),
+        disease: str = Query(default=""),
+        max_hits: int = Query(default=5, ge=1, le=10),
+    ) -> Dict[str, Any]:
+        """Retrieve-only Literature Copilot (PubMed + Reactome). No vector DB."""
+        return retrieve_literature(
+            gene=gene,
+            partner=partner,
+            disease=disease,
+            max_hits=max_hits,
+        )
+
+    @router.post("/sensitivity/saltelli", tags=["sensitivity"])
+    def sensitivity_saltelli(body: Dict[str, Any]) -> Dict[str, Any]:
+        """Numpy Saltelli-lite on the active in-memory graph (Free-safe, no SALib)."""
+        graph_id = str(body.get("graph_id") or "").strip()
+        readout = str(body.get("readout") or "").strip().upper()
+        if not graph_id or graph_id not in _DYNAMIC_GRAPHS:
+            raise HTTPException(
+                status_code=422,
+                detail="graph_id required and must refer to an active Studio graph",
+            )
+        graph = _DYNAMIC_GRAPHS[graph_id]
+        if not readout or readout not in graph.nodes:
+            readout = next(iter(graph.nodes.keys()))
+        try:
+            return saltelli_lite(
+                graph,
+                readout=readout,
+                n_base=int(body.get("n_base") or 6),
+                clamps={str(k): float(v) for k, v in (body.get("clamps") or {}).items()},
+                knockouts=[str(k) for k in (body.get("knockouts") or [])],
+                t_end=float(body.get("t_end") or 60.0),
+            )
+        except Exception as exc:
+            logger.exception("saltelli_lite failed")
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @router.post("/jobs/search-and-simulate", tags=["jobs"])
+    async def jobs_search_and_simulate(req: SearchAndSimulateRequest) -> Dict[str, Any]:
+        """Enqueue search-and-simulate on the in-process Free job board (no Redis)."""
+        if not req.condition_query.strip():
+            raise _unmatched_http(
+                UnmatchedConditionError("", suggestions=list_condition_suggestions())
+            )
+
+        def _work() -> Any:
+            return _execute_search_and_simulate_pipeline(req).model_dump(mode="json")
+
+        jid = submit_job("search-and-simulate", _work)
+        return {"job_id": jid, "status": "queued", "poll": f"/api/v1/jobs/{jid}"}
+
+    @router.get("/jobs/{job_id}", tags=["jobs"])
+    def jobs_get(job_id: str, include_result: bool = Query(default=True)) -> Dict[str, Any]:
+        rec = get_job(job_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail="Unknown job_id")
+        out = rec.as_dict()
+        if include_result and rec.status == "done":
+            out["result"] = rec.result
+        return out
 
 
 def create_app() -> FastAPI:

@@ -12,12 +12,13 @@ import {
   YAxis,
   ZAxis,
 } from 'recharts'
-import { Loader2, Radar } from 'lucide-react'
+import { Loader2, Radar, Server } from 'lucide-react'
 import { GlassCard } from '../GlassCard'
 import { ScientistPanel } from '../ScientistPanel'
 import { TopologyPanel } from '../TopologyPanel'
 import { PageHeader, VclButton } from '../PageHeader'
 import { ApplyToStudioButton } from './ApplyToStudioButton'
+import { runSaltelliLite } from '../../api/client'
 import { useLab } from '../../lab/LabContext'
 import {
   computeSensitivityXAI,
@@ -25,8 +26,8 @@ import {
 } from '../../engine/sensitivityXAI'
 
 /**
- * XAI + global sensitivity workspace — Sobol indices, SHAP-force parameters,
- * plus server SHAP / GAT overlays from LabContext.
+ * Perturbation sensitivity workspace — Sobol indices, parameter-force attributions,
+ * plus server flux-attention overlays from LabContext.
  */
 export function XAIWorkspace() {
   const lab = useLab()
@@ -35,7 +36,13 @@ export function XAIWorkspace() {
   const vectors = lab.prioritization?.node_vectors ?? {}
 
   const [local, setLocal] = useState<SensitivityXAIResult | null>(null)
+  const [serverSaltelli, setServerSaltelli] = useState<{
+    node: string
+    S_i: number
+    S_Ti: number
+  }[]>([])
   const [busy, setBusy] = useState(false)
+  const [serverBusy, setServerBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
 
   const runSobol = () => {
@@ -55,7 +62,7 @@ export function XAIWorkspace() {
         })
         setLocal(result)
         setStatus(
-          `Sobol on targets [${result.targets.join(', ')}] · ${result.elapsedMs.toFixed(0)} ms`,
+          `Client Sobol on targets [${result.targets.join(', ')}] · ${result.elapsedMs.toFixed(0)} ms`,
         )
       } catch (err) {
         setStatus(err instanceof Error ? err.message : 'Sensitivity failed')
@@ -63,6 +70,46 @@ export function XAIWorkspace() {
         setBusy(false)
       }
     }, 20)
+  }
+
+  const runServerSaltelli = async () => {
+    const graphId = lab.graph?.id
+    if (!graphId) {
+      setStatus('Run Studio first so the server caches an active graph_id.')
+      return
+    }
+    setServerBusy(true)
+    setStatus(null)
+    try {
+      const data = await runSaltelliLite({
+        graph_id: graphId,
+        readout: lab.controls.targetNode || lab.controls.sourceNode,
+        n_base: 5,
+        clamps: lab.omicsClamps,
+        knockouts: lab.controls.knockouts,
+        t_end: 60,
+      })
+      if (!data.ok) {
+        setStatus(data.detail || 'Saltelli-lite returned empty')
+        setServerSaltelli([])
+        return
+      }
+      setServerSaltelli(
+        data.factors.slice(0, 12).map((label, i) => ({
+          node: label,
+          S_i: data.S_i[i] ?? 0,
+          S_Ti: data.S_Ti[i] ?? 0,
+        })),
+      )
+      setStatus(
+        `Server Saltelli-lite · readout ${data.readout} · ${data.elapsed_ms.toFixed(0)} ms (${data.method})`,
+      )
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Server Saltelli failed')
+      setServerSaltelli([])
+    } finally {
+      setServerBusy(false)
+    }
   }
 
   const shapChart = useMemo(
@@ -74,15 +121,14 @@ export function XAIWorkspace() {
     [xai],
   )
 
-  const sobolChart = useMemo(
-    () =>
-      (local?.sobol ?? []).slice(0, 10).map((s) => ({
-        node: s.node,
-        S_i: s.S_i,
-        S_Ti: s.S_Ti,
-      })),
-    [local],
-  )
+  const sobolChart = useMemo(() => {
+    if (serverSaltelli.length) return serverSaltelli.slice(0, 10)
+    return (local?.sobol ?? []).slice(0, 10).map((s) => ({
+      node: s.node,
+      S_i: s.S_i,
+      S_Ti: s.S_Ti,
+    }))
+  }, [local, serverSaltelli])
 
   const forceChart = useMemo(
     () =>
@@ -99,14 +145,26 @@ export function XAIWorkspace() {
   return (
     <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
       <PageHeader
-        code="XA · Sobol · SHAP · GAT"
-        title="XAI & Global Sensitivity"
-        description="Sobol Sᵢ / S_Ti, SHAP-force kinetic parameters, and GAT prioritization."
+        code="XA · Perturbation Sensitivity"
+        title="Perturbation Sensitivity"
+        description="Sobol Sᵢ / S_Ti and parameter-force attributions (flux attention — not a trained GAT/SHAP model)."
         actions={
           <>
             <VclButton variant="secondary" disabled={!lab.graph || busy} onClick={runSobol}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
-              Run Sobol / SHAP-force
+              Client Sobol
+            </VclButton>
+            <VclButton
+              variant="ghost"
+              disabled={!lab.graph || serverBusy}
+              onClick={() => void runServerSaltelli()}
+            >
+              {serverBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Server className="h-4 w-4" />
+              )}
+              Server Saltelli-lite
             </VclButton>
             <ApplyToStudioButton disabled={!lab.graph} />
           </>
@@ -119,11 +177,13 @@ export function XAIWorkspace() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassCard
-          title="Sobol indices"
+          title="Sobol / Saltelli indices"
           hint={
-            local?.targets?.length
-              ? `Targets: ${local.targets.join(', ')} · Sᵢ first-order · S_Ti total`
-              : 'Sᵢ first-order · S_Ti total-effect'
+            serverSaltelli.length
+              ? 'Server Saltelli-lite (numpy) · Sᵢ first-order · S_Ti total'
+              : local?.targets?.length
+                ? `Client Sobol · targets: ${local.targets.join(', ')}`
+                : 'Sᵢ first-order · S_Ti total-effect'
           }
         >
           {sobolChart.length ? (
@@ -134,7 +194,7 @@ export function XAIWorkspace() {
                   <YAxis
                     type="category"
                     dataKey="node"
-                    width={58}
+                    width={serverSaltelli.length ? 88 : 58}
                     stroke="#64748B"
                     tick={{ fill: '#94A3B8', fontSize: 10 }}
                   />
@@ -152,11 +212,11 @@ export function XAIWorkspace() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <Empty hint="Run Sobol / SHAP-force to rank network drivers of VEGFA/GLUT1 outputs." />
+            <Empty hint="Run Client Sobol or Server Saltelli-lite to rank network drivers." />
           )}
         </GlassCard>
 
-        <GlassCard title="SHAP-force parameters" hint="k_cat · τ · transport · degradation">
+        <GlassCard title="Parameter-force attributions" hint="k_cat · τ · transport · degradation">
           {forceChart.length ? (
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -238,7 +298,7 @@ export function XAIWorkspace() {
           )}
         </GlassCard>
 
-        <GlassCard title="Server SHAP Node Importance" hint="Marginal contribution to ΣΔy_output">
+        <GlassCard title="Server node importance" hint="Marginal contribution to ΣΔy_output (flux-attention proxy)">
           {shapChart.length ? (
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">

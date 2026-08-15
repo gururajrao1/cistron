@@ -342,6 +342,18 @@ class OmicsSimulateRequest(BaseModel):
         default_factory=list,
         description="Preferred dual-screen targets for SL permutation",
     )
+    graph_id: Optional[str] = Field(
+        default=None,
+        description="Active Studio/Pathways graph id from a prior simulate response",
+    )
+    nodes: Optional[List["DynamicTopologyNode"]] = Field(
+        default=None,
+        description="Optional inline topology when graph_id is missing (cold start)",
+    )
+    edges: Optional[List["DynamicTopologyEdge"]] = Field(
+        default=None,
+        description="Optional inline edges paired with nodes",
+    )
 
     @model_validator(mode="after")
     def _clip_perturbations(self) -> "OmicsSimulateRequest":
@@ -403,3 +415,6 @@ class DynamicGraphSimulateRequest(BaseModel):
     simulation_id: Optional[str] = None
     include_synthetic_lethality: bool = False
     sl_candidate_nodes: List[str] = Field(default_factory=list)
+
+
+OmicsSimulateRequest.model_rebuild()

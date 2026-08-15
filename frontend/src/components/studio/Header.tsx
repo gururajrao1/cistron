@@ -90,6 +90,7 @@ export function Header({ onOpenPalette }: Props) {
       scrubT: lab.scrubT,
       perturbations: { ...lab.perturbations },
       knockouts: [...controls.knockouts],
+      simId: lab.lastSimId,
       controls: {
         clampNode: controls.clampNode,
         clampValue: controls.clampValue,
@@ -211,6 +212,14 @@ export function Header({ onOpenPalette }: Props) {
           <span className="rounded border border-vcl-border bg-vcl-raised px-1.5 py-0.5 font-mono text-[9.5px] text-vcl-muted">
             {sourceBadge}
           </span>
+          {lab.lastSimId ? (
+            <span
+              className="rounded border border-cyan-flux/30 bg-[#0a2834] px-1.5 py-0.5 font-mono text-[9.5px] text-cyan-flux/90"
+              title="FAIR simulation hash"
+            >
+              sim {lab.lastSimId.slice(0, 8)}
+            </span>
+          ) : null}
           {activeOmicsProfile ? (
             <>
               <OmicsProvenanceBadge

@@ -12,6 +12,8 @@ export type ExperimentSnapshot = {
   scrubT: number
   perturbations: Record<string, number>
   knockouts: string[]
+  /** FAIR hash from last simulate response when available. */
+  simId?: string | null
   controls: Pick<
     LabControls,
     | 'clampNode'

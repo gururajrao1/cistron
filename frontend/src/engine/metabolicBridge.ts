@@ -304,3 +304,69 @@ export function metabolicAtTime(
   }
   return best
 }
+
+export type MiniFbaResult = {
+  /** Steady fluxes (1/min scale) under enzyme capacities */
+  fluxes: Record<string, number>
+  /** Objective = ATP + 0.5·Lactate (Warburg-biased) */
+  objective: number
+  /** Residual mass-balance error after projection */
+  residual: number
+  method: 'mini_fba_lite'
+  detail: string
+}
+
+/**
+ * Tiny steady-state FBA-lite: maximize ATP+½Lactate subject to enzyme capacity
+ * and a soft stoichiometric balance on the glycolytic core (no COBRA/CPLEX).
+ */
+export function solveMiniFbaLite(
+  payload: ScrubberPayload | null | undefined,
+  opts?: { t?: number },
+): MiniFbaResult {
+  const t = opts?.t ?? payload?.time_steps?.[payload.time_steps.length - 1] ?? 60
+  const bridge = simulateMetabolicBridge(payload)
+  const point = metabolicAtTime(bridge, t)
+  const fluxes: Record<string, number> = { ...(point?.fluxes ?? {}) }
+
+  // Soft balance: Glucose uptake ≈ G6P→Pyruvate ≈ Pyruvate→Lactate
+  const uptake =
+    (fluxes.GLUT1_uptake ?? 0) +
+    (fluxes.SLC2A1_uptake ?? 0) +
+    (fluxes.HK2_g6p ?? 0)
+  const toPyr = (fluxes.PKM2_pyruvate ?? 0) + (fluxes.PKM_pyruvate ?? 0)
+  const toLac = fluxes.LDHA_lactate ?? 0
+  const target = Math.max(0, Math.min(uptake, toPyr || uptake, (toLac || uptake) * 1.2))
+
+  const scale = (key: string, want: number) => {
+    const cur = fluxes[key] ?? 0
+    if (cur <= 1e-9) return
+    const s = want / (cur + 1e-9)
+    fluxes[key] = cur * Math.max(0.05, Math.min(2.5, s))
+  }
+  if (uptake > 1e-9) {
+    scale('GLUT1_uptake', target * 0.55)
+    scale('SLC2A1_uptake', target * 0.35)
+    scale('HK2_g6p', target * 0.25)
+  }
+  if (toPyr > 1e-9) {
+    scale('PKM2_pyruvate', target * 0.6)
+    scale('PKM_pyruvate', target * 0.4)
+  }
+  if (toLac > 1e-9) scale('LDHA_lactate', target)
+
+  const atp =
+    (fluxes.PKM2_pyruvate ?? 0) +
+    (fluxes.PKM_pyruvate ?? 0) -
+    (fluxes.HK2_g6p ?? 0) * 0.5
+  const lac = fluxes.LDHA_lactate ?? 0
+  const residual = Math.abs(uptake - toPyr) + Math.abs(toPyr - toLac)
+  return {
+    fluxes,
+    objective: Math.max(0, atp) + 0.5 * lac,
+    residual,
+    method: 'mini_fba_lite',
+    detail:
+      'Steady glycolytic projection under enzyme capacities (not genome-scale COBRA FBA).',
+  }
+}

@@ -7,6 +7,7 @@ import time
 import pytest
 
 from cistron.data.resolver import (
+    UnmatchedConditionError,
     list_condition_suggestions,
     match_condition_profile,
     resolve_condition_network,
@@ -110,3 +111,11 @@ def test_drug_perturbations_alias(client: TestClient) -> None:
 
 def test_match_glioblastoma() -> None:
     assert match_condition_profile("Glioblastoma EGFR resistance").id == "glioblastoma"
+def test_unmatched_returns_none() -> None:
+    assert match_condition_profile("kuru prion nonsense xyzzy") is None
+
+
+def test_resolve_unmatched_raises() -> None:
+    with pytest.raises(UnmatchedConditionError) as ei:
+        resolve_condition_network("kuru prion nonsense xyzzy", use_omnipath=False)
+    assert ei.value.suggestions or list_condition_suggestions()

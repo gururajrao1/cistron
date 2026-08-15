@@ -9,7 +9,7 @@ import { useLab } from '../../lab/LabContext'
 type RightTab = 'targets' | 'scientist' | 'omics'
 
 /**
- * Right inspector — Targets / AI Scientist / Multi-omics (features restored as dock tabs).
+ * Right inspector — Targets / Mechanistic Brief / Multi-omics.
  */
 export function RightInspectorDock() {
   const lab = useLab()
@@ -17,7 +17,7 @@ export function RightInspectorDock() {
 
   const tabs: { id: RightTab; label: string }[] = [
     { id: 'targets', label: 'Targets' },
-    { id: 'scientist', label: 'Scientist' },
+    { id: 'scientist', label: 'Brief' },
     { id: 'omics', label: 'Omics' },
   ]
 

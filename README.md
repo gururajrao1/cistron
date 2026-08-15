@@ -1,6 +1,6 @@
 # Cistron
 
-**Research-grade virtual cellular laboratory** — Hill-cube ODE signalling, disease pathway graphs, multi-omics conditioning, spatial reaction–diffusion, organelle compartments, synthetic lethality screening, XAI sensitivity, plain-language protein explainers, and publication-ready report export.
+**Interactive virtual cellular laboratory** — Hill-cube ODE signalling, disease pathway graphs, multi-omics clamping on the active graph, spatial reaction–diffusion (illustrative), combination screens, perturbation sensitivity, retrieve-grounded protein explainers, and client report export.
 
 | | |
 | --- | --- |
@@ -8,8 +8,9 @@
 | **Repository** | [https://github.com/gururajrao1/cistron](https://github.com/gururajrao1/cistron) |
 | **Stack** | Python 3.10+ (FastAPI + NumPy/SciPy Hill-cube) · React 19 / Vite / Tailwind (VCL Studio) |
 | **License** | MIT |
+| **Blueprint** | [docs/BLUEPRINT.md](docs/BLUEPRINT.md) — Free-safe honesty rules + deferred items |
 
-**UI shell:** Cistron VCL Systems Biology IDE — dense clinical chrome (IBM Plex, 54px code rail, docks, ⌘K palette).
+**UI shell:** Cistron VCL Systems Biology IDE — dense lab chrome (IBM Plex / Space Grotesk, 54px code rail, docks, ⌘K palette).
 
 > Free Render instances **sleep after ~15 minutes** idle. The first request after sleep can take ~30–60s.
 
@@ -19,13 +20,15 @@
 
 Cistron lets you ask *what if* questions on disease signalling networks:
 
-1. **Build** a pathway from Reactome / STRING (or curated hypoxia / MAPK presets)
-2. **Simulate** activity over time with a Kraeutler-style Hill-cube ODE engine
-3. **Perturb** — knockout, clamp, dose a drug, dual-target combo screens
-4. **Condition** the run on RNA-seq / PTM / metabolomics profiles
-5. **Explain** — Sobol / SHAP-style sensitivity, AI Scientist briefs, and retrieve-grounded protein cards (including “if this protein changes…” for any Pathways disease)
+1. **Build** a pathway from Reactome / STRING (or curated hypoxia / MAPK / keyword profiles)
+2. **Simulate** activity over time with a Kraeutler-style Hill-cube ODE engine (LSODA)
+3. **Perturb** — knockout, clamp, dose a drug, dual-target combo screens (Bliss / Loewe)
+4. **Condition** the run on RNA-seq / PTM profiles **mapped onto the active graph** (unmapped genes reported)
+5. **Explain** — Sobol / parameter-force sensitivity, template **mechanistic briefs**, and retrieve-grounded protein cards
 
-It is a research sandbox, not a clinical decision system. Auto-generated reports are **not** peer-reviewed manuscripts.
+It is a **research sandbox**, not a clinical decision system. Flux-attention prioritization is **not** a trained GAT; parameter-force charts are **not** KernelSHAP. Auto-generated reports are **not** peer-reviewed manuscripts.
+
+Unmatched free-text disease queries **fail with HTTP 422** and curated suggestions — they do **not** silently fall back to hypoxia.
 
 ---
 
@@ -109,10 +112,10 @@ Letter codes match the VCL rail. Shortcuts: `Ctrl/⌘` + number.
 | **ST** | `/studio` | Simulation Studio — SVG network, spatial mesh, docks |
 | **PW** | `/pathways` | Disease Pathways — Reactome + STRING → dynamic graph |
 | **EX** | `/explorer` | Network Builder — sources / situations / τ registry |
-| **XA** | `/xai` | XAI & Global Sensitivity — Sobol / SHAP-force / GAT |
+| **XA** | `/xai` | Perturbation Sensitivity — Sobol / parameter force |
 | **PH** | `/pharmacology` | Pharmacology Lab — dose–response · clamps · KO |
-| **BR** | `/briefs` | Research Briefs — AI Scientist + BioReasoner export |
-| **CB** | `/combinations` | Combos — Bliss synergy heatmap · synthetic lethality |
+| **BR** | `/briefs` | Research Briefs — Mechanistic Brief + BioReasoner export |
+| **CB** | `/combinations` | Combos — Bliss / Loewe synergy · synthetic lethality |
 | **OM** | `/omics` | Multi-omics — RNA-seq, MaxQuant/FragPipe PTM, metabolomics |
 | **3D** | `/biophysics` | 3D Structure — UniProt / PDB / AlphaFold + PTM sites |
 
@@ -128,7 +131,7 @@ Header: scenario select · **Run** · provenance strip · **Snap** (local experi
 - **46px header** — CISTRON·VCL, search palette, scenario presets, engine live, provenance badges (profile · sources · omics fit)
 - **Right inspector dock** (Studio):
   - **Targets** — perturbations + impact / Dual Screen
-  - **Scientist** — AI Scientist brief + causal hypothesis cards
+  - **Scientist** — Mechanistic Brief + causal hypothesis cards
   - **Omics** — multi-omics rail (PTM / metabolomics)
   - **Node Biophysics Inspector** — protein card, disease impact, IDs, 5D feature vector, KO / Clamp
 - **Bottom analysis dock** (Studio): time-series · Scenario A/B · organelle translocation · metabolic flux
@@ -186,10 +189,10 @@ Canvas log2FC heatmap when a profile is active; header shows fit %.
 - Server SL scan + hypothesis cards
 - **Apply → Studio** for selected pair
 
-### 7. XAI & Sensitivity (`/xai`)
+### 7. Perturbation Sensitivity (`/xai`)
 
-- Sobol \(S_i / S_{Ti}\) · SHAP-force kinetic parameters
-- Influence scatter · server SHAP / GAT master regulators
+- Sobol \(S_i / S_{Ti}\) · parameter-force kinetic attributions
+- Influence scatter · server flux-attention master regulators
 - **Apply → Studio**
 
 ### 8. Pharmacology (`/pharmacology`)
@@ -199,7 +202,7 @@ Canvas log2FC heatmap when a profile is active; header shows fit %.
 
 ### 9. Research Briefs (`/briefs`)
 
-- AI Scientist + BioReasoner narratives
+- Mechanistic Brief + BioReasoner narratives
 - JSON / Markdown / print-friendly export
 
 ### 10. Export Report (header)
@@ -215,7 +218,7 @@ Publication PDF/Markdown: abstract, topology snapshot, trajectories, perturbatio
 | `spatialHistologyLoader.ts` | Visium / H&E masks + BCs |
 | `barrierKinetics.ts` | BBB permeability (logP, MW, P-gp) |
 | `comboScreen.ts` | Pairwise dual-KO Bliss screen |
-| `sensitivityXAI.ts` | Sobol-lite + SHAP-force |
+| `sensitivityXAI.ts` | Sobol-lite + parameter-force proxies |
 | `metabolicBridge.ts` | Enzyme \(y(t)\) → metabolite fluxes |
 | `edgeClassification.ts` / `nodeRing.ts` | Graph edge / ring fidelity |
 
@@ -270,10 +273,10 @@ Base path: `/api/v1`
 | `GET` | `/situations` | Curated situations for Explorer |
 | `GET` | `/conditions/suggestions` | Condition query suggestions |
 | `GET` | `/proteins/{symbol}` | Retrieve-grounded protein card + disease impact (`condition`, `upstream`, `downstream`, `delta_y`, `use_llm`) |
-| `POST` | `/search-and-simulate` | Query → graph → Hill-cube ODE + XAI / topology |
+| `POST` | `/search-and-simulate` | Query → graph → Hill-cube ODE + sensitivity / topology (422 if unmatched) |
 | `POST` | `/simulate-dynamic-graph` | Browser-built Reactome+STRING interactome → full lab pipeline |
 | `POST` | `/omics/upload` | Multipart CSV → `OmicsProfile` |
-| `POST` | `/omics/simulate` | Profile → conditioned sim + alignment |
+| `POST` | `/omics/simulate` | Profile → clamps on **active** graph + unmapped genes |
 
 **Proxies (same origin)**
 
@@ -298,7 +301,7 @@ When `frontend/dist` exists, unmatched routes serve the Studio SPA.
 │  simulate-dynamic-graph        │  Combos · XAI · Omics · 3D · Snapshots  │
 │  omics upload + simulate       │  Client engines + LabContext hub        │
 │  proteins + disease impact     │  Apply → Studio workflows               │
-│  topology · GAT · XAI          │  Node inspector · HF LLM polish (opt.)  │
+│  topology · flux attention     │  Node inspector · HF LLM polish (opt.)  │
 │  Reactome / STRING proxies     │  Same-origin API when hosted            │
 └────────────────────────────────┴─────────────────────────────────────────┘
 ```

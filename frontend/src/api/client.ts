@@ -1,15 +1,5 @@
-import axios, { AxiosError } from 'axios'
-import type {
-  HealthResponse,
-  PresetDetail,
-  PresetSummary,
-  PrioritizeResponse,
-  ReasonRequest,
-  ReasonResponse,
-  SimulateRequest,
-  SimulateResponse,
-  ScrubberPayload,
-} from './types'
+﻿import axios, { AxiosError } from 'axios'
+import type { HealthResponse, ScrubberPayload } from './types'
 
 /**
  * Prefer VITE_API_BASE when set (including empty string = same-origin deploy).
@@ -29,7 +19,7 @@ function isBrowserLocalHost(): boolean {
   return h === 'localhost' || h === '127.0.0.1' || h === '[::1]'
 }
 
-/** True on Render / production SPA — free tiers need longer cold-start probes. */
+/** True on Render / production SPA â€” free tiers need longer cold-start probes. */
 function isHostedDeploy(): boolean {
   return typeof window !== 'undefined' && !isBrowserLocalHost()
 }
@@ -119,26 +109,48 @@ export async function ensureApiBase(force = false): Promise<string> {
 export function formatApiError(err: unknown): string {
   if (err instanceof ApiOfflineError) return err.message
   if (axios.isAxiosError(err)) {
-    const ax = err as AxiosError<{ detail?: string | { msg?: string }[] }>
+    const ax = err as AxiosError<{
+      detail?:
+        | string
+        | { msg?: string }[]
+        | { message?: string; code?: string; suggestions?: Array<{ label?: string; query?: string }> }
+    }>
     if (!ax.response) {
       if (ax.code === 'ECONNABORTED') {
         return isHostedDeploy()
-          ? 'API timed out while waking up — refresh in a few seconds.'
+          ? 'API timed out while waking up â€” refresh in a few seconds.'
           : 'API request timed out. Is uvicorn running on http://127.0.0.1:8001?'
       }
       return offlineHelp()
     }
     const detail = ax.response.data?.detail
+    if (ax.response.status === 504) {
+      if (typeof detail === 'string' && detail.trim()) return detail
+      return 'Simulation timed out â€” narrow the graph or retry.'
+    }
     if (ax.response.status === 404) {
       const hint = isHostedDeploy()
-        ? 'API route missing — redeploy the latest build.'
+        ? 'API route missing â€” redeploy the latest build.'
         : 'API route missing. Use Cistron on :8001 (not an old process on :8000).'
-      if (typeof detail === 'string' && detail.trim()) return `${detail} — ${hint}`
+      if (typeof detail === 'string' && detail.trim()) return `${detail} â€” ${hint}`
       return hint
     }
     if (typeof detail === 'string') return detail
     if (Array.isArray(detail)) {
       return detail.map((d) => d.msg ?? JSON.stringify(d)).join('; ')
+    }
+    if (detail && typeof detail === 'object') {
+      const d = detail as {
+        message?: string
+        suggestions?: Array<{ label?: string; query?: string }>
+      }
+      if (d.message) {
+        const tips = (d.suggestions ?? [])
+          .slice(0, 4)
+          .map((s) => s.label || s.query)
+          .filter(Boolean)
+        return tips.length ? `${d.message} Try: ${tips.join(', ')}` : d.message
+      }
     }
     return `API error ${ax.response.status}: ${ax.message}`
   }
@@ -168,50 +180,6 @@ export async function fetchHealth(): Promise<HealthResponse> {
   })
 }
 
-export async function fetchPresets(): Promise<PresetSummary[]> {
-  return withApiErrors(async () => {
-    const { data } = await api.get<PresetSummary[]>(`${v1}/presets`)
-    return data
-  })
-}
-
-export async function fetchPreset(presetId: string): Promise<PresetDetail> {
-  return withApiErrors(async () => {
-    const { data } = await api.get<PresetDetail>(`${v1}/presets/${presetId}`)
-    return data
-  })
-}
-
-/** POST /api/v1/simulate — returns backend ScrubberPayload (61 keyframes). */
-export async function runSimulate(body: SimulateRequest): Promise<SimulateResponse> {
-  return withApiErrors(async () => {
-    const { data } = await api.post<SimulateResponse>(`${v1}/simulate`, body)
-    return data
-  })
-}
-
-/** POST /api/v1/prioritize — GAT attention + 5D vectors computed server-side. */
-export async function runPrioritize(
-  preset: string,
-  payload: ScrubberPayload,
-): Promise<PrioritizeResponse> {
-  return withApiErrors(async () => {
-    const { data } = await api.post<PrioritizeResponse>(`${v1}/prioritize`, {
-      preset,
-      payload,
-    })
-    return data
-  })
-}
-
-/** POST /api/v1/reasoner/brief — Dijkstra paths + grounded narrative from backend. */
-export async function runReasonerBrief(body: ReasonRequest): Promise<ReasonResponse> {
-  return withApiErrors(async () => {
-    const { data } = await api.post<ReasonResponse>(`${v1}/reasoner/brief`, body)
-    return data
-  })
-}
-
 export async function fetchConditionSuggestions(): Promise<
   import('./types').ConditionSuggestion[]
 > {
@@ -221,7 +189,7 @@ export async function fetchConditionSuggestions(): Promise<
   })
 }
 
-/** POST /api/v1/search-and-simulate — dynamic condition → full lab pipeline. */
+/** POST /api/v1/search-and-simulate â€” dynamic condition â†’ full lab pipeline. */
 export async function searchAndSimulate(
   body: import('./types').SearchAndSimulateRequest,
 ): Promise<import('./types').SearchAndSimulateResponse> {
@@ -233,7 +201,7 @@ export async function searchAndSimulate(
   })
 }
 
-/** POST /api/v1/simulate-dynamic-graph — Reactome+STRING topology → Hill-cube t₀→t₆₀. */
+/** POST /api/v1/simulate-dynamic-graph â€” Reactome+STRING topology â†’ Hill-cube tâ‚€â†’tâ‚†â‚€. */
 export async function simulateDynamicGraph(
   body: import('./types').DynamicGraphSimulateRequest,
 ): Promise<import('./types').SearchAndSimulateResponse> {
@@ -293,7 +261,7 @@ export async function fetchProteinMeta(
   })
 }
 
-/** POST /api/v1/omics/upload — multipart CSV → OmicsProfile. */
+/** POST /api/v1/omics/upload â€” multipart CSV â†’ OmicsProfile. */
 export async function uploadOmicsCsv(
   file: File,
   sampleName: string,
@@ -323,7 +291,7 @@ export async function uploadOmicsCsv(
     }
 
     let { res, body } = await post(base)
-    // Stale VoidSignal on :8000 → rediscover and retry once.
+    // Stale VoidSignal on :8000 â†’ rediscover and retry once.
     if (res.status === 404) {
       const next = await ensureApiBase(true)
       ;({ res, body } = await post(next))
@@ -344,7 +312,7 @@ export async function uploadOmicsCsv(
   })
 }
 
-/** POST /api/v1/omics/simulate — omics-conditioned lab pipeline. */
+/** POST /api/v1/omics/simulate â€” omics-conditioned lab pipeline. */
 export async function simulateOmicsProfile(
   profile: import('./types').OmicsProfile,
   params: import('./types').OmicsSimulateParams = {},
@@ -366,9 +334,130 @@ export async function simulateOmicsProfile(
       previous_state_summary: params.previous_state_summary ?? null,
       include_synthetic_lethality: params.include_synthetic_lethality ?? false,
       sl_candidate_nodes: params.sl_candidate_nodes ?? [],
+      graph_id: params.graph_id,
+      nodes: params.nodes,
+      edges: params.edges,
     })
     return data
   })
+}
+
+/** GET /api/v1/literature/copilot — retrieve-only PubMed + Reactome. */
+export async function fetchLiteratureCopilot(params: {
+  gene?: string
+  partner?: string
+  disease?: string
+  max_hits?: number
+}): Promise<{
+  mode: string
+  query: string
+  citations: Array<{ source: string; id: string; title: string; url: string }>
+  reactome: Array<{ source: string; id: string; title: string; url: string }>
+  summary: string
+  ok: boolean
+  errors?: string[]
+}> {
+  return withApiErrors(async () => {
+    await ensureApiBase()
+    const { data } = await api.get(`${v1}/literature/copilot`, {
+      params: {
+        gene: params.gene ?? '',
+        partner: params.partner ?? '',
+        disease: params.disease ?? '',
+        max_hits: params.max_hits ?? 5,
+      },
+      timeout: 12_000,
+    })
+    return data
+  })
+}
+
+/** POST /api/v1/sensitivity/saltelli — numpy Saltelli-lite on cached graph. */
+export async function runSaltelliLite(body: {
+  graph_id: string
+  readout?: string
+  n_base?: number
+  clamps?: Record<string, number>
+  knockouts?: string[]
+  t_end?: number
+}): Promise<{
+  readout: string
+  factors: string[]
+  S_i: number[]
+  S_Ti: number[]
+  n_base: number
+  n_factors?: number
+  elapsed_ms: number
+  method: string
+  ok: boolean
+  detail?: string
+}> {
+  return withApiErrors(async () => {
+    await ensureApiBase()
+    const { data } = await api.post(`${v1}/sensitivity/saltelli`, body, {
+      timeout: 120_000,
+    })
+    return data
+  })
+}
+
+export type JobStatus = {
+  id: string
+  kind: string
+  status: 'queued' | 'running' | 'done' | 'error' | string
+  created_at: number
+  updated_at: number
+  error?: string | null
+  has_result?: boolean
+  result?: import('./types').SearchAndSimulateResponse
+  poll?: string
+}
+
+/** POST /api/v1/jobs/search-and-simulate — Celery-free in-process job. */
+export async function enqueueSearchAndSimulate(
+  body: import('./types').SearchAndSimulateRequest,
+): Promise<{ job_id: string; status: string; poll: string }> {
+  return withApiErrors(async () => {
+    await ensureApiBase()
+    const { data } = await api.post(`${v1}/jobs/search-and-simulate`, body, {
+      timeout: 15_000,
+    })
+    return data
+  })
+}
+
+/** GET /api/v1/jobs/{id} — poll in-process job board. */
+export async function fetchJob(
+  jobId: string,
+  includeResult = true,
+): Promise<JobStatus> {
+  return withApiErrors(async () => {
+    await ensureApiBase()
+    const { data } = await api.get(`${v1}/jobs/${encodeURIComponent(jobId)}`, {
+      params: { include_result: includeResult },
+    })
+    return data
+  })
+}
+
+/** Enqueue + poll until done/error (or timeout). */
+export async function searchAndSimulateViaJob(
+  body: import('./types').SearchAndSimulateRequest,
+  opts?: { timeoutMs?: number; pollMs?: number },
+): Promise<import('./types').SearchAndSimulateResponse> {
+  const timeoutMs = opts?.timeoutMs ?? 90_000
+  const pollMs = opts?.pollMs ?? 400
+  const { job_id } = await enqueueSearchAndSimulate(body)
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const job = await fetchJob(job_id, true)
+    if (job.status === 'done' && job.result) return job.result
+    if (job.status === 'error') {
+      throw new Error(job.error || 'Job failed')
+    }
+    await sleep(pollMs)
+  }
+  throw new Error(`Job ${job_id} timed out after ${timeoutMs} ms`)
 }
 
 export function lerpAtTime(

@@ -60,9 +60,9 @@ export async function assemblePublicationReport(
       body: [
         'Hill-cube ODEs integrated t0->t60 (Kraeutler logic) with optional omics-conditioned y0.',
         'Synthetic lethality scored via Bliss independence on dual-knockout viability.',
-        'Spatial reaction-diffusion (5-point Laplacian) with optional Visium/H&E histology masks and BBB permeability (logP, MW, P-gp).',
-        'XAI: GAT attention, SHAP-style node attributions, and client Sobol S_i / S_Ti sensitivity.',
-        'Citations: Kraeutler et al. Hill cubes; Bliss (1939) independence; Saltelli et al. global sensitivity; PhysiCell-style continuum substrates.',
+        'Spatial reaction-diffusion (5-point Laplacian) with optional Visium/H&E histology masks and BBB permeability (logP, MW, P-gp) — illustrative tissue RD, not PhysiCell agents.',
+        'Sensitivity: flux-attention prioritization, parameter-force attributions, and client Sobol S_i / S_Ti.',
+        'Citations: Kraeutler et al. Hill cubes; Bliss (1939) independence; Saltelli et al. global sensitivity.',
       ].join(' '),
       twoColumn: true,
     })

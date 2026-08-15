@@ -319,7 +319,7 @@ export function SpatialGridCanvas({
         <div className="pointer-events-none absolute left-2 top-2 z-10 max-w-[200px] rounded-lg border border-slate-700/70 bg-obsidian/90 px-2.5 py-2 backdrop-blur-md">
           <MetaLabel className="!text-cyan-300/90">Spatial microenvironment</MetaLabel>
           <p className="mt-1 text-[10px] leading-snug text-slate-400">
-            Reaction–diffusion mesh · 5-point Laplacian · click to dose
+            Illustrative reaction–diffusion mesh (not PhysiCell agent coupling) · click to dose
           </p>
           {histologyLabel ? (
             <p className="mt-1 truncate text-[9px] text-emerald-300/90" title={histologyLabel}>

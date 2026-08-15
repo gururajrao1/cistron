@@ -18,7 +18,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { id: 'studio', path: '/studio', label: 'Simulation Studio', shortLabel: 'Studio', code: 'ST', shortcut: '1' },
   { id: 'pathways', path: '/pathways', label: 'Disease Pathways', shortLabel: 'Pathways', code: 'PW', shortcut: '2' },
   { id: 'explorer', path: '/explorer', label: 'Network Builder', shortLabel: 'Explorer', code: 'EX', shortcut: '3' },
-  { id: 'xai', path: '/xai', label: 'XAI & Prioritization', shortLabel: 'XAI', code: 'XA', shortcut: '4' },
+  { id: 'xai', path: '/xai', label: 'Perturbation Sensitivity', shortLabel: 'XAI', code: 'XA', shortcut: '4' },
   { id: 'pharmacology', path: '/pharmacology', label: 'Pharmacology Lab', shortLabel: 'Pharma', code: 'PH', shortcut: '5' },
   { id: 'briefs', path: '/briefs', label: 'Research Briefs', shortLabel: 'Briefs', code: 'BR', shortcut: '6' },
   { id: 'combinations', path: '/combinations', label: 'Combination Therapy', shortLabel: 'Combos', code: 'CB', shortcut: '7' },
