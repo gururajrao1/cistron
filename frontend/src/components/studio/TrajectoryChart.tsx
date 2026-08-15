@@ -29,10 +29,17 @@ const SERIES_COLORS: Record<string, string> = {
   AKT1: '#F472B6',
 }
 
-const BAND_FILL: Record<InsightBand['kind'], string> = {
-  elevated: 'rgba(239, 68, 68, 0.12)',
-  caution: 'rgba(245, 158, 11, 0.14)',
-  neutral: 'rgba(56, 189, 248, 0.08)',
+/** Fixed phenotype zones (illustrative — not clinical cutoffs). */
+export const PHENOTYPE_ZONES: InsightBand[] = [
+  { y0: 0.0, y1: 0.3, label: 'Healthy Baseline', kind: 'neutral' },
+  { y0: 0.3, y1: 0.7, label: 'Transient Stress', kind: 'caution' },
+  { y0: 0.7, y1: 1.05, label: 'Pathogenic / Oncogenic Driver', kind: 'elevated' },
+]
+
+const ZONE_FILL: Record<InsightBand['kind'], string> = {
+  elevated: 'rgba(244, 63, 94, 0.14)',
+  caution: 'rgba(245, 158, 11, 0.12)',
+  neutral: 'rgba(16, 185, 129, 0.10)',
 }
 
 type ChartRow = { t: number; [key: string]: number }
@@ -110,19 +117,26 @@ export function TrajectoryChart({
   loading = false,
   compact = false,
   bands,
+  showPhenotypeZones = true,
 }: {
   untreatedRun: ScrubberPayload | null
   treatedRun: ScrubberPayload | null
   focus: string[]
   scrubT: number
   loading?: boolean
-  /** Flat dock mode — no GlassCard chrome, fills parent height. */
   compact?: boolean
-  /** Illustrative activity / caution bands (not clinical cutoffs). */
+  /** Extra insight bands (merged with phenotype zones when enabled). */
   bands?: InsightBand[]
+  /** Green / yellow / red activity zones behind trajectories. */
+  showPhenotypeZones?: boolean
 }) {
   const compare = Boolean(untreatedRun && treatedRun)
   const active = treatedRun ?? untreatedRun
+
+  const zoneBands = useMemo(() => {
+    if (!showPhenotypeZones) return bands ?? []
+    return [...PHENOTYPE_ZONES, ...(bands ?? []).filter((b) => b.kind === 'elevated' && b.y0 > 0.9)]
+  }, [bands, showPhenotypeZones])
 
   const chartData = useMemo(() => {
     if (!active) return [] as ChartRow[]
@@ -150,11 +164,11 @@ export function TrajectoryChart({
       <div className={compact ? 'min-h-0 flex-1' : 'h-full w-full'}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#233042" strokeDasharray="3 3" />
+            <CartesianGrid stroke="#1a2433" strokeDasharray="3 3" />
             <XAxis
               dataKey="t"
-              stroke="#4E6479"
-              tick={{ fill: '#7C8DA3', fontSize: 10 }}
+              stroke="#3d4f63"
+              tick={{ fill: '#5a6d82', fontSize: 9 }}
               label={{
                 value: 'min',
                 position: 'insideBottomRight',
@@ -164,9 +178,10 @@ export function TrajectoryChart({
             />
             <YAxis
               domain={[0, 1.05]}
-              stroke="#4E6479"
-              tick={{ fill: '#7C8DA3', fontSize: 10 }}
-              width={32}
+              stroke="#2a3848"
+              tick={{ fill: '#4a5d72', fontSize: 9 }}
+              width={28}
+              tickFormatter={(v) => Number(v).toFixed(1)}
             />
             <Tooltip content={<DeltaTooltip focus={focus} />} />
             {!compact ? (
@@ -180,12 +195,12 @@ export function TrajectoryChart({
                 }}
               />
             ) : null}
-            {(bands ?? []).map((b) => (
+            {zoneBands.map((b) => (
               <ReferenceArea
                 key={`${b.label}-${b.y0}`}
                 y1={b.y0}
                 y2={b.y1}
-                fill={BAND_FILL[b.kind]}
+                fill={ZONE_FILL[b.kind]}
                 strokeOpacity={0}
                 ifOverflow="extendDomain"
               />
@@ -237,10 +252,10 @@ export function TrajectoryChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      {bands?.length ? (
+      {showPhenotypeZones ? (
         <p className="shrink-0 px-1 pt-0.5 text-[9px] leading-relaxed text-vcl-dim">
-          Shaded band: {bands.map((b) => b.label).join(' · ')} — illustrative activity zone, not a
-          clinical cutoff.
+          Zones: Healthy (green) · Transient stress (amber) · Pathogenic / oncogenic (red) —
+          illustrative activity bands, not clinical cutoffs.
         </p>
       ) : null}
     </div>

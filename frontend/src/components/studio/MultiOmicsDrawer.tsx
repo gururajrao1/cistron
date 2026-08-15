@@ -33,6 +33,8 @@ import {
   type MetabolicBridgeResult,
 } from '../../engine/metabolicBridge'
 import { mapLog2FcToY0 } from '../../api/types'
+import { StatDisclosure } from './StatDisclosure'
+import { RawMathOnly, useViewMode } from '../../layout/viewModeGates'
 
 export type OmicsLayer =
   | 'transcriptomics'
@@ -59,6 +61,7 @@ export function MultiOmicsDrawer({
   compact?: boolean
 }) {
   const lab = useLab()
+  const mode = useViewMode()
   const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
   const massSpecRef = useRef<HTMLInputElement>(null)
@@ -257,9 +260,19 @@ export function MultiOmicsDrawer({
           <span className="lab-mono text-[9px] text-orange-300/80">{msFormat}</span>
         ) : null}
         <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-emerald-500/35 bg-emerald-950/40 px-2.5 py-1 font-mono text-[10px] font-semibold text-emerald-100">
-          ATP: {fluxPill.atpPct >= 0 ? '+' : ''}
-          {fluxPill.atpPct.toFixed(0)}% | Lactate: {fluxPill.lactate.toFixed(1)} mmol/L | OCR:{' '}
-          {fluxPill.ocrPct.toFixed(0)}%
+          {mode === 'biologist' ? (
+            <>
+              ATP {fluxPill.atpPct >= 0 ? 'up' : 'down'} · Lactate{' '}
+              {fluxPill.lactate >= 2 ? 'elevated' : 'moderate'} · OCR{' '}
+              {fluxPill.ocrPct >= 50 ? 'ok' : 'low'}
+            </>
+          ) : (
+            <>
+              ATP: {fluxPill.atpPct >= 0 ? '+' : ''}
+              {fluxPill.atpPct.toFixed(0)}% | Lactate: {fluxPill.lactate.toFixed(1)} mmol/L | OCR:{' '}
+              {fluxPill.ocrPct.toFixed(0)}%
+            </>
+          )}
         </span>
       </div>
 
@@ -355,7 +368,9 @@ export function MultiOmicsDrawer({
                         {s.label}
                       </span>
                       <span className="lab-mono shrink-0 text-slate-400">
-                        ×{s.phosphoRatio.toFixed(2)}
+                        <RawMathOnly fallback={<span className="text-[10px]">site</span>}>
+                          ×{s.phosphoRatio.toFixed(2)}
+                        </RawMathOnly>
                       </span>
                     </button>
                   </li>
@@ -379,8 +394,14 @@ export function MultiOmicsDrawer({
                 {lab.activeOmicsProfile.condition} · {lab.activeOmicsProfile.sample_name}
               </div>
               <div className="lab-mono text-slate-500">
-                {Object.keys(lab.activeOmicsProfile.features).length} genes · fit{' '}
-                {lab.omicsAlignmentScore != null ? `${lab.omicsAlignmentScore.toFixed(0)}%` : '—'}
+                {Object.keys(lab.activeOmicsProfile.features).length} genes
+                <RawMathOnly>
+                  {' '}
+                  · fit{' '}
+                  {lab.omicsAlignmentScore != null
+                    ? `${lab.omicsAlignmentScore.toFixed(0)}%`
+                    : '—'}
+                </RawMathOnly>
               </div>
               <button
                 type="button"
@@ -430,40 +451,54 @@ export function MultiOmicsDrawer({
           title="Metabolomics flux bridge"
           hint="Flux = k_cat · y_enzyme · S/(K_m+S)"
         >
-          {metaNow && metabolic ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <Metric label="Lactate" value={metaNow.lactateExport} />
-                <Metric label="Pyruvate" value={metaNow.pools.Pyruvate ?? 0} />
-                <Metric label="ATP" value={metaNow.atpYield} />
-                <Metric label="NAD+/NADH" value={metaNow.nadRatio} />
+          <StatDisclosure
+            headline={
+              metaNow
+                ? metaNow.lactateExport >= 1.2
+                  ? 'Glycolytic / lactate export is elevated — Warburg-leaning metabolism.'
+                  : 'Metabolic bridge looks balanced at the current scrub time.'
+                : 'Run a simulation to bridge enzyme activity into metabolite fluxes.'
+            }
+            labHint="Scrub the trajectory to see how ATP and redox shift over time."
+            numbersLabel="Show metabolite numbers"
+          >
+            {metaNow && metabolic ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <Metric label="Lactate" value={metaNow.lactateExport} />
+                  <Metric label="Pyruvate" value={metaNow.pools.Pyruvate ?? 0} />
+                  <Metric label="ATP" value={metaNow.atpYield} />
+                  <Metric label="NAD+/NADH" value={metaNow.nadRatio} />
+                </div>
+                <MetaLabel className="!mt-1">
+                  Active enzyme fluxes @ t={lab.scrubT.toFixed(0)}
+                </MetaLabel>
+                <ul className="space-y-1">
+                  {Object.entries(metaNow.fluxes)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 6)
+                    .map(([id, f]) => (
+                      <li
+                        key={id}
+                        className="flex justify-between font-mono text-[10px] text-slate-400"
+                      >
+                        <span className="text-emerald-300/90">{id}</span>
+                        <span>{f.toFixed(3)}</span>
+                      </li>
+                    ))}
+                </ul>
+                <p className="text-[10px] text-slate-600">
+                  Enzymes coupled:{' '}
+                  {metabolic.enzymesUsed.join(', ') || 'none in active graph'}
+                </p>
               </div>
-              <MetaLabel className="!mt-1">Active enzyme fluxes @ t={lab.scrubT.toFixed(0)}</MetaLabel>
-              <ul className="space-y-1">
-                {Object.entries(metaNow.fluxes)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 6)
-                  .map(([id, f]) => (
-                    <li
-                      key={id}
-                      className="flex justify-between font-mono text-[10px] text-slate-400"
-                    >
-                      <span className="text-emerald-300/90">{id}</span>
-                      <span>{f.toFixed(3)}</span>
-                    </li>
-                  ))}
-              </ul>
-              <p className="text-[10px] text-slate-600">
-                Enzymes coupled:{' '}
-                {metabolic.enzymesUsed.join(', ') || 'none in active graph'}
+            ) : (
+              <p className="text-[11px] text-slate-500">
+                Run a Studio simulation with GLUT1 / LDHA / PKM2 in the network to populate metabolite
+                fluxes.
               </p>
-            </div>
-          ) : (
-            <p className="text-[11px] text-slate-500">
-              Run a Studio simulation with GLUT1 / LDHA / PKM2 in the network to populate metabolite
-              fluxes.
-            </p>
-          )}
+            )}
+          </StatDisclosure>
         </GlassCard>
       )}
 
@@ -490,10 +525,14 @@ function BaselineRow({ row }: { row: CombinedBaseline }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-md border border-slate-800/80 bg-obsidian/40 px-2 py-1 text-[10px]">
       <GeneBadge name={row.symbol} tone="amber" />
-      <span className="lab-mono text-slate-400">
-        B={row.boltzmannY0.toFixed(2)} × {row.phosphoRatio.toFixed(2)} →{' '}
-        <span className="text-emerald-300">{row.y0.toFixed(2)}</span>
-      </span>
+      <RawMathOnly
+        fallback={<span className="text-[10px] text-slate-500">PTM-conditioned</span>}
+      >
+        <span className="lab-mono text-slate-400">
+          B={row.boltzmannY0.toFixed(2)} × {row.phosphoRatio.toFixed(2)} →{' '}
+          <span className="text-emerald-300">{row.y0.toFixed(2)}</span>
+        </span>
+      </RawMathOnly>
     </div>
   )
 }

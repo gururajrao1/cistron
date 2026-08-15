@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { clsx } from 'clsx'
 import { ChevronDown, ChevronRight, FlaskConical, Lightbulb } from 'lucide-react'
 import type { DockInsight, InsightDelta } from '../../engine/insightRules'
@@ -53,6 +53,10 @@ export function InsightStrip({
   className,
 }: Props) {
   const [showNumbers, setShowNumbers] = useState(defaultShowNumbers)
+
+  useEffect(() => {
+    setShowNumbers(defaultShowNumbers)
+  }, [defaultShowNumbers])
 
   return (
     <div className={clsx('flex h-full min-h-0 flex-col gap-2 overflow-hidden', className)}>

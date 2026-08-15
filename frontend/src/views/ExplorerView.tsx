@@ -7,10 +7,12 @@ import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
 import { PageHeader } from '../components/PageHeader'
 import { fetchKnowledgeSources, fetchSourceSituations } from '../api/client'
 import { useLab } from '../lab/LabContext'
+import { useViewMode } from '../layout/viewModeGates'
 import { ALL_KNOWLEDGE_SOURCES } from '../api/types'
 
 export function ExplorerView() {
   const lab = useLab()
+  const mode = useViewMode()
   const edges = lab.graph?.edges ?? []
   const nodes = lab.graph?.nodes ?? {}
   const provenance = (lab.graph?.provenance ?? {}) as Record<string, unknown>
@@ -291,14 +293,26 @@ export function ExplorerView() {
                   >
                     <div className="min-w-0">
                       <div className="truncate font-semibold text-slate-200">{sym}</div>
-                      <div className="text-slate-500">
-                        y₀={Number(n.initial_concentration ?? 0.35).toFixed(2)} · w=
-                        {Number(n.activity_weight ?? 1).toFixed(2)}
+                      {mode === 'biologist' ? (
+                        <div className="text-slate-500">
+                          τ ≈ {Number(n.tau_min) <= 15 ? 'fast' : Number(n.tau_min) <= 40 ? 'medium' : 'slow'} response
+                        </div>
+                      ) : (
+                        <div className="text-slate-500">
+                          y₀={Number(n.initial_concentration ?? 0.35).toFixed(2)} · w=
+                          {Number(n.activity_weight ?? 1).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                    {mode !== 'biologist' ? (
+                      <div className="inline-flex shrink-0 items-center gap-1.5 font-mono text-emerald-300">
+                        <Timer className="h-3.5 w-3.5" />τ={Number(n.tau_min).toFixed(0)} min
                       </div>
-                    </div>
-                    <div className="inline-flex shrink-0 items-center gap-1.5 font-mono text-emerald-300">
-                      <Timer className="h-3.5 w-3.5" />τ={Number(n.tau_min).toFixed(0)} min
-                    </div>
+                    ) : (
+                      <div className="inline-flex shrink-0 items-center gap-1.5 text-emerald-300/90">
+                        <Timer className="h-3.5 w-3.5" />
+                      </div>
+                    )}
                   </div>
                 ))}
             </div>

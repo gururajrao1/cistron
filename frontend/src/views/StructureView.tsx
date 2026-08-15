@@ -6,6 +6,7 @@ import { GlassCard } from '../components/GlassCard'
 import { MetaLabel } from '../components/ui'
 import { ProteinStructureCanvas } from '../components/studio/ProteinStructureCanvas'
 import { useLab } from '../lab/LabContext'
+import { RawMathOnly } from '../layout/viewModeGates'
 import {
   EXAMPLE_PHOSPHO_CSV,
   ingestPtmCsv,
@@ -139,7 +140,9 @@ export function StructureView() {
                     )}
                   >
                     {s.label}
-                    <span className="ml-1.5 text-vcl-dim">×{s.phosphoRatio.toFixed(2)}</span>
+                    <RawMathOnly>
+                      <span className="ml-1.5 text-vcl-dim">×{s.phosphoRatio.toFixed(2)}</span>
+                    </RawMathOnly>
                   </button>
                 ))}
               </div>

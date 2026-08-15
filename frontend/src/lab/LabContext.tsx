@@ -43,6 +43,7 @@ import {
   generateHypothesesFromLab,
   type CausalHypothesis,
 } from '../services/aiCausalEngine'
+import { loadViewMode, persistViewMode, type ViewMode } from './viewMode'
 
 const STAGE_LABELS = [
   'Fetching multi-source topology',
@@ -209,6 +210,9 @@ export type LabContextValue = {
   runOmicsProfile: (profile: OmicsProfile, params?: OmicsSimulateParams) => void
   /** Switch active library profile and re-simulate. */
   selectOmicsProfile: (profileId: string) => void
+  /** Progressive disclosure depth — Biologist / Researcher / Systems Math. */
+  viewMode: ViewMode
+  setViewMode: (mode: ViewMode) => void
 }
 
 const LabContext = createContext<LabContextValue | null>(null)
@@ -216,6 +220,7 @@ const LabContext = createContext<LabContextValue | null>(null)
 export function LabProvider({ children }: { children: ReactNode }) {
   const [controls, setControls] = useState<LabControls>(initialControls)
   const [scrubT, setScrubT] = useState(0)
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => loadViewMode())
   const [payload, setPayload] = useState<ScrubberPayload | null>(null)
   const [untreatedRun, setUntreatedRun] = useState<ScrubberPayload | null>(null)
   const [treatedRun, setTreatedRun] = useState<ScrubberPayload | null>(null)
@@ -998,6 +1003,11 @@ export function LabProvider({ children }: { children: ReactNode }) {
     }
   }, [graph, perturbations, treatedRun, untreatedRun, payload, topologicalAnalysis])
 
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeState(mode)
+    persistViewMode(mode)
+  }, [])
+
   const value = useMemo<LabContextValue>(
     () => ({
       controls,
@@ -1048,6 +1058,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
       runDynamicDisease,
       runOmicsProfile,
       selectOmicsProfile,
+      viewMode,
+      setViewMode,
     }),
     [
       controls,
@@ -1094,6 +1106,8 @@ export function LabProvider({ children }: { children: ReactNode }) {
       runDynamicDisease,
       runOmicsProfile,
       selectOmicsProfile,
+      viewMode,
+      setViewMode,
     ],
   )
 

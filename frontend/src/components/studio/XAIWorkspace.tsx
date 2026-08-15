@@ -18,8 +18,10 @@ import { ScientistPanel } from '../ScientistPanel'
 import { TopologyPanel } from '../TopologyPanel'
 import { PageHeader, VclButton } from '../PageHeader'
 import { ApplyToStudioButton } from './ApplyToStudioButton'
+import { StatDisclosure } from './StatDisclosure'
 import { runSaltelliLite } from '../../api/client'
 import { useLab } from '../../lab/LabContext'
+import { ChartsOnly, useViewMode } from '../../layout/viewModeGates'
 import {
   computeSensitivityXAI,
   type SensitivityXAIResult,
@@ -141,40 +143,22 @@ export function XAIWorkspace() {
   )
 
   const scatterData = useMemo(() => local?.scatter ?? [], [local])
+  const mode = useViewMode()
 
-  return (
-    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
-      <PageHeader
-        code="XA · Perturbation Sensitivity"
-        title="Perturbation Sensitivity"
-        description="Sobol Sᵢ / S_Ti and parameter-force attributions (flux attention — not a trained GAT/SHAP model)."
-        actions={
-          <>
-            <VclButton variant="secondary" disabled={!lab.graph || busy} onClick={runSobol}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
-              Client Sobol
-            </VclButton>
-            <VclButton
-              variant="ghost"
-              disabled={!lab.graph || serverBusy}
-              onClick={() => void runServerSaltelli()}
-            >
-              {serverBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Server className="h-4 w-4" />
-              )}
-              Server Saltelli-lite
-            </VclButton>
-            <ApplyToStudioButton disabled={!lab.graph} />
-          </>
-        }
-      />
+  const topDriver =
+    sobolChart[0]?.node ??
+    regs[0]?.[0] ??
+    shapChart[0]?.node ??
+    null
 
-      {status ? <p className="text-[11px] text-cyan-200/90">{status}</p> : null}
+  const insightHeadline = topDriver
+    ? `Strongest driver signal is on ${String(topDriver).split(':')[0]} — prioritize this gene for follow-up KO / titration before chasing weaker Sobol tails.`
+    : 'Run Client Sobol or Server Saltelli-lite to learn which nodes move your readout the most.'
 
-      <ScientistPanel scientist={lab.scientist} loading={lab.busy} compact />
+  const insightHint =
+    'In culture: knock down the top driver and re-check VEGFA / HIF1A (or your target readout) at the Studio peak time.'
 
+  const chartsBlock = (
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassCard
           title="Sobol / Saltelli indices"
@@ -190,7 +174,7 @@ export function XAIWorkspace() {
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sobolChart} layout="vertical" margin={{ left: 8, right: 12 }}>
-                  <XAxis type="number" stroke="#64748B" tick={{ fill: '#64748B', fontSize: 10 }} />
+                  <XAxis type="number" stroke="#64748B" tick={{ fill: '#4a5d72', fontSize: 9 }} />
                   <YAxis
                     type="category"
                     dataKey="node"
@@ -221,7 +205,7 @@ export function XAIWorkspace() {
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={forceChart} layout="vertical" margin={{ left: 8, right: 12 }}>
-                  <XAxis type="number" stroke="#64748B" tick={{ fill: '#64748B', fontSize: 10 }} />
+                  <XAxis type="number" stroke="#64748B" tick={{ fill: '#4a5d72', fontSize: 9 }} />
                   <YAxis
                     type="category"
                     dataKey="label"
@@ -253,119 +237,177 @@ export function XAIWorkspace() {
           )}
         </GlassCard>
       </div>
+  )
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <GlassCard title="Influence scatter" hint="Sᵢ vs Δy (parameter influence)">
-          {scatterData.length ? (
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ left: 8, right: 12, top: 8, bottom: 8 }}>
-                  <CartesianGrid stroke="#1E293B" />
-                  <XAxis
-                    type="number"
-                    dataKey="S_i"
-                    name="Sᵢ"
-                    stroke="#64748B"
-                    tick={{ fill: '#64748B', fontSize: 10 }}
-                  />
-                  <YAxis
-                    type="number"
-                    dataKey="deltaY"
-                    name="Δy"
-                    stroke="#64748B"
-                    tick={{ fill: '#64748B', fontSize: 10 }}
-                  />
-                  <ZAxis range={[40, 160]} />
-                  <Tooltip
-                    cursor={{ strokeDasharray: '3 3' }}
-                    contentStyle={{
-                      background: '#0F172A',
-                      border: '1px solid #1E293B',
-                      borderRadius: 10,
-                      fontSize: 11,
-                    }}
-                  />
-                  <Scatter data={scatterData} fill="#22D3EE">
-                    {scatterData.map((row) => (
-                      <Cell key={row.node} fill={row.deltaY >= 0 ? '#10B981' : '#F43F5E'} />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <Empty />
-          )}
-        </GlassCard>
+  return (
+    <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
+      <PageHeader
+        code="XA · Perturbation Sensitivity"
+        title="Perturbation Sensitivity"
+        description="Which nodes actually move the readout — plain language first; Sobol math on demand."
+        actions={
+          <>
+            <VclButton variant="secondary" disabled={!lab.graph || busy} onClick={runSobol}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
+              Client Sobol
+            </VclButton>
+            <VclButton
+              variant="ghost"
+              disabled={!lab.graph || serverBusy}
+              onClick={() => void runServerSaltelli()}
+            >
+              {serverBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Server className="h-4 w-4" />
+              )}
+              Server Saltelli-lite
+            </VclButton>
+            <ApplyToStudioButton disabled={!lab.graph} />
+          </>
+        }
+      />
 
-        <GlassCard title="Server node importance" hint="Marginal contribution to ΣΔy_output (flux-attention proxy)">
-          {shapChart.length ? (
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={shapChart} layout="vertical" margin={{ left: 8, right: 12 }}>
-                  <XAxis type="number" stroke="#64748B" tick={{ fill: '#64748B', fontSize: 10 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="node"
-                    width={58}
-                    stroke="#64748B"
-                    tick={{ fill: '#94A3B8', fontSize: 10 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#0F172A',
-                      border: '1px solid #1E293B',
-                      borderRadius: 10,
-                      fontSize: 11,
-                    }}
-                  />
-                  <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
-                    {shapChart.map((row) => (
-                      <Cell
-                        key={row.node}
-                        fill={row.importance >= 0 ? '#10B981' : '#FF5252'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+      {status ? <p className="text-[11px] text-cyan-200/90">{status}</p> : null}
+
+      <ScientistPanel scientist={lab.scientist} loading={lab.busy} compact />
+
+      <StatDisclosure
+        headline={insightHeadline}
+        labHint={insightHint}
+        numbersLabel={mode === 'biologist' ? 'Show sensitivity charts' : 'Show Sobol / force charts'}
+      >
+        <ChartsOnly
+          fallback={
+            <p className="text-[11px] text-vcl-dim">
+              Switch to Lab Researcher to see Sobol charts; Systems Math expands raw indices by
+              default.
+            </p>
+          }
+        >
+          <div className="space-y-4">
+            {chartsBlock}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <GlassCard title="Influence scatter" hint="Sᵢ vs Δy (parameter influence)">
+                {scatterData.length ? (
+                  <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ left: 8, right: 12, top: 8, bottom: 8 }}>
+                        <CartesianGrid stroke="#1E293B" />
+                        <XAxis
+                          type="number"
+                          dataKey="S_i"
+                          name="Sᵢ"
+                          stroke="#64748B"
+                          tick={{ fill: '#4a5d72', fontSize: 9 }}
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="deltaY"
+                          name="Δy"
+                          stroke="#64748B"
+                          tick={{ fill: '#4a5d72', fontSize: 9 }}
+                        />
+                        <ZAxis range={[40, 160]} />
+                        <Tooltip
+                          cursor={{ strokeDasharray: '3 3' }}
+                          contentStyle={{
+                            background: '#0F172A',
+                            border: '1px solid #1E293B',
+                            borderRadius: 10,
+                            fontSize: 11,
+                          }}
+                        />
+                        <Scatter data={scatterData} fill="#22D3EE">
+                          {scatterData.map((row) => (
+                            <Cell key={row.node} fill={row.deltaY >= 0 ? '#10B981' : '#F43F5E'} />
+                          ))}
+                        </Scatter>
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <Empty />
+                )}
+              </GlassCard>
+
+              <GlassCard
+                title="Server node importance"
+                hint="Marginal contribution to ΣΔy_output (flux-attention proxy)"
+              >
+                {shapChart.length ? (
+                  <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={shapChart} layout="vertical" margin={{ left: 8, right: 12 }}>
+                        <XAxis
+                          type="number"
+                          stroke="#64748B"
+                          tick={{ fill: '#4a5d72', fontSize: 9 }}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="node"
+                          width={58}
+                          stroke="#64748B"
+                          tick={{ fill: '#94A3B8', fontSize: 10 }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: '#0F172A',
+                            border: '1px solid #1E293B',
+                            borderRadius: 10,
+                            fontSize: 11,
+                          }}
+                        />
+                        <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
+                          {shapChart.map((row) => (
+                            <Cell
+                              key={row.node}
+                              fill={row.importance >= 0 ? '#10B981' : '#FF5252'}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <Empty hint="Run a Studio simulation to populate server XAI attributions." />
+                )}
+              </GlassCard>
             </div>
-          ) : (
-            <Empty hint="Run a Studio simulation to populate server XAI attributions." />
-          )}
-        </GlassCard>
-      </div>
+
+            <GlassCard title="Master Regulators" hint="Ranked pathway drivers (Sᵢ · Δy behind Systems Math)">
+              {regs.length ? (
+                <ul className="space-y-1.5 text-sm">
+                  {regs.slice(0, 8).map(([name, score], i) => (
+                    <li
+                      key={name}
+                      className="flex items-center justify-between gap-2 border-t border-slate-800/70 py-1.5 text-slate-300"
+                    >
+                      <span>
+                        <span className="text-slate-600">{i + 1}. </span>
+                        <span className="font-semibold text-emerald-200">{name}</span>
+                      </span>
+                      {mode === 'systems' ? (
+                        <span className="font-mono text-[11px] text-emerald-300">
+                          Sᵢ={score.toFixed(4)}
+                          {vectors[name] ? ` · Δy=${vectors[name]!.delta_y.toFixed(3)}` : ''}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-vcl-dim">priority #{i + 1}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Empty />
+              )}
+            </GlassCard>
+          </div>
+        </ChartsOnly>
+      </StatDisclosure>
 
       <TopologyPanel topo={lab.topologicalAnalysis} />
-
-      <GlassCard title="Master Regulators" hint="Sᵢ = |Δy| · Σα_out">
-        {regs.length ? (
-          <table className="w-full text-left text-xs">
-            <thead className="text-slate-500">
-              <tr>
-                <th className="py-1">#</th>
-                <th>Gene</th>
-                <th>Sᵢ</th>
-                <th>Δy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {regs.slice(0, 10).map(([name, score], i) => (
-                <tr key={name} className="border-t border-slate-800/70 text-slate-300">
-                  <td className="py-1.5 text-slate-600">{i + 1}</td>
-                  <td className="font-semibold text-emerald-200">{name}</td>
-                  <td className="font-mono text-emerald-300">{score.toFixed(4)}</td>
-                  <td className="font-mono">
-                    {vectors[name] ? vectors[name]!.delta_y.toFixed(3) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <Empty />
-        )}
-      </GlassCard>
     </div>
   )
 }

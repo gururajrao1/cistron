@@ -4,6 +4,7 @@ import { GlassCard } from '../components/GlassCard'
 import { PageHeader, VclButton } from '../components/PageHeader'
 import { fetchLiteratureCopilot } from '../api/client'
 import { useLab } from '../lab/LabContext'
+import { RawMathOnly, useViewMode } from '../layout/viewModeGates'
 
 function downloadBlob(filename: string, content: string, type: string) {
   const blob = new Blob([content], { type })
@@ -19,6 +20,7 @@ type LitHit = { source: string; id: string; title: string; url: string }
 
 export function BriefsView() {
   const lab = useLab()
+  const mode = useViewMode()
   const brief = lab.reason?.brief ?? ''
   const scientist = lab.scientist?.brief ?? ''
   const paths = lab.reason?.context.extracted_paths ?? []
@@ -185,10 +187,14 @@ h1{font-size:22px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #cbd
           <dd className="font-mono text-cyan-flux">{lab.profileId}</dd>
           <dt className="text-vcl-dim">Simulation</dt>
           <dd className="font-mono text-vcl-soft">{lab.payload?.simulation_id ?? '—'}</dd>
-          <dt className="text-vcl-dim">ODE cycle</dt>
-          <dd className="font-mono text-vcl-soft">
-            {lab.latencyMs != null ? `${lab.latencyMs.toFixed(1)} ms` : '—'}
-          </dd>
+          {mode === 'systems' ? (
+            <>
+              <dt className="text-vcl-dim">ODE cycle</dt>
+              <dd className="font-mono text-vcl-soft">
+                {lab.latencyMs != null ? `${lab.latencyMs.toFixed(1)} ms` : '—'}
+              </dd>
+            </>
+          ) : null}
         </dl>
       </GlassCard>
 
@@ -283,7 +289,9 @@ h1{font-size:22px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #cbd
                 className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 font-mono text-xs text-emerald-100/90"
               >
                 {p.nodes.join(' → ')}
-                <span className="ml-2 text-slate-500">Σα={p.cumulative_attention.toFixed(3)}</span>
+                <RawMathOnly>
+                  <span className="ml-2 text-slate-500">Σα={p.cumulative_attention.toFixed(3)}</span>
+                </RawMathOnly>
               </div>
             ))}
           </div>

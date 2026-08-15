@@ -10,6 +10,8 @@ import {
   YAxis,
 } from 'recharts'
 import { GlassCard } from './GlassCard'
+import { StatDisclosure } from './studio/StatDisclosure'
+import { ChartsOnly, RawMathOnly, useViewMode } from '../layout/viewModeGates'
 import type {
   PrioritizationResult,
   ReasonResponse,
@@ -101,25 +103,29 @@ function ScientistFeed({
         />
         <div className="text-sm font-extrabold text-slate-50">Mechanistic Brief</div>
         {scientist ? (
-          <span className="ml-auto font-mono text-[0.65rem] text-slate-500">
-            {scientist.elapsed_ms.toFixed(1)} ms
-          </span>
+          <RawMathOnly>
+            <span className="ml-auto font-mono text-[0.65rem] text-slate-500">
+              {scientist.elapsed_ms.toFixed(1)} ms
+            </span>
+          </RawMathOnly>
         ) : null}
       </div>
       {scientist?.brief ? (
         <>
           <p className="text-sm leading-relaxed text-slate-200">{scientist.brief}</p>
           {Object.keys(scientist.top_node_deltas ?? {}).length ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {Object.entries(scientist.top_node_deltas)
-                .slice(0, 4)
-                .map(([n, d]) => (
-                  <span key={n} className="inline-flex items-center gap-1">
-                    <GeneBadge name={n} />
-                    <DeltaChip value={d} />
-                  </span>
-                ))}
-            </div>
+            <RawMathOnly>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {Object.entries(scientist.top_node_deltas)
+                  .slice(0, 4)
+                  .map(([n, d]) => (
+                    <span key={n} className="inline-flex items-center gap-1">
+                      <GeneBadge name={n} />
+                      <DeltaChip value={d} />
+                    </span>
+                  ))}
+              </div>
+            </RawMathOnly>
           ) : null}
         </>
       ) : loading ? (
@@ -147,9 +153,15 @@ export function IntelligenceDrawer({
   scientist?: ScientistReasoning | null
   loading?: boolean
 }) {
+  const mode = useViewMode()
   const regs = prioritization?.master_regulators ?? []
   const vectors = prioritization?.node_vectors ?? {}
   const paths = reason?.context.extracted_paths ?? []
+
+  const topReg = regs[0]?.[0] ? String(regs[0][0]) : null
+  const insightHeadline = topReg
+    ? `${topReg} ranks as a top driver of the readout under this condition.`
+    : 'Run a simulation to rank master regulators and flux attention.'
 
   const shapChart = useMemo(
     () =>
@@ -179,6 +191,12 @@ export function IntelligenceDrawer({
 
       <ScientistFeed scientist={scientist ?? null} loading={loading} />
 
+      <StatDisclosure
+        headline={insightHeadline}
+        labHint="Charts and Sᵢ tables stay behind Show numbers unless you are in Systems Math."
+        numbersLabel="Show XAI numbers"
+      >
+      <ChartsOnly>
       <GlassCard title="Node importance" hint="Marginal contribution to ΣΔy_output">
         {shapChart.length ? (
           <div className="h-[180px] w-full">
@@ -254,12 +272,23 @@ export function IntelligenceDrawer({
           <p className="text-sm text-slate-500">No edge-flow ranks yet.</p>
         )}
       </GlassCard>
+      </ChartsOnly>
 
       <GlassCard
         title="Master Regulators"
         hint="Dynamic flow attention (αᵢⱼ) · driver score Sᵢ"
       >
         {regs.length ? (
+          mode === 'biologist' ? (
+            <ul className="space-y-1.5 text-sm text-slate-300">
+              {regs.slice(0, 5).map(([name], i) => (
+                <li key={name} className="flex items-center gap-2">
+                  <span className="text-slate-500">{i + 1}.</span>
+                  <GeneBadge name={name} />
+                </li>
+              ))}
+            </ul>
+          ) : (
           <div className="overflow-hidden rounded-xl border border-slate-800">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950/70 text-slate-500">
@@ -289,12 +318,14 @@ export function IntelligenceDrawer({
               </tbody>
             </table>
           </div>
+          )
         ) : loading ? (
           <SkeletonRows rows={4} />
         ) : (
           <p className="text-sm text-slate-500">No regulator ranking yet.</p>
         )}
       </GlassCard>
+      </StatDisclosure>
 
       <GlassCard title="Causal BioReasoner" hint="Pathway causal chains · mechanisms">
         {reason?.brief ? (
@@ -330,9 +361,11 @@ export function IntelligenceDrawer({
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[0.68rem] text-slate-500">
-                    Σα {path.cumulative_attention.toFixed(4)}
-                  </span>
+                  <RawMathOnly>
+                    <span className="font-mono text-[0.68rem] text-slate-500">
+                      Σα {path.cumulative_attention.toFixed(4)}
+                    </span>
+                  </RawMathOnly>
                   {path.mechanisms?.map((m) => (
                     <MechTag key={m} label={m} />
                   ))}

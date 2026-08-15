@@ -4,6 +4,7 @@ import type { ScientistReasoning } from '../api/types'
 import type { CausalHypothesis } from '../services/aiCausalEngine'
 import { HypothesisCardList } from './studio/HypothesisCard'
 import { GeneBadge } from './ui'
+import { RawMathOnly, useViewMode } from '../layout/viewModeGates'
 
 function formatDelta(v: number): string {
   const sign = v > 0 ? '+' : ''
@@ -118,6 +119,7 @@ export function ScientistPanel({
 
   const deltas = Object.entries(scientist?.top_node_deltas ?? {}).slice(0, 4)
   const reroutes = Object.entries(scientist?.attention_reroutes ?? {}).slice(0, 2)
+  const mode = useViewMode()
 
   return (
     <div
@@ -152,10 +154,12 @@ export function ScientistPanel({
             ) : null}
           </div>
               {scientist ? (
+                <RawMathOnly>
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-vcl-border bg-vcl-raised px-1.5 py-1 font-mono text-[0.62rem] text-vcl-muted">
                   <Zap className="h-3 w-3 text-cyan-flux/80" />
                   {Number(scientist.elapsed_ms ?? 0).toFixed(1)} ms
                 </span>
+                </RawMathOnly>
               ) : null}
         </div>
 
@@ -166,7 +170,7 @@ export function ScientistPanel({
               className={`leading-relaxed text-slate-200/95 ${compact ? 'text-xs' : 'text-[0.8125rem]'}`}
             />
 
-            {(deltas.length > 0 || reroutes.length > 0) && !compact ? (
+            {(deltas.length > 0 || reroutes.length > 0) && !compact && mode === 'systems' ? (
               <div className="mt-3 space-y-2 border-t border-slate-800/80 pt-3">
                 {deltas.length ? (
                   <div>
@@ -221,7 +225,7 @@ export function ScientistPanel({
               </div>
             ) : null}
 
-            {typeof scientist.total_flux_delta === 'number' && !compact ? (
+            {typeof scientist.total_flux_delta === 'number' && !compact && mode === 'systems' ? (
               <div className="mt-2.5 font-mono text-[0.62rem] text-slate-500">
                 ΣΔflux = {formatDelta(scientist.total_flux_delta)}
               </div>

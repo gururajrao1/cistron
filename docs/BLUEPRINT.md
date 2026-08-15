@@ -30,6 +30,16 @@ Studio bottom tabs (Trajectory / Organelle / Flux / Compare) lead with:
 
 Raw tables and FBA vectors sit behind **Show numbers**. Chart shaded bands are **illustrative activity zones**, not clinical cutoffs. Translation is deterministic client rules over the server SoT scrubber — not a trained model inventing kinetics.
 
+### View modes (header switcher)
+
+| Mode | Default visibility |
+| --- | --- |
+| **Biologist** | Phenotype + wet-lab cards + gauges; hide charts/mesh/raw matrices |
+| **Lab Researcher** (default) | Cards + trajectories + spatial mesh + drug controls |
+| **Systems Math** | Researcher + raw tables / FBA vectors opened by default |
+
+Trajectory charts use green / amber / red **phenotype zones** (Healthy · Transient stress · Pathogenic) with muted Y-axis ticks. Hover gauges for exact floats.
+
 ## Free-safe substitutes (shipped)
 
 | Item | What shipped |

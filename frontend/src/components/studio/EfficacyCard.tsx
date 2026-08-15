@@ -5,6 +5,7 @@ import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
 import { useLab } from '../../lab/LabContext'
 import type { ScrubberPayload } from '../../api/types'
+import { StatDisclosure } from './StatDisclosure'
 
 function terminalY(payload: ScrubberPayload, sym: string): number {
   const series = payload.nodes[sym]
@@ -119,8 +120,21 @@ export function EfficacyCard({
   }
 
   if (variant === 'dock') {
+    const head =
+      impact.vegfa != null || impact.hif != null
+        ? `Perturbation ${
+            (impact.vegfa ?? 0) < -10 || (impact.hif ?? 0) < -10 ? 'suppresses' : 'shifts'
+          } angiogenic / HIF readouts vs untreated — check ranked hits before trusting a single gene.`
+        : 'Apply a KO or titration to compare treated vs untreated impact.'
+
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden p-2">
+        <StatDisclosure
+          headline={head}
+          labHint="Next: Dual Screen for synergistic pairs, then re-check VEGFA / HIF1A Δ%."
+          numbersLabel="Show impact %"
+        >
+        <div className="flex h-full min-h-0 flex-col">
         <div className="border-b border-vcl-border px-2.5 py-2">
           <div className="lab-meta mb-1.5 !text-vcl-muted">Impact · vs baseline</div>
           <div className="grid grid-cols-2 gap-1.5">
@@ -181,6 +195,8 @@ export function EfficacyCard({
             )}
           </ul>
         </div>
+        </div>
+        </StatDisclosure>
       </div>
     )
   }

@@ -7,7 +7,9 @@ import { PageHeader, VclButton } from '../PageHeader'
 import { HypothesisCardList } from './HypothesisCard'
 import { TopologyPanel } from '../TopologyPanel'
 import { ApplyToStudioButton } from './ApplyToStudioButton'
+import { StatDisclosure } from './StatDisclosure'
 import { useLab } from '../../lab/LabContext'
+import { ChartsOnly, useViewMode } from '../../layout/viewModeGates'
 import {
   runDualKnockoutScreen,
   type ComboPairResult,
@@ -83,12 +85,23 @@ export function CombosWorkspace() {
     return Math.max(0.12, ...vals.map((v) => Math.abs(v)))
   }, [matrix])
 
+  const mode = useViewMode()
+  const topPair = local?.pairs?.[0] ?? null
+  const topServer = serverPairs[0]
+  const comboHeadline = topPair
+    ? topPair.syntheticLethal
+      ? `${topPair.a} + ${topPair.b} looks synthetic-lethal — dual KO collapses viability more than either alone.`
+      : `${topPair.a} + ${topPair.b} shows the strongest Bliss synergy in this screen — test the combo before weaker pairs.`
+    : topServer
+      ? `${(topServer.pair ?? []).join(' + ')} is the top server SL hit — confirm with Dual Screen before wet-lab combo design.`
+      : 'Run Client Dual Screen or Server SL scan to find synergistic / synthetic-lethal pairs.'
+
   return (
     <div className="mx-auto flex max-w-[100rem] flex-col gap-4 p-4 md:p-5">
       <PageHeader
         code="CB · Bliss · Loewe · Dual KO"
         title="Combination Therapy"
-        description="Pairwise Bliss and Loewe synergy — click a cell to dual-titrate on Studio."
+        description="Which drug pairs cooperate — language first; Bliss matrix on demand."
         actions={
           <>
             <VclButton
@@ -117,6 +130,18 @@ export function CombosWorkspace() {
         <p className="text-[11px] text-cyan-200/90">{status}</p>
       ) : null}
 
+      <StatDisclosure
+        headline={comboHeadline}
+        labHint="Next: apply the top pair as dual KO on Studio, then check VEGFA / viability proxies at peak time."
+        numbersLabel={mode === 'biologist' ? 'Show synergy matrix' : 'Show Bliss / Loewe numbers'}
+      >
+        <ChartsOnly
+          fallback={
+            <p className="text-[11px] text-vcl-dim">
+              Switch to Lab Researcher for the Bliss heatmap and pair scores.
+            </p>
+          }
+        >
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <GlassCard
           title="Bliss / Loewe synergy heatmap"
@@ -271,6 +296,8 @@ export function CombosWorkspace() {
           </GlassCard>
         </div>
       </div>
+        </ChartsOnly>
+      </StatDisclosure>
 
       <TopologyPanel topo={topo} />
 

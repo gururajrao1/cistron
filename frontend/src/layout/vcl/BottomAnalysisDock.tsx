@@ -121,7 +121,9 @@ function OrganelleTab() {
 
   return (
     <div className="h-full overflow-hidden p-2">
-      <InsightStrip insight={insight}>{table}</InsightStrip>
+      <InsightStrip insight={insight} defaultShowNumbers={lab.viewMode === 'systems'}>
+        {table}
+      </InsightStrip>
     </div>
   )
 }
@@ -259,7 +261,9 @@ function FluxTab() {
 
   return (
     <div className="h-full overflow-hidden p-2">
-      <InsightStrip insight={insight}>{advanced}</InsightStrip>
+      <InsightStrip insight={insight} defaultShowNumbers={lab.viewMode === 'systems'}>
+        {advanced}
+      </InsightStrip>
     </div>
   )
 }
@@ -291,8 +295,8 @@ function CompareTab() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
-      <InsightStrip insight={insight} />
-      {!hasBoth ? null : (
+      <InsightStrip insight={insight} defaultShowNumbers={lab.viewMode === 'systems'}>
+        {hasBoth ? (
         <div className="min-h-0 flex-1 overflow-auto">
           <p className="mb-2 px-1 font-mono text-[10px] text-vcl-dim">
             Scenario A/B · untreated vs treated at t = {lab.scrubT.toFixed(0)} min
@@ -354,6 +358,7 @@ function CompareTab() {
               })}
             </tbody>
           </table>
+          {lab.viewMode !== 'biologist' ? (
           <div className="mt-2 h-[120px] px-1">
             <TrajectoryChart
               untreatedRun={untreated}
@@ -362,16 +367,20 @@ function CompareTab() {
               scrubT={lab.scrubT}
               loading={lab.busy}
               compact
+              showPhenotypeZones
             />
           </div>
+          ) : null}
         </div>
-      )}
+        ) : null}
+      </InsightStrip>
     </div>
   )
 }
 
 function TrajectoryTab({ focus }: { focus: string[] }) {
   const lab = useLab()
+  const mode = lab.viewMode
   const insight = useMemo(
     () =>
       buildTrajectoryInsight({
@@ -388,17 +397,24 @@ function TrajectoryTab({ focus }: { focus: string[] }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
       <InsightStrip insight={insight} />
-      <div className="min-h-0 flex-1">
-        <TrajectoryChart
-          untreatedRun={lab.untreatedRun}
-          treatedRun={lab.treatedRun}
-          focus={focus}
-          scrubT={lab.scrubT}
-          loading={lab.busy}
-          compact
-          bands={insight.bands}
-        />
-      </div>
+      {mode !== 'biologist' ? (
+        <div className="min-h-0 flex-1">
+          <TrajectoryChart
+            untreatedRun={lab.untreatedRun}
+            treatedRun={lab.treatedRun}
+            focus={focus}
+            scrubT={lab.scrubT}
+            loading={lab.busy}
+            compact
+            showPhenotypeZones
+          />
+        </div>
+      ) : (
+        <p className="px-1 text-[10px] text-vcl-dim">
+          Charts hidden in Biologist view — switch to Lab Researcher for time-series with danger
+          zones.
+        </p>
+      )}
     </div>
   )
 }

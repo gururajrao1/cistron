@@ -29,6 +29,8 @@ import type {
 import { ProvenanceBadge } from './ProvenanceBadge'
 import { useLab } from '../lab/LabContext'
 import { useNavigate } from 'react-router-dom'
+import { StatDisclosure } from './studio/StatDisclosure'
+import { RawMathOnly, useViewMode } from '../layout/viewModeGates'
 
 /** Map scrubber minutes → discrete trajectory keyframe index. */
 function frameIndexAt(payload: ScrubberPayload | null, scrubT: number): number {
@@ -130,7 +132,9 @@ const LocalFluxesCard = memo(function LocalFluxesCard({
                 </span>
               </span>
               <span className="lab-mono shrink-0 text-emerald-300/90">
-                F({scrubMin}m) = {u.flux.toFixed(3)} · α={u.alpha.toFixed(2)}
+                <RawMathOnly fallback={<span className="text-vcl-dim">linked</span>}>
+                  F({scrubMin}m) = {u.flux.toFixed(3)} · α={u.alpha.toFixed(2)}
+                </RawMathOnly>
               </span>
             </li>
           ))}
@@ -153,7 +157,9 @@ const LocalFluxesCard = memo(function LocalFluxesCard({
                 <GeneBadge name={d.target} tone={d.sign < 0 ? 'coral' : 'emerald'} />
               </span>
               <span className="lab-mono shrink-0 text-emerald-300/90">
-                F({scrubMin}m) = {d.flux.toFixed(3)} · α={d.alpha.toFixed(2)}
+                <RawMathOnly fallback={<span className="text-vcl-dim">linked</span>}>
+                  F({scrubMin}m) = {d.flux.toFixed(3)} · α={d.alpha.toFixed(2)}
+                </RawMathOnly>
               </span>
             </li>
           ))}
@@ -506,6 +512,17 @@ export function NodeBiophysicsInspector({
         </GlassCard>
 
         <GlassCard title="5D Feature Vector" hint="y₀ · y₆₀ · Δy · wᵢ · KO · live sparkline">
+          <StatDisclosure
+            headline={
+              vector
+                ? Math.abs(vector.delta_y) >= 0.15
+                  ? `${activeNode} activity ${vector.delta_y >= 0 ? 'rose' : 'fell'} under this condition.`
+                  : `${activeNode} stayed near baseline across the trajectory.`
+                : `Select a node to inspect activity features.`
+            }
+            labHint="Spark bars show relative level; expand for raw ODE dimensions."
+            numbersLabel="Show 5D vector"
+          >
           <table className="w-full text-left text-[11px]">
             <thead>
               <tr className="lab-meta text-slate-500">
@@ -564,6 +581,7 @@ export function NodeBiophysicsInspector({
               ))}
             </div>
           ) : null}
+          </StatDisclosure>
         </GlassCard>
 
         <LocalFluxesCard

@@ -4,6 +4,7 @@ import { clsx } from 'clsx'
 import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
 import { useLab } from '../../lab/LabContext'
+import { useViewMode } from '../../layout/viewModeGates'
 
 function baselineFor(
   symbol: string,
@@ -21,6 +22,7 @@ export function PerturbationPanel({
   variant?: 'card' | 'dock'
 }) {
   const lab = useLab()
+  const mode = useViewMode()
   const [drafts, setDrafts] = useState<Record<string, number>>({})
 
   const nodes = useMemo(() => {
@@ -76,9 +78,17 @@ export function PerturbationPanel({
                     {ko
                       ? 'CRISPR knockout'
                       : isPerturbed(sym)
-                        ? `Dose ${dosePct}%`
+                        ? mode === 'biologist'
+                          ? dosePct < 40
+                            ? 'Low dose'
+                            : dosePct < 90
+                              ? 'Moderate dose'
+                              : 'High / near WT'
+                          : `Dose ${dosePct}%`
                         : baseline != null
-                          ? `Baseline y₀=${baseline.toFixed(2)}`
+                          ? mode === 'biologist'
+                            ? 'Omics baseline set'
+                            : `Baseline y₀=${baseline.toFixed(2)}`
                           : 'Wild-type activity'}
                   </div>
                 </div>
@@ -126,7 +136,15 @@ export function PerturbationPanel({
               <label className="block">
                 <div className="mb-1 flex justify-between text-[10px] text-vcl-dim">
                   <span>Dose</span>
-                  <span className="lab-mono text-vcl-muted">{dosePct}%</span>
+                  <span className="lab-mono text-vcl-muted">
+                    {mode === 'biologist'
+                      ? dosePct < 40
+                        ? 'Low'
+                        : dosePct < 90
+                          ? 'Med'
+                          : 'High'
+                      : `${dosePct}%`}
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -152,8 +170,8 @@ export function PerturbationPanel({
                 />
                 <div className="mt-0.5 flex justify-between text-[9px] uppercase tracking-wide text-vcl-dim">
                   <span>0 · KO</span>
-                  <span>100 · full</span>
-                  <span>200%</span>
+                  <span>{mode === 'biologist' ? 'WT' : '100 · full'}</span>
+                  {mode === 'biologist' ? null : <span>200%</span>}
                 </div>
               </label>
             </div>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bookmark, Download, Loader2, WifiOff } from 'lucide-react'
 import { useLab } from '../../lab/LabContext'
+import { ViewModeSwitcher } from '../../layout/ViewModeSwitcher'
+import { RawMathOnly } from '../../layout/viewModeGates'
 import { ReportExportModal } from './ReportExportModal'
 import { OmicsProvenanceBadge } from '../ui'
 import { resolveOmicsProvenance } from '../../api/types'
@@ -46,6 +48,8 @@ export function Header({ onOpenPalette }: Props) {
     clearAllPerturbations,
     setNodePerturbation,
     setScrubT,
+    viewMode,
+    setViewMode,
   } = lab
 
   const [reportOpen, setReportOpen] = useState(false)
@@ -226,9 +230,11 @@ export function Header({ onOpenPalette }: Props) {
                 provenance={resolveOmicsProvenance(activeOmicsProfile)}
               />
               {omicsAlignmentScore != null ? (
-                <span className="font-mono text-[9.5px] text-amber-kinase">
-                  fit {omicsAlignmentScore.toFixed(0)}%
-                </span>
+                <RawMathOnly>
+                  <span className="font-mono text-[9.5px] text-amber-kinase">
+                    fit {omicsAlignmentScore.toFixed(0)}%
+                  </span>
+                </RawMathOnly>
               ) : null}
             </>
           ) : null}
@@ -245,6 +251,7 @@ export function Header({ onOpenPalette }: Props) {
         </button>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <ViewModeSwitcher mode={viewMode} onChange={setViewMode} />
           <div
             className="inline-flex h-7 items-center gap-1.5 rounded-md border border-vcl-border bg-vcl-surface px-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-vcl-muted"
             title={live ? `Solver ${odeMs != null ? `${odeMs.toFixed(0)}ms` : '—'}` : 'Engine offline'}
@@ -256,9 +263,11 @@ export function Header({ onOpenPalette }: Props) {
             />
             {initializing ? 'Integrating' : live ? 'Live' : 'Offline'}
             {live && odeMs != null ? (
-              <span className="text-vcl-dim normal-case tracking-normal">
-                {odeMs.toFixed(0)}ms
-              </span>
+              <RawMathOnly>
+                <span className="text-vcl-dim normal-case tracking-normal">
+                  {odeMs.toFixed(0)}ms
+                </span>
+              </RawMathOnly>
             ) : null}
           </div>
 

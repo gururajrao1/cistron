@@ -14,6 +14,8 @@ import { GlassCard } from '../components/GlassCard'
 import { ApplyToStudioButton } from '../components/studio/ApplyToStudioButton'
 import { PageHeader, VclButton } from '../components/PageHeader'
 import { useLab } from '../lab/LabContext'
+import { StatDisclosure } from '../components/studio/StatDisclosure'
+import { ChartsOnly, useViewMode } from '../layout/viewModeGates'
 
 function occupancy(c: number, ki: number): number {
   return c / (c + ki)
@@ -21,7 +23,15 @@ function occupancy(c: number, ki: number): number {
 
 export function PharmacologyView() {
   const lab = useLab()
+  const mode = useViewMode()
   const { controls, nodes, clampOptions, profileId } = lab
+  const theta = occupancy(controls.cDrug, controls.ki)
+  const pharmaHeadline =
+    theta >= 0.7
+      ? `Strong target occupancy — most ${controls.drugTarget} capacity is blocked.`
+      : theta >= 0.35
+        ? `Moderate inhibition of ${controls.drugTarget} at the current dose.`
+        : `Low occupancy — raise C or lower Kᵢ for a stronger block.`
 
   // Keep drug / clamp targets inside the active scenario topology.
   useEffect(() => {
@@ -66,7 +76,11 @@ export function PharmacologyView() {
       <PageHeader
         code="PH · Dose · KO · Clamp"
         title="Pharmacology Lab"
-        description={`θ = C/(C+Kᵢ) · knockouts wᵢ=0 · ${nodes.length} nodes · ${controls.conditionQuery || 'no scenario'}`}
+        description={
+          mode === 'biologist'
+            ? `Dose–response and knockouts for ${controls.conditionQuery || 'your scenario'}.`
+            : `θ = C/(C+Kᵢ) · knockouts wᵢ=0 · ${nodes.length} nodes · ${controls.conditionQuery || 'no scenario'}`
+        }
         actions={
           <>
             <VclButton
@@ -118,7 +132,8 @@ export function PharmacologyView() {
             ))}
           </select>
           <label className="mb-1 block text-xs text-slate-400">
-            Concentration C ({controls.cDrug.toFixed(1)} µM)
+            Concentration C
+            {mode === 'biologist' ? '' : ` (${controls.cDrug.toFixed(1)} µM)`}
           </label>
           <input
             type="range"
@@ -130,7 +145,8 @@ export function PharmacologyView() {
             className="mb-3 w-full accent-coral-action"
           />
           <label className="mb-1 block text-xs text-slate-400">
-            Inhibition constant Kᵢ ({controls.ki.toFixed(1)} µM)
+            Inhibition constant Kᵢ
+            {mode === 'biologist' ? '' : ` (${controls.ki.toFixed(1)} µM)`}
           </label>
           <input
             type="range"
@@ -141,60 +157,67 @@ export function PharmacologyView() {
             onChange={(e) => lab.patchControls({ ki: Number(e.target.value) })}
             className="mb-4 w-full accent-coral-action"
           />
-          <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
-            <Stat
-              label="θ occupancy"
-              value={occupancy(controls.cDrug, controls.ki).toFixed(3)}
-            />
-            <Stat
-              label="w residual"
-              value={(1 - occupancy(controls.cDrug, controls.ki)).toFixed(3)}
-            />
-          </div>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={doseCurve} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#1E293B" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="c"
-                  stroke="#64748B"
-                  tick={{ fill: '#64748B', fontSize: 10 }}
-                  label={{ value: 'C (µM)', fill: '#64748B', fontSize: 10, position: 'insideBottomRight' }}
-                />
-                <YAxis domain={[0, 1]} stroke="#64748B" tick={{ fill: '#64748B', fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: '#0F172A',
-                    border: '1px solid #1E293B',
-                    borderRadius: 10,
-                    fontSize: 11,
-                  }}
-                />
-                <ReferenceLine
-                  x={controls.cDrug}
-                  stroke="#FF5252"
-                  strokeDasharray="4 4"
-                  label={{ value: 'C', fill: '#FF8A80', fontSize: 10 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="occupancy"
-                  stroke="#FF5252"
-                  strokeWidth={2}
-                  dot={false}
-                  name="θ"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="capacity"
-                  stroke="#10B981"
-                  strokeWidth={2}
-                  dot={false}
-                  name="1−θ"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <StatDisclosure
+            headline={pharmaHeadline}
+            labHint="Titrate C and Kᵢ, then Apply & Resimulate to push the dose into Studio."
+            numbersLabel="Show occupancy math"
+          >
+            <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
+              <Stat label="θ occupancy" value={theta.toFixed(3)} />
+              <Stat label="w residual" value={(1 - theta).toFixed(3)} />
+            </div>
+            <ChartsOnly>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={doseCurve} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#1E293B" strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="c"
+                      stroke="#64748B"
+                      tick={{ fill: '#64748B', fontSize: 10 }}
+                      label={{
+                        value: 'C (µM)',
+                        fill: '#64748B',
+                        fontSize: 10,
+                        position: 'insideBottomRight',
+                      }}
+                    />
+                    <YAxis domain={[0, 1]} stroke="#64748B" tick={{ fill: '#64748B', fontSize: 10 }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#0F172A',
+                        border: '1px solid #1E293B',
+                        borderRadius: 10,
+                        fontSize: 11,
+                      }}
+                    />
+                    <ReferenceLine
+                      x={controls.cDrug}
+                      stroke="#FF5252"
+                      strokeDasharray="4 4"
+                      label={{ value: 'C', fill: '#FF8A80', fontSize: 10 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="occupancy"
+                      stroke="#FF5252"
+                      strokeWidth={2}
+                      dot={false}
+                      name="θ"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="capacity"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      dot={false}
+                      name="1−θ"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartsOnly>
+          </StatDisclosure>
         </GlassCard>
 
         <GlassCard title="Gene Knockout Matrix" hint="Loss-of-function · wᵢ = 0">
@@ -247,7 +270,7 @@ export function PharmacologyView() {
               ))}
             </select>
             <label className="mb-1 block text-xs text-slate-400">
-              Level ({controls.clampValue.toFixed(2)})
+              Level{mode === 'biologist' ? '' : ` (${controls.clampValue.toFixed(2)})`}
             </label>
             <input
               type="range"
@@ -265,7 +288,9 @@ export function PharmacologyView() {
             </p>
             <ul className="space-y-1 font-mono text-slate-500">
               <li>
-                clamp {controls.clampNode}={controls.clampValue.toFixed(2)}
+                {mode === 'biologist'
+                  ? `Clamp ${controls.clampNode} (fixed activity)`
+                  : `clamp ${controls.clampNode}=${controls.clampValue.toFixed(2)}`}
               </li>
               <li>
                 KOs [{controls.knockouts.join(', ') || 'none'}]
@@ -273,7 +298,9 @@ export function PharmacologyView() {
               <li>
                 drug{' '}
                 {controls.drugEnabled
-                  ? `${controls.drugTarget} C=${controls.cDrug} Ki=${controls.ki}`
+                  ? mode === 'biologist'
+                    ? `${controls.drugTarget} enabled`
+                    : `${controls.drugTarget} C=${controls.cDrug} Ki=${controls.ki}`
                   : 'off'}
               </li>
             </ul>

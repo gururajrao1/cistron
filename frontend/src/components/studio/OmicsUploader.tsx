@@ -20,6 +20,8 @@ import {
   type OmicsProfile,
 } from '../../api/types'
 import { useLab } from '../../lab/LabContext'
+import { StatDisclosure } from './StatDisclosure'
+import { RawMathOnly, useViewMode } from '../../layout/viewModeGates'
 
 type PreviewRow = {
   symbol: string
@@ -60,6 +62,7 @@ function profileLabel(p: OmicsProfile): string {
 
 export function OmicsUploader() {
   const lab = useLab()
+  const mode = useViewMode()
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -163,7 +166,13 @@ export function OmicsUploader() {
             ) : null}
             {fitScore != null ? (
               <span className="inline-flex items-center gap-1 rounded-md border border-amber-kinase/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
-                Fit {fitScore.toFixed(0)}%
+                {mode === 'biologist'
+                  ? fitScore >= 70
+                    ? 'Strong network match'
+                    : fitScore >= 40
+                      ? 'Partial network match'
+                      : 'Weak network match'
+                  : `Fit ${fitScore.toFixed(0)}%`}
               </span>
             ) : null}
           </div>
@@ -368,16 +377,26 @@ export function OmicsUploader() {
                             : 'border-coral-action/40 bg-coral-action/10 text-red-200',
                       )}
                     >
-                      {fitScore.toFixed(1)}%
+                      {mode === 'biologist'
+                        ? fitScore >= 70
+                          ? 'Strong match'
+                          : fitScore >= 40
+                            ? 'Partial match'
+                            : 'Weak match'
+                        : `${fitScore.toFixed(1)}%`}
                     </span>
                   ) : (
                     <span className="text-slate-500">—</span>
                   )}
                 </dd>
-                <dt className="text-slate-500">Latency</dt>
-                <dd className="lab-mono text-slate-300">
-                  {lab.latencyMs != null ? `${lab.latencyMs.toFixed(0)} ms` : '—'}
-                </dd>
+                {mode === 'systems' ? (
+                  <>
+                    <dt className="text-slate-500">Latency</dt>
+                    <dd className="lab-mono text-slate-300">
+                      {lab.latencyMs != null ? `${lab.latencyMs.toFixed(0)} ms` : '—'}
+                    </dd>
+                  </>
+                ) : null}
               </dl>
               <div className="flex flex-wrap gap-1.5">
                 {rows
@@ -389,7 +408,9 @@ export function OmicsUploader() {
                       className="inline-flex items-center gap-1 rounded-full border border-cyan-flux/35 bg-cyan-950/50 px-2 py-0.5 text-[10px] font-semibold text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
                     >
                       <GeneBadge name={r.symbol} tone="cyan" />
-                      <span className="lab-mono text-cyan-300/90">y₀={r.y0.toFixed(2)}</span>
+                      <RawMathOnly>
+                        <span className="lab-mono text-cyan-300/90">y₀={r.y0.toFixed(2)}</span>
+                      </RawMathOnly>
                     </span>
                   ))}
               </div>
@@ -406,64 +427,74 @@ export function OmicsUploader() {
         title="Feature preview"
         hint="log2_fc → sigmoid y₀ · glowing rows are present in the active network"
       >
-        {rows.length ? (
-          <div className="max-h-[340px] overflow-auto rounded-xl border border-slate-800/80">
-            <table className="w-full text-left text-[11px]">
-              <thead className="sticky top-0 bg-obsidian-panel/95 backdrop-blur">
-                <tr className="lab-meta text-slate-500">
-                  <th className="px-2.5 py-2 font-semibold">Gene</th>
-                  <th className="px-2.5 py-2 font-semibold">log2FC</th>
-                  <th className="px-2.5 py-2 font-semibold">p / FDR</th>
-                  <th className="px-2.5 py-2 font-semibold">y₀ clamp</th>
-                  <th className="px-2.5 py-2 font-semibold">Network</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr
-                    key={r.symbol}
-                    className={clsx(
-                      'border-t border-slate-800/70',
-                      r.mapped && 'bg-emerald-500/[0.04]',
-                    )}
-                  >
-                    <td className="px-2.5 py-1.5">
-                      <GeneBadge name={r.symbol} tone={r.mapped ? 'emerald' : 'cyan'} />
-                    </td>
-                    <td
+        <StatDisclosure
+          headline={
+            mappedCount > 0
+              ? `${mappedCount} genes map onto the active network — fold-changes set baseline activity.`
+              : 'Upload a CSV to map differential genes onto the network.'
+          }
+          labHint="Open Studio after mapping to resimulate with the new baselines."
+          numbersLabel="Show fold-change table"
+        >
+          {rows.length ? (
+            <div className="max-h-[340px] overflow-auto rounded-xl border border-slate-800/80">
+              <table className="w-full text-left text-[11px]">
+                <thead className="sticky top-0 bg-obsidian-panel/95 backdrop-blur">
+                  <tr className="lab-meta text-slate-500">
+                    <th className="px-2.5 py-2 font-semibold">Gene</th>
+                    <th className="px-2.5 py-2 font-semibold">log2FC</th>
+                    <th className="px-2.5 py-2 font-semibold">p / FDR</th>
+                    <th className="px-2.5 py-2 font-semibold">y₀ clamp</th>
+                    <th className="px-2.5 py-2 font-semibold">Network</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr
+                      key={r.symbol}
                       className={clsx(
-                        'lab-mono px-2.5 py-1.5',
-                        r.log2_fc >= 0 ? 'text-emerald-300' : 'text-coral-action',
+                        'border-t border-slate-800/70',
+                        r.mapped && 'bg-emerald-500/[0.04]',
                       )}
                     >
-                      {r.log2_fc >= 0 ? '+' : ''}
-                      {r.log2_fc.toFixed(3)}
-                    </td>
-                    <td className="lab-mono px-2.5 py-1.5 text-slate-400">
-                      {r.p_value != null ? r.p_value.toExponential(2) : '—'}
-                    </td>
-                    <td className="lab-mono px-2.5 py-1.5 text-cyan-300">
-                      {r.y0.toFixed(3)}
-                    </td>
-                    <td className="px-2.5 py-1.5">
-                      {r.mapped ? (
-                        <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                          Mapped
-                        </span>
-                      ) : (
-                        <span className="text-[10px] uppercase tracking-wide text-slate-600">
-                          Off-graph
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-[12px] text-slate-500">No features to preview.</p>
-        )}
+                      <td className="px-2.5 py-1.5">
+                        <GeneBadge name={r.symbol} tone={r.mapped ? 'emerald' : 'cyan'} />
+                      </td>
+                      <td
+                        className={clsx(
+                          'lab-mono px-2.5 py-1.5',
+                          r.log2_fc >= 0 ? 'text-emerald-300' : 'text-coral-action',
+                        )}
+                      >
+                        {r.log2_fc >= 0 ? '+' : ''}
+                        {r.log2_fc.toFixed(3)}
+                      </td>
+                      <td className="lab-mono px-2.5 py-1.5 text-slate-400">
+                        {r.p_value != null ? r.p_value.toExponential(2) : '—'}
+                      </td>
+                      <td className="lab-mono px-2.5 py-1.5 text-cyan-300">
+                        {r.y0.toFixed(3)}
+                      </td>
+                      <td className="px-2.5 py-1.5">
+                        {r.mapped ? (
+                          <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                            Mapped
+                          </span>
+                        ) : (
+                          <span className="text-[10px] uppercase tracking-wide text-slate-600">
+                            Off-graph
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-[12px] text-slate-500">No features to preview.</p>
+          )}
+        </StatDisclosure>
       </GlassCard>
     </div>
   )
