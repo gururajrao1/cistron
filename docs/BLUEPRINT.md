@@ -19,6 +19,7 @@ No Celery/Redis, no React Flow rewrite, no fake RAG.
 | Server 2-compartment HIF1A translocation | **Done** — `cistron/engine/compartments.py` → payload.`compartments` |
 | Single-source scrubber payload | **Done** — `time_steps` + `trajectories`/`nodes` + `compartments` |
 | Wet-lab Insight Layer (Studio dock) | **Done** — rule/template translation of Δ + lab next steps (not an LLM) |
+| ChimeraX desktop bridge | **Done** — Structure view exports `.cxc` + optional localhost REST remotecontrol |
 
 ## Wet-lab Insight Layer
 

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { fetchPdbForGeneSymbol, type PdbFetchResult } from '../../utils/bioApi'
+import { ChimeraXControls } from './ChimeraXControls'
 
 type ColorMode = 'ss' | 'chain' | 'bFactor'
 
@@ -306,6 +307,18 @@ export function ProteinStructureCanvas({
             ? ` · ${highlightResidues.length} site(s) lit`
             : ''}
         </p>
+        <ChimeraXControls
+          symbol={symbol}
+          structure={resolved}
+          residue={selectedResidue}
+          residueLabel={
+            selectedResidue != null
+              ? highlightResidues?.find((h) => h.position === selectedResidue)?.label ??
+                `residue ${selectedResidue}`
+              : null
+          }
+          disabled={status !== 'ready'}
+        />
       </div>
     </div>
   )

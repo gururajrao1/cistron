@@ -97,10 +97,13 @@ export function StructureView() {
       <aside className="flex max-h-[38vh] w-full shrink-0 flex-col overflow-y-auto border-b border-vcl-border bg-obsidian-panel/80 lg:max-h-none lg:w-[272px] lg:border-b-0 lg:border-r">
         <div className="space-y-2.5 p-2.5">
           <div>
-            <p className="lab-meta text-cyan-flux/80">3D · UniProt · PDB · AlphaFold</p>
+            <p className="lab-meta text-cyan-flux/80">3D · UniProt · PDB · AlphaFold · ChimeraX</p>
             <h1 className="font-display mt-0.5 text-[15px] font-semibold tracking-tight text-vcl-text">
               Structure
             </h1>
+            <p className="mt-1 text-[10px] leading-relaxed text-vcl-dim">
+              In-browser 3Dmol preview · export to ChimeraX for desktop analysis
+            </p>
           </div>
 
           <GlassCard className="!rounded-lg !p-2.5 space-y-2">
