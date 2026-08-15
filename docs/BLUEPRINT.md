@@ -15,7 +15,9 @@ No Celery/Redis, no React Flow rewrite, no fake RAG.
 | FAIR `sim_id` manifests | **Done** — response metadata + snapshot field |
 | `/health` reports `spa_built` | **Done** |
 | Bliss + Loewe labels | **Done** (math already present) |
-| Hill-cube stiff integrator | **Done** — default `LSODA` |
+| Hill-cube stiff integrator | **Done** — default `LSODA`, nonnegative clamp, dense `t_eval` |
+| Server 2-compartment HIF1A translocation | **Done** — `cistron/engine/compartments.py` → payload.`compartments` |
+| Single-source scrubber payload | **Done** — `time_steps` + `trajectories`/`nodes` + `compartments` |
 
 ## Free-safe substitutes (shipped)
 

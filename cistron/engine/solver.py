@@ -219,7 +219,8 @@ class HillCubeConfig:
     rtol: float = 1e-5
     atol: float = 1e-7
     max_step: float = 1.0
-    dense_output_points: int = 121
+    # Dense output grid for stiff solves (≈100 samples over [0, t_end])
+    dense_output_points: int = 100
     default_gate: str = "or"
 
 
@@ -419,21 +420,22 @@ class HillCubeEngine:
         t_end: Optional[float] = None,
         method: Optional[str] = None,
     ) -> HillCubeResult:
-        """Integrate with ``scipy.integrate.solve_ivp`` and clamp y ∈ [0, 1]."""
+        """Integrate stiff Hill-cube ODEs with LSODA; enforce y ≥ 0."""
         cfg = self.config
         t0 = float(cfg.t_start)
         t1 = float(t_end if t_end is not None else cfg.t_end)
-        meth = method or cfg.method
-        y0 = self._y0()
+        meth = method or cfg.method or "LSODA"
+        y0 = np.clip(self._y0(), 0.0, 1.0)
 
         # Enforce clamps in y0
         for sym, val in self.clamped.items():
             y0[self._index[sym]] = val
 
-        t_eval = np.linspace(t0, t1, max(2, int(cfg.dense_output_points)))
+        n_eval = max(2, int(cfg.dense_output_points))
+        t_eval = np.linspace(t0, t1, n_eval)
 
         def wrapped(t: float, y: np.ndarray) -> np.ndarray:
-            # Soft clamp state before evaluating (numerical safety)
+            # Biological concentrations cannot be negative
             y_c = np.clip(y, 0.0, 1.0)
             for sym, val in self.clamped.items():
                 y_c[self._index[sym]] = val
@@ -472,6 +474,8 @@ class HillCubeEngine:
             metadata={
                 "method": meth,
                 "t_end": t1,
+                "n_eval_points": int(n_eval),
+                "nonnegative": True,
                 "knockouts": sorted(self.knockouts),
                 "clamped": dict(self.clamped),
                 "drugs": [

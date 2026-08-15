@@ -20,6 +20,11 @@ from cistron.engine.solver import (
     logic_or,
     simulate_graph,
 )
+from cistron.engine.compartments import (
+    TranslocationParams,
+    compartments_from_node_trajectories,
+    integrate_hif1a_translocation,
+)
 
 # Alias for serialization / scrubber contract
 SimulationResult = HillCubeResult
@@ -37,10 +42,13 @@ __all__ = [
     "MASTER_REGULATORS",
     "STRUCTURAL_OUTPUT_GENES",
     "SimulationResult",
+    "TranslocationParams",
     "combine_inputs",
+    "compartments_from_node_trajectories",
     "hill_activation",
     "hill_inhibition",
     "inhibitory_dominance",
+    "integrate_hif1a_translocation",
     "logic_and",
     "logic_or",
     "simulate_graph",

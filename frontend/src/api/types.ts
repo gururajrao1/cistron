@@ -40,9 +40,62 @@ export interface PresetDetail {
 export interface ScrubberPayload {
   simulation_id: string
   time_steps: number[]
+  /** Node concentration series (legacy key; same data as trajectories). */
   nodes: Record<string, number[]>
+  /** Single-source-of-truth concentration series (preferred). */
+  trajectories?: Record<string, number[]>
   edges: Record<string, number[]>
+  /** Server HIF1A 2-compartment pools (cyto / nuc). */
+  compartments?: {
+    cyto?: number[]
+    nuc?: number[]
+    [key: string]: number[] | undefined
+  }
   metadata: Record<string, unknown>
+}
+
+/** Prefer trajectories when present; fall back to nodes. */
+export function payloadNodeSeries(
+  payload: ScrubberPayload | null | undefined,
+): Record<string, number[]> {
+  if (!payload) return {}
+  const traj = payload.trajectories
+  if (traj && Object.keys(traj).length > 0) return traj
+  return payload.nodes ?? {}
+}
+
+/** Sample server compartment pools at time t (minutes). */
+export function sampleCompartmentsAt(
+  payload: ScrubberPayload | null | undefined,
+  t: number,
+): { cytoplasm: number; nucleus: number; mitochondria: number } | null {
+  const cyto = payload?.compartments?.cyto
+  const nuc = payload?.compartments?.nuc
+  const times = payload?.time_steps
+  if (!cyto?.length || !nuc?.length || !times?.length) return null
+  let i = 0
+  if (t <= times[0]!) i = 0
+  else if (t >= times[times.length - 1]!) i = times.length - 1
+  else {
+    while (i < times.length - 1 && times[i + 1]! < t) i += 1
+    const t0 = times[i]!
+    const t1 = times[i + 1]!
+    const w = t1 <= t0 ? 0 : (t - t0) / (t1 - t0)
+    const c0 = cyto[i] ?? 0
+    const c1 = cyto[i + 1] ?? c0
+    const n0 = nuc[i] ?? 0
+    const n1 = nuc[i + 1] ?? n0
+    return {
+      cytoplasm: c0 + w * (c1 - c0),
+      nucleus: n0 + w * (n1 - n0),
+      mitochondria: 0,
+    }
+  }
+  return {
+    cytoplasm: cyto[i] ?? 0,
+    nucleus: nuc[i] ?? 0,
+    mitochondria: 0,
+  }
 }
 
 export interface SimulateRequest {

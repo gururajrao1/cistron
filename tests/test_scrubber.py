@@ -51,6 +51,10 @@ def test_scrubber_61_keyframes_hypoxia() -> None:
         assert len(flux) == 61
         assert all(0.0 <= v <= 1.0 for v in flux)
 
+    assert payload.trajectories["HIF1A"] == payload.nodes["HIF1A"]
+    assert "cyto" in payload.compartments and "nuc" in payload.compartments
+    assert len(payload.compartments["cyto"]) == 61
+
     # Inhibitory edge uses 1 - hill(source)
     egln = payload.nodes["EGLN1"]
     inhib = payload.edges["EGLN1->HIF1A"]

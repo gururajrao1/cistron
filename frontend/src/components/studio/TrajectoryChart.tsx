@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { Loader2 } from 'lucide-react'
 import type { ScrubberPayload } from '../../api/types'
+import { payloadNodeSeries } from '../../api/types'
 import { GlassCard } from '../GlassCard'
 
 const SERIES_COLORS: Record<string, string> = {
@@ -118,11 +119,13 @@ export function TrajectoryChart({
     const base = untreatedRun ?? active
     const treated = treatedRun
     const times = active.time_steps
+    const baseNodes = payloadNodeSeries(base)
+    const treatedNodes = payloadNodeSeries(treated)
     return times.map((t, i) => {
       const row: ChartRow = { t }
       for (const sym of focus) {
-        const uSeries = base.nodes[sym]
-        const tSeries = treated?.nodes[sym]
+        const uSeries = baseNodes[sym]
+        const tSeries = treatedNodes[sym]
         if (uSeries) row[untreatedKey(sym)] = uSeries[i] ?? uSeries[uSeries.length - 1] ?? 0
         if (compare && tSeries) {
           row[treatedKey(sym)] = tSeries[i] ?? tSeries[tSeries.length - 1] ?? 0

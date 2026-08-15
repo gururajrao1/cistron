@@ -60,7 +60,12 @@ def test_search_and_simulate_hypoxia(client: TestClient) -> None:
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["profile_id"] == "hypoxia"
-    assert "HIF1A" in body["scrubber_payload"]["nodes"]
+    scrub = body["scrubber_payload"]
+    assert "HIF1A" in scrub["nodes"]
+    assert scrub.get("trajectories", {}).get("HIF1A") == scrub["nodes"]["HIF1A"]
+    assert "cyto" in scrub.get("compartments", {})
+    assert "nuc" in scrub["compartments"]
+    assert len(scrub["compartments"]["cyto"]) == len(scrub["time_steps"])
     assert body["metadata"].get("sim_id")
     assert body["metadata"].get("synthetic_edges") is False
     assert elapsed < LATENCY_BUDGET_MS

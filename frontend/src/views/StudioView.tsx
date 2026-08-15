@@ -105,6 +105,7 @@ export function StudioView() {
           <SpatialGridCanvas
             graph={lab.graph}
             scrubT={lab.scrubT}
+            scrubberPayload={lab.payload}
             perturbations={lab.perturbations ?? {}}
             selectedNode={lab.selectedNode}
           />

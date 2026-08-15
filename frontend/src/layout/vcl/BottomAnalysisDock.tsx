@@ -2,27 +2,38 @@ import { useMemo, useState } from 'react'
 import { clsx } from 'clsx'
 import { TrajectoryChart } from '../../components/studio/TrajectoryChart'
 import { useLab } from '../../lab/LabContext'
-import { FOCUS_SERIES } from '../../api/types'
+import { FOCUS_SERIES, payloadNodeSeries, sampleCompartmentsAt } from '../../api/types'
 import {
   metabolicAtTime,
   simulateMetabolicBridge,
   solveMiniFbaLite,
 } from '../../engine/metabolicBridge'
-import { stepHif1aTranslocation } from '../../components/studio/OrganelleCompartments'
 
 type BottomTab = 'trajectory' | 'compare' | 'organelle' | 'flux'
 
-function terminalY(
+function seriesAt(
   nodes: Record<string, number[]> | undefined,
+  times: number[] | undefined,
   sym: string,
+  t: number,
 ): number {
   const s = nodes?.[sym]
-  if (!s?.length) return 0
-  return s[s.length - 1] ?? 0
+  if (!s?.length || !times?.length) return 0
+  let i = 0
+  if (t <= times[0]!) i = 0
+  else if (t >= times[times.length - 1]!) i = times.length - 1
+  else {
+    while (i < times.length - 1 && times[i + 1]! < t) i += 1
+  }
+  return s[i] ?? 0
 }
 
 function OrganelleTab() {
   const lab = useLab()
+  const nodes = payloadNodeSeries(lab.payload)
+  const times = lab.payload?.time_steps
+  const serverComp = sampleCompartmentsAt(lab.payload, lab.scrubT)
+
   const species = useMemo(() => {
     const focus =
       FOCUS_SERIES[lab.profileId] ??
@@ -32,10 +43,6 @@ function OrganelleTab() {
     return Array.from(new Set(['HIF1A', ...focus, ...fromGraph])).slice(0, 10)
   }, [lab.profileId, lab.nodes])
 
-  const o2 =
-    lab.payload?.nodes?.O2?.[Math.min(lab.scrubT, (lab.payload.nodes.O2?.length ?? 1) - 1)] ??
-    0.35
-
   return (
     <div className="h-full overflow-auto p-2">
       <table className="w-full border-collapse text-left font-mono text-[10.5px]">
@@ -44,38 +51,40 @@ function OrganelleTab() {
             <th className="px-2 py-1.5 font-semibold">Species</th>
             <th className="px-2 py-1.5 font-semibold">Cytoplasm</th>
             <th className="px-2 py-1.5 font-semibold">Nucleus</th>
-            <th className="px-2 py-1.5 font-semibold">Mitochondria</th>
+            <th className="px-2 py-1.5 font-semibold">Graph y</th>
             <th className="px-2 py-1.5 font-semibold">Δ Nuc</th>
           </tr>
         </thead>
         <tbody>
           {species.map((sym) => {
-            const y = terminalY(lab.payload?.nodes, sym)
-            let cyto = y * 0.55
-            let nuc = y * 0.35
-            let mito = y * 0.1
-            if (sym === 'HIF1A') {
-              let state = { cytoplasm: cyto, nucleus: nuc, mitochondria: mito }
-              const { next } = stepHif1aTranslocation(state, o2, Math.max(1, lab.scrubT))
-              cyto = next.cytoplasm
-              nuc = next.nucleus
-              mito = next.mitochondria
-            }
-            const deltaNuc = nuc - y * 0.2
+            const y = seriesAt(nodes, times, sym, lab.scrubT)
+            const isHif = sym === 'HIF1A' || sym === 'EPAS1'
+            const cyto = isHif && serverComp ? serverComp.cytoplasm : y * 0.55
+            const nuc = isHif && serverComp ? serverComp.nucleus : y * 0.35
+            const deltaNuc =
+              isHif && serverComp
+                ? serverComp.nucleus - (serverComp.cytoplasm || 1e-9) * 0.2
+                : 0
             return (
               <tr key={sym} className="border-t border-vcl-border/80 hover:bg-vcl-surface/40">
                 <td className="px-2 py-1.5 font-semibold text-vcl-text">{sym}</td>
                 <td className="px-2 py-1.5 text-vcl-muted">{cyto.toFixed(3)}</td>
                 <td className="px-2 py-1.5 text-cyan-flux">{nuc.toFixed(3)}</td>
-                <td className="px-2 py-1.5 text-amber-kinase">{mito.toFixed(3)}</td>
+                <td className="px-2 py-1.5 text-amber-kinase">{y.toFixed(3)}</td>
                 <td
                   className={clsx(
                     'px-2 py-1.5',
                     deltaNuc >= 0 ? 'text-emerald-active' : 'text-coral-action',
                   )}
                 >
-                  {deltaNuc >= 0 ? '+' : ''}
-                  {deltaNuc.toFixed(3)}
+                  {isHif && serverComp ? (
+                    <>
+                      {deltaNuc >= 0 ? '+' : ''}
+                      {deltaNuc.toFixed(3)}
+                    </>
+                  ) : (
+                    '—'
+                  )}
                 </td>
               </tr>
             )
@@ -83,8 +92,9 @@ function OrganelleTab() {
         </tbody>
       </table>
       <p className="mt-2 px-2 text-[10px] leading-relaxed text-vcl-dim">
-        HIF1A nuclear import scales with hypoxia: k_import = base × (1 − local O₂). Scrub t
-        advances the compartmental step.
+        {serverComp
+          ? 'HIF1A cyto/nuc from server LSODA 2-compartment solve (scrubber-synced).'
+          : 'Run a simulation to load server compartment trajectories.'}
       </p>
     </div>
   )

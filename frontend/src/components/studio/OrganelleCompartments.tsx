@@ -2,70 +2,19 @@ import { FlaskConical } from 'lucide-react'
 import { GeneBadge, MetaLabel } from '../ui'
 import type { CompartmentState } from '../../engine/compartmentOde'
 
-/** Baseline cytoplasm→nucleus import (1/min) before hypoxia scaling. */
-export const BASE_IMPORT_RATE = 0.18
-const BASE_EXPORT_RATE = 0.06
-
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v))
-}
-
-/**
- * Advance HIF1A pools with hypoxia-driven nuclear import:
- *   cytoToNucRate = baseImportRate * (1 - localO2)
- *   nuc = min(1, nuc + cytoToNucRate * dt)
- */
-export function stepHif1aTranslocation(
-  state: CompartmentState,
-  localO2: number,
-  dt: number,
-  baseImportRate = BASE_IMPORT_RATE,
-): { next: CompartmentState; importRate: number } {
-  const o2 = clamp01(localO2)
-  const cytoToNucRate = baseImportRate * (1 - o2)
-  const exportRate = BASE_EXPORT_RATE * o2
-
-  let cytoplasm = state.cytoplasm
-  let nucleus = state.nucleus
-  let mitochondria = state.mitochondria
-
-  const importFlux = cytoToNucRate * dt
-  const movedIn = Math.min(Math.max(0, cytoplasm), importFlux)
-  cytoplasm = Math.max(0, cytoplasm - movedIn)
-  nucleus = Math.min(1.0, nucleus + movedIn)
-
-  const movedOut = Math.min(nucleus, exportRate * dt)
-  nucleus = Math.max(0, nucleus - movedOut)
-  cytoplasm = Math.min(1.0, cytoplasm + movedOut)
-
-  const mitoLeak = 0.01 * dt
-  const toMito = Math.min(cytoplasm, mitoLeak)
-  cytoplasm -= toMito
-  mitochondria = Math.min(1.0, mitochondria + toMito * 0.5)
-
-  return {
-    next: {
-      cytoplasm: clamp01(cytoplasm),
-      nucleus: clamp01(nucleus),
-      mitochondria: clamp01(mitochondria),
-    },
-    importRate: cytoToNucRate,
-  }
-}
-
 type Props = {
-  /** Spatial mesh animation time (minutes) — tracks RAF / diffusion clock. */
+  /** Scrubber / display time (minutes) — locked to server trajectory clock. */
   meshTime: number
   symbol: string
   compartment: CompartmentState | null
-  /** Mean extracellular O₂ used for the cyto→nuc import law. */
+  /** Mean extracellular O₂ (display only). */
   localO2?: number
+  /** Hypoxia import rate proxy (display only; not integrated on client). */
   importRate?: number
 }
 
 /**
- * Organelle compartment readout locked to the spatial reaction–diffusion clock
- * (not the Studio scrubber, which often sits at t=0).
+ * Organelle compartment readout bound to server 2-compartment trajectories.
  */
 export function OrganelleCompartments({
   meshTime,
@@ -77,7 +26,7 @@ export function OrganelleCompartments({
   if (!compartment) {
     return (
       <p className="text-[10px] text-slate-600">
-        Load a Studio graph to couple compartmental Hill-cube translocation with the mesh.
+        Run a Studio simulation to load server HIF1A cytoplasm / nucleus pools.
       </p>
     )
   }
@@ -94,7 +43,7 @@ export function OrganelleCompartments({
         {localO2 != null ? (
           <span className="lab-mono text-[10px] text-cyan-400/80">
             O₂={localO2.toFixed(2)}
-            {importRate != null ? ` · k_import=${importRate.toFixed(3)}` : ''}
+            {importRate != null ? ` · k_import≈${importRate.toFixed(3)}` : ''}
           </span>
         ) : null}
       </div>
@@ -103,6 +52,9 @@ export function OrganelleCompartments({
         <CompBar label="Nucleus" value={compartment.nucleus} color="#f43f5e" />
         <CompBar label="Mitochondria" value={compartment.mitochondria} color="#f59e0b" />
       </div>
+      <p className="mt-1.5 text-[9px] leading-relaxed text-slate-500">
+        cyto/nuc from server LSODA mass-action (not client Euler).
+      </p>
     </div>
   )
 }

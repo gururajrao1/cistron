@@ -21,6 +21,7 @@ from cistron.engine.solver import (
     hill_activation,
     hill_inhibition,
 )
+from cistron.engine.compartments import compartments_from_node_trajectories
 from cistron.models.graph import CausalActivityGraph
 from cistron.models.serialization import ScrubberPayload
 
@@ -177,11 +178,16 @@ def sample_uniform_keyframes(
     if metadata:
         meta.update(dict(metadata))
 
+    compartments, comp_meta = compartments_from_node_trajectories(grid.tolist(), nodes)
+    meta["compartments"] = comp_meta
+
     return ScrubberPayload(
         simulation_id=simulation_id or f"sim_{uuid.uuid4().hex[:12]}",
         time_steps=[float(t) for t in grid],
         nodes=nodes,
+        trajectories=dict(nodes),
         edges=edges,
+        compartments=compartments,
         metadata=meta,
     )
 

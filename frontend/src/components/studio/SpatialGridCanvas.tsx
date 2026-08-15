@@ -25,7 +25,6 @@ import {
   compartmentAtTime,
   simulateCompartmentOde,
   specsFromGraph,
-  type CompartmentState,
   type CompartmentTrajectory,
 } from '../../engine/compartmentOde'
 import { loadHistologyMesh } from '../../engine/spatialHistologyLoader'
@@ -34,13 +33,16 @@ import {
   calculateBBBPermeability,
   type TissueBarrierMode,
 } from '../../engine/barrierKinetics'
-import type { PresetDetail } from '../../api/types'
-import { OrganelleCompartments, stepHif1aTranslocation, BASE_IMPORT_RATE } from './OrganelleCompartments'
+import type { PresetDetail, ScrubberPayload } from '../../api/types'
+import { sampleCompartmentsAt } from '../../api/types'
+import { OrganelleCompartments } from './OrganelleCompartments'
 
 type Props = {
   graph: PresetDetail | null
-  /** Lab scrubber — unused for organelle clock (mesh time owns it). */
+  /** Lab scrubber — used to sample server compartment trajectories. */
   scrubT: number
+  /** Server single-source scrubber payload (cyto/nuc). */
+  scrubberPayload?: ScrubberPayload | null
   perturbations?: Record<string, number>
   selectedNode?: string | null
 }
@@ -51,34 +53,16 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v))
 }
 
-function initialHifState(traj: CompartmentTrajectory | null, sym: string): CompartmentState {
-  const at0 =
-    (traj && compartmentAtTime(traj, sym, 0)) ||
-    (traj && compartmentAtTime(traj, 'HIF1A', 0))
-  return (
-    at0 ?? {
-      cytoplasm: 0.35,
-      nucleus: 0.05,
-      mitochondria: 0.05,
-    }
-  )
-}
-
 export function SpatialGridCanvas({
   graph,
-  scrubT: _scrubT,
+  scrubT,
+  scrubberPayload = null,
   perturbations = {},
   selectedNode,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number | null>(null)
   const gridRef = useRef<DiffusionGridState>(createDiffusionGrid({ n: 56 }))
-  const liveCompRef = useRef<CompartmentState>({
-    cytoplasm: 0.35,
-    nucleus: 0.05,
-    mitochondria: 0.05,
-  })
-  const importRateRef = useRef(0)
 
   const [grid, setGrid] = useState<DiffusionGridState>(() => gridRef.current)
   const [species, setSpecies] = useState<GridSpecies>('O2')
@@ -86,9 +70,6 @@ export function SpatialGridCanvas({
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(2)
   const [oxygenBias, setOxygenBias] = useState(0.25)
-  /** Live compartment pools driven by the mesh RAF clock. */
-  const [liveCompartment, setLiveCompartment] = useState<CompartmentState>(liveCompRef.current)
-  const [liveImportRate, setLiveImportRate] = useState(0)
   const [histologyLabel, setHistologyLabel] = useState<string | null>(null)
   const [bbbEnabled, setBbbEnabled] = useState(false)
   const [drugLogP, setDrugLogP] = useState(2.2)
@@ -107,7 +88,12 @@ export function SpatialGridCanvas({
   )
   const barrierMode: TissueBarrierMode = bbbEnabled ? 'bbb' : 'peripheral'
 
+  const focusSym = (selectedNode || 'HIF1A').toUpperCase()
+  const focusIsHif = focusSym === 'HIF1A' || focusSym === 'EPAS1'
+
+  /** Prefer server compartments; fall back to client multi-compartment ODE for non-HIF. */
   const compartmentTraj = useMemo<CompartmentTrajectory | null>(() => {
+    if (scrubberPayload?.compartments?.cyto?.length) return null
     if (!graph) return null
     try {
       const { nodes, edges } = specsFromGraph(graph, {
@@ -124,36 +110,36 @@ export function SpatialGridCanvas({
       console.warn('compartment ODE failed', err)
       return null
     }
-  }, [graph, perturbations, oxygenBias])
-
-  const focusSym = (selectedNode || 'HIF1A').toUpperCase()
-  const focusIsHif = focusSym === 'HIF1A' || focusSym === 'EPAS1'
-
-  // Reset live pools when graph / KO set / oxygen bias changes
-  useEffect(() => {
-    const init = initialHifState(compartmentTraj, focusSym)
-    liveCompRef.current = init
-    setLiveCompartment(init)
-  }, [compartmentTraj, focusSym, perturbations])
+  }, [graph, perturbations, oxygenBias, scrubberPayload])
 
   const localO2 = useMemo(() => {
     const meshO2 = grid.fields.O2 ? meanField(grid.fields.O2) : oxygenBias
-    // Blend slider bias with live mesh mean so dosing / tumor core still matter
     return clamp01(0.55 * meshO2 + 0.45 * oxygenBias)
   }, [grid, oxygenBias])
 
-  /** Trajectory sample at mesh time (for non-HIF focus genes). */
+  const serverComp = useMemo(() => {
+    // Bind organelle readout to scrubber time (server SoT), not mesh Euler.
+    return sampleCompartmentsAt(scrubberPayload, scrubT)
+  }, [scrubberPayload, scrubT])
+
   const trajCompartment = useMemo(() => {
-    if (!compartmentTraj) return null
+    if (serverComp && focusIsHif) return serverComp
+    if (!compartmentTraj) return serverComp
     const tMax = compartmentTraj.time[compartmentTraj.time.length - 1] ?? 60
-    const t = Math.min(Math.max(0, meshTime), tMax)
+    const t = Math.min(Math.max(0, scrubT), tMax)
     return (
       compartmentAtTime(compartmentTraj, focusSym, t) ??
-      compartmentAtTime(compartmentTraj, 'HIF1A', t)
+      compartmentAtTime(compartmentTraj, 'HIF1A', t) ??
+      serverComp
     )
-  }, [compartmentTraj, focusSym, meshTime])
+  }, [compartmentTraj, focusSym, focusIsHif, scrubT, serverComp])
 
-  const displayCompartment = focusIsHif ? liveCompartment : trajCompartment
+  const displayCompartment = trajCompartment
+
+  const importRate = useMemo(() => {
+    // Display-only: hypoxia import law from mesh O2 (not used to integrate).
+    return 0.18 * (1 - localO2)
+  }, [localO2])
 
   const paint = useCallback((state: DiffusionGridState, sp: GridSpecies) => {
     const canvas = canvasRef.current
@@ -185,7 +171,6 @@ export function SpatialGridCanvas({
       const elapsed = now - last
       if (elapsed > 32) {
         last = now
-        const dt = 0.05 * speed
         const next = stepDiffusion(gridRef.current, {
           dt: 0.05,
           steps: speed,
@@ -201,21 +186,7 @@ export function SpatialGridCanvas({
           )
         }
         gridRef.current = next
-
-        const meshO2 = next.fields.O2 ? meanField(next.fields.O2) : oxygenBias
-        const local = clamp01(0.55 * meshO2 + 0.45 * oxygenBias)
-        const { next: compNext, importRate } = stepHif1aTranslocation(
-          liveCompRef.current,
-          local,
-          dt,
-          BASE_IMPORT_RATE,
-        )
-        liveCompRef.current = compNext
-        importRateRef.current = importRate
-
         setGrid(next)
-        setLiveCompartment(compNext)
-        setLiveImportRate(importRate)
       }
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -223,7 +194,7 @@ export function SpatialGridCanvas({
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
     }
-  }, [playing, speed, oxygenBias, barrier.meshCoupling])
+  }, [playing, speed, barrier.meshCoupling])
 
   const loadHistology = useCallback(async (file?: File | null) => {
     const result = loadHistologyMesh({
@@ -256,10 +227,6 @@ export function SpatialGridCanvas({
     const next = createDiffusionGrid({ n: 56 })
     gridRef.current = next
     setGrid(next)
-    const init = initialHifState(compartmentTraj, focusSym)
-    liveCompRef.current = init
-    setLiveCompartment(init)
-    setLiveImportRate(0)
   }
 
   const means = useMemo(() => {
@@ -296,10 +263,10 @@ export function SpatialGridCanvas({
             HIF1A nucleus
           </div>
           <div className="mt-1 font-mono text-xl font-bold text-coral-action">
-            {liveCompartment.nucleus.toFixed(3)}
+            {(displayCompartment?.nucleus ?? 0).toFixed(3)}
           </div>
           <div className="mt-0.5 text-[10px] text-slate-500">
-            O₂={localO2.toFixed(2)} · k_import={liveImportRate.toFixed(3)} · cyto→nuc ↑ hypoxia
+            O₂={localO2.toFixed(2)} · k_import≈{importRate.toFixed(3)} · server cyto/nuc
           </div>
         </GlassCard>
       </div>
@@ -513,11 +480,11 @@ export function SpatialGridCanvas({
       </div>
 
       <OrganelleCompartments
-        meshTime={meshTime}
-        symbol={compartmentTraj?.nodes[focusSym] ? focusSym : 'HIF1A'}
+        meshTime={scrubT}
+        symbol={focusIsHif || compartmentTraj?.nodes[focusSym] ? focusSym : 'HIF1A'}
         compartment={displayCompartment}
         localO2={localO2}
-        importRate={focusIsHif ? liveImportRate : undefined}
+        importRate={focusIsHif ? importRate : undefined}
       />
     </div>
   )

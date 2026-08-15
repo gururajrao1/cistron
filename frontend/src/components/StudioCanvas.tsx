@@ -2,14 +2,13 @@ import { useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import type { PresetDetail, ScrubberPayload } from '../api/types'
-import { FOCUS_SERIES } from '../api/types'
+import { FOCUS_SERIES, sampleCompartmentsAt } from '../api/types'
 import { lerpAtTime } from '../api/client'
 import { useLab } from '../lab/LabContext'
 import { resolveOmicsProvenance } from '../api/types'
 import { TrajectoryChart } from './studio/TrajectoryChart'
 import { NetworkGraphSvg, type GraphEdgeView } from './studio/NetworkGraphSvg'
 import { classifyEdgeKind } from '../engine/edgeClassification'
-import { stepHif1aTranslocation } from './studio/OrganelleCompartments'
 
 /** Hard cap — never hand the stage a huge graph. */
 const MAX_CANVAS_NODES = 40
@@ -245,17 +244,15 @@ export function StudioCanvas({
   }, [untreatedRun, payload, scrubT])
 
   /**
-   * HIF1A nuclear-import fraction for the one synthesized translocation edge —
-   * a real value from the same compartment step the Organelle dock tab uses.
+   * HIF1A nuclear fraction from server 2-compartment solve (single source of truth).
    */
   const translocationFraction = useMemo(() => {
+    const comp = sampleCompartmentsAt(payload, scrubT)
+    if (comp) return comp.nucleus
     const hif1aY = nodeY['HIF1A']
     if (hif1aY == null) return null
-    const o2 = nodeY['O2'] ?? 0.35
-    const state = { cytoplasm: hif1aY * 0.55, nucleus: hif1aY * 0.35, mitochondria: hif1aY * 0.1 }
-    const { next } = stepHif1aTranslocation(state, o2, Math.max(1, scrubT))
-    return next.nucleus
-  }, [nodeY, scrubT])
+    return hif1aY * 0.35
+  }, [payload, scrubT, nodeY])
 
   const edgeViews = useMemo<GraphEdgeView[]>(() => {
     if (!displayGraph) return []
