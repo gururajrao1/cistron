@@ -10,6 +10,13 @@ import {
 } from 'react'
 import type { PresetDetail } from '../../api/types'
 import type { EdgeKind } from '../../engine/edgeClassification'
+import {
+  buildModuleAggregates,
+  healthGlowColor,
+  type ModuleAggregate,
+} from '../../engine/pathwayModules'
+import { useViewMode } from '../../layout/viewModeGates'
+import type { ViewMode } from '../../lab/viewMode'
 
 /**
  * Network topology stage — a direct port of the Cistron VCL design mockup's
@@ -32,8 +39,26 @@ const ROW_GAP_MAX = 128
 /** Viewport zoom bounds. */
 const MIN_ZOOM = 0.35
 const MAX_ZOOM = 3.5
+/** Semantic LOD thresholds (Google-Maps-style meaning by scale). */
+const LOD_MODULES_MAX = 0.72
+const LOD_DETAIL_MIN = 1.85
 /** Pointer travel (px) below which a drag still counts as a click. */
 const CLICK_SLOP = 4
+
+type SemanticLod = 'modules' | 'proteins' | 'detail'
+
+function lodFromZoom(k: number): SemanticLod {
+  if (k < LOD_MODULES_MAX) return 'modules'
+  if (k >= LOD_DETAIL_MIN) return 'detail'
+  return 'proteins'
+}
+
+function initialZoomForMode(mode: ViewMode): number {
+  // Biologists land on pathway bubbles; Systems starts slightly closer for math.
+  if (mode === 'biologist') return 0.55
+  if (mode === 'systems') return 1.15
+  return 1
+}
 
 /** Node disc geometry (mockup values). */
 const RING_R = 25
@@ -90,6 +115,16 @@ export type GraphEdgeView = {
   target: string
   kind: EdgeVisualKind
   flux: number
+}
+
+/** Live ODE / flux snippet shown at max semantic zoom on hover. */
+export type NodeLodDetail = {
+  y: number
+  y0: number
+  deltaY: number
+  tauMin: number
+  inboundFlux: number
+  outboundFlux: number
 }
 
 type Point = { x: number; y: number }
@@ -261,6 +296,7 @@ export function NetworkGraphSvg({
   baselineValues,
   subtitleFor,
   omicsColorFor,
+  nodeDetailFor,
   perturbations = {},
   knockouts = [],
   selectedNode,
@@ -274,13 +310,17 @@ export function NetworkGraphSvg({
   subtitleFor: (id: string) => string
   /** Omics overlay tint for a node, or null when no profile is active. */
   omicsColorFor?: (id: string) => string | null
+  /** Max-zoom hover math (ODE / flux). */
+  nodeDetailFor?: (id: string) => NodeLodDetail | null
   perturbations?: Record<string, number>
   knockouts?: string[]
   selectedNode?: string | null
   onNodeSelect?: (id: string) => void
   onToggleKnockout?: (id: string) => void
 }) {
+  const viewMode = useViewMode()
   const [hovered, setHovered] = useState<string | null>(null)
+  const [hoveredModule, setHoveredModule] = useState<string | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: FALLBACK_W, h: FALLBACK_H })
 
@@ -312,7 +352,11 @@ export function NetworkGraphSvg({
   )
 
   /** Viewport pan/zoom, and any nodes the user has dragged off the layout. */
-  const [view, setView] = useState<Viewport>({ k: 1, x: 0, y: 0 })
+  const [view, setView] = useState<Viewport>(() => ({
+    k: initialZoomForMode(viewMode),
+    x: 0,
+    y: 0,
+  }))
   const [moved, setMoved] = useState<Record<string, Point>>({})
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<DragState>(null)
@@ -320,8 +364,10 @@ export function NetworkGraphSvg({
   // A new graph invalidates hand-placed positions.
   useLayoutEffect(() => {
     setMoved({})
-    setView({ k: 1, x: 0, y: 0 })
-  }, [graph])
+    setView({ k: initialZoomForMode(viewMode), x: 0, y: 0 })
+  }, [graph, viewMode])
+
+  const lod = lodFromZoom(view.k)
 
   const positions = useMemo(() => {
     if (!Object.keys(moved).length) return layout
@@ -329,6 +375,31 @@ export function NetworkGraphSvg({
     for (const [id, p] of Object.entries(moved)) merged.set(id, p)
     return merged
   }, [layout, moved])
+
+  const modules = useMemo(
+    () => buildModuleAggregates(nodeIds, nodeValues, baselineValues),
+    [nodeIds, nodeValues, baselineValues],
+  )
+
+  const moduleCenters = useMemo(() => {
+    const map = new Map<string, Point & { r: number }>()
+    for (const mod of modules) {
+      let sx = 0
+      let sy = 0
+      let n = 0
+      for (const id of mod.members) {
+        const p = positions.get(id)
+        if (!p) continue
+        sx += p.x
+        sy += p.y
+        n += 1
+      }
+      if (!n) continue
+      const r = Math.min(78, Math.max(42, 28 + Math.sqrt(mod.members.length) * 16))
+      map.set(mod.id, { x: sx / n, y: sy / n, r })
+    }
+    return map
+  }, [modules, positions])
 
   /** Screen point → graph coordinates under the current viewport. */
   const toGraph = useCallback(
@@ -356,11 +427,37 @@ export function NetworkGraphSvg({
     })
   }, [])
 
+  const zoomToModule = useCallback(
+    (mod: ModuleAggregate) => {
+      const c = moduleCenters.get(mod.id)
+      if (!c) {
+        setView((prev) => ({ ...prev, k: 1 }))
+        return
+      }
+      const nextK = 1.05
+      setView({
+        k: nextK,
+        x: size.w / 2 - c.x * nextK,
+        y: size.h / 2 - c.y * nextK,
+      })
+    },
+    [moduleCenters, size.w, size.h],
+  )
+
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<SVGSVGElement>) => {
       // Only left button drags; right button is the knockout shortcut.
       if (event.button !== 0) return
       const target = event.target as Element
+      const moduleId = target.closest('[data-module-id]')?.getAttribute('data-module-id')
+      if (moduleId && lod === 'modules') {
+        const mod = modules.find((m) => m.id === moduleId)
+        if (mod) {
+          event.preventDefault()
+          zoomToModule(mod)
+          return
+        }
+      }
       const nodeId = target.closest('[data-node-id]')?.getAttribute('data-node-id') ?? null
       // Capture keeps the drag alive past the pane edge; a stale pointerId
       // throws here, which would otherwise abort the whole gesture.
@@ -369,7 +466,7 @@ export function NetworkGraphSvg({
       } catch {
         /* non-fatal: drag still tracks while the pointer stays inside */
       }
-      if (nodeId) {
+      if (nodeId && lod !== 'modules') {
         const p = positions.get(nodeId)
         const g = toGraph(event.clientX, event.clientY)
         dragRef.current = {
@@ -391,7 +488,7 @@ export function NetworkGraphSvg({
         }
       }
     },
-    [positions, toGraph, view.x, view.y],
+    [positions, toGraph, view.x, view.y, lod, modules, zoomToModule],
   )
 
   const handlePointerMove = useCallback(
@@ -436,9 +533,9 @@ export function NetworkGraphSvg({
   )
 
   const resetView = useCallback(() => {
-    setView({ k: 1, x: 0, y: 0 })
+    setView({ k: initialZoomForMode(viewMode), x: 0, y: 0 })
     setMoved({})
-  }, [])
+  }, [viewMode])
 
   const zoomBy = useCallback(
     (factor: number) => {
@@ -497,270 +594,402 @@ export function NetworkGraphSvg({
   }, [size.w, size.h])
 
   const panning = dragRef.current?.mode === 'pan' && dragRef.current.moved
+  const showFluxLabels = lod === 'detail' || (lod === 'proteins' && viewMode === 'systems')
+  const showNodeNumbers = viewMode !== 'biologist'
+  const hoverDetail =
+    lod === 'detail' && hovered && nodeDetailFor ? nodeDetailFor(hovered) : null
+  const hoverPos = hovered ? positions.get(hovered) : null
 
   return (
     <div ref={hostRef} style={{ position: 'absolute', inset: 0 }}>
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${size.w} ${size.h}`}
-      preserveAspectRatio="xMidYMid meet"
-      onWheel={handleWheel}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onDoubleClick={resetView}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        touchAction: 'none',
-        cursor: panning ? 'grabbing' : 'grab',
-      }}
-    >
-      <defs>
-        <marker
-          id="mk-act"
-          viewBox="0 0 10 10"
-          refX={9}
-          refY={5}
-          markerWidth={9}
-          markerHeight={9}
-          markerUnits="userSpaceOnUse"
-          orient="auto"
-        >
-          <path d="M0,1.5 L9,5 L0,8.5 z" fill={COLOR.activation} />
-        </marker>
-        <marker
-          id="mk-inh"
-          viewBox="0 0 10 10"
-          refX={4}
-          refY={5}
-          markerWidth={12}
-          markerHeight={12}
-          markerUnits="userSpaceOnUse"
-          orient="auto"
-        >
-          <path d="M4,0.5 L4,9.5" stroke={COLOR.inhibition} strokeWidth={2.4} />
-        </marker>
-        <marker
-          id="mk-pho"
-          viewBox="0 0 10 10"
-          refX={9}
-          refY={5}
-          markerWidth={9}
-          markerHeight={9}
-          markerUnits="userSpaceOnUse"
-          orient="auto"
-        >
-          <path d="M0,1.5 L9,5 L0,8.5 z" fill={COLOR.phosphorylation} />
-        </marker>
-        <marker
-          id="mk-loc"
-          viewBox="0 0 10 10"
-          refX={9}
-          refY={5}
-          markerWidth={9}
-          markerHeight={9}
-          markerUnits="userSpaceOnUse"
-          orient="auto"
-        >
-          <path d="M0,1.5 L9,5 L0,8.5 z" fill={COLOR.translocation} />
-        </marker>
-        <marker
-          id="mk-loc-b"
-          viewBox="0 0 10 10"
-          refX={1}
-          refY={5}
-          markerWidth={9}
-          markerHeight={9}
-          markerUnits="userSpaceOnUse"
-          orient="auto"
-        >
-          <path d="M10,1.5 L1,5 L10,8.5 z" fill={COLOR.translocation} />
-        </marker>
-      </defs>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${size.w} ${size.h}`}
+        preserveAspectRatio="xMidYMid meet"
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onDoubleClick={resetView}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          touchAction: 'none',
+          cursor: panning ? 'grabbing' : 'grab',
+        }}
+      >
+        <defs>
+          <marker
+            id="mk-act"
+            viewBox="0 0 10 10"
+            refX={9}
+            refY={5}
+            markerWidth={9}
+            markerHeight={9}
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M0,1.5 L9,5 L0,8.5 z" fill={COLOR.activation} />
+          </marker>
+          <marker
+            id="mk-inh"
+            viewBox="0 0 10 10"
+            refX={4}
+            refY={5}
+            markerWidth={12}
+            markerHeight={12}
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M4,0.5 L4,9.5" stroke={COLOR.inhibition} strokeWidth={2.4} />
+          </marker>
+          <marker
+            id="mk-pho"
+            viewBox="0 0 10 10"
+            refX={9}
+            refY={5}
+            markerWidth={9}
+            markerHeight={9}
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M0,1.5 L9,5 L0,8.5 z" fill={COLOR.phosphorylation} />
+          </marker>
+          <marker
+            id="mk-loc"
+            viewBox="0 0 10 10"
+            refX={9}
+            refY={5}
+            markerWidth={9}
+            markerHeight={9}
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M0,1.5 L9,5 L0,8.5 z" fill={COLOR.translocation} />
+          </marker>
+          <marker
+            id="mk-loc-b"
+            viewBox="0 0 10 10"
+            refX={1}
+            refY={5}
+            markerWidth={9}
+            markerHeight={9}
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M10,1.5 L1,5 L10,8.5 z" fill={COLOR.translocation} />
+          </marker>
+          <filter id="module-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
 
-      <g opacity={0.5}>
-        {gridLines.v.map((x) => (
-          <line key={`v${x}`} x1={x} y1={0} x2={x} y2={size.h} stroke={COLOR.grid} strokeWidth={1} />
-        ))}
-        {gridLines.h.map((y) => (
-          <line key={`h${y}`} x1={0} y1={y} x2={size.w} y2={y} stroke={COLOR.grid} strokeWidth={1} />
-        ))}
-      </g>
+        <g opacity={0.5}>
+          {gridLines.v.map((x) => (
+            <line key={`v${x}`} x1={x} y1={0} x2={x} y2={size.h} stroke={COLOR.grid} strokeWidth={1} />
+          ))}
+          {gridLines.h.map((y) => (
+            <line key={`h${y}`} x1={0} y1={y} x2={size.w} y2={y} stroke={COLOR.grid} strokeWidth={1} />
+          ))}
+        </g>
 
-      <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
-      <g>
-        {edges.map((e) => {
-          const a = positions.get(e.source)
-          const b = positions.get(e.target)
-          if (!a || !b) return null
-          const { d, label } = edgeGeometry(a, b)
-          const color = EDGE_COLOR[e.kind]
-          const dimmed = neighbourhood ? !neighbourhood.edgeIds.has(e.id) : false
-          const flux = Math.max(0, Math.min(1, e.flux))
-          return (
-            <g key={e.id} opacity={dimmed ? 0.12 : 1}>
-              <path
-                d={d}
-                fill="none"
-                stroke={color}
-                strokeWidth={1.1 + 4.6 * flux}
-                strokeDasharray={e.kind === 'phosphorylation' ? '7 5' : 'none'}
-                strokeLinecap="round"
-                opacity={0.35 + 0.6 * flux}
-                markerEnd={`url(#${EDGE_MARKER[e.kind]})`}
-                markerStart={e.kind === 'translocation' ? 'url(#mk-loc-b)' : undefined}
-              />
-              {!dimmed ? (
-                <text
-                  x={label.x}
-                  y={label.y}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill={color}
-                  fontFamily={FONT_MONO}
-                  fontSize={9}
-                  stroke="#07111D"
-                  strokeWidth={3}
-                  paintOrder="stroke"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  V {flux.toFixed(2)}
-                </text>
-              ) : null}
+        <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
+          {lod === 'modules' ? (
+            <g>
+              {modules.map((mod) => {
+                const c = moduleCenters.get(mod.id)
+                if (!c) return null
+                const glow = healthGlowColor(mod.health)
+                const active = hoveredModule === mod.id
+                return (
+                  <g
+                    key={mod.id}
+                    data-module-id={mod.id}
+                    transform={`translate(${c.x},${c.y})`}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredModule(mod.id)}
+                    onMouseLeave={() => setHoveredModule(null)}
+                  >
+                    <circle
+                      r={c.r + 10}
+                      fill={glow}
+                      opacity={active ? 0.28 : 0.14}
+                      filter="url(#module-glow)"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <circle
+                      r={c.r}
+                      fill="#0B1522"
+                      stroke={glow}
+                      strokeWidth={active ? 3 : 2}
+                      opacity={0.95}
+                    />
+                    <text
+                      y={-6}
+                      textAnchor="middle"
+                      fill="#E6EDF5"
+                      fontFamily={FONT_SANS}
+                      fontSize={14}
+                      fontWeight={700}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {mod.label}
+                    </text>
+                    <text
+                      y={12}
+                      textAnchor="middle"
+                      fill="#94A3B8"
+                      fontFamily={FONT_MONO}
+                      fontSize={10}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {mod.gloss}
+                    </text>
+                    <text
+                      y={c.r - 14}
+                      textAnchor="middle"
+                      fill={glow}
+                      fontFamily={FONT_MONO}
+                      fontSize={10}
+                      fontWeight={600}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {mod.members.length} genes ·{' '}
+                      {mod.health >= 0.12 ? 'up' : mod.health <= -0.12 ? 'down' : 'steady'}
+                    </text>
+                  </g>
+                )
+              })}
             </g>
-          )
-        })}
-      </g>
+          ) : (
+            <>
+              <g>
+                {edges.map((e) => {
+                  const a = positions.get(e.source)
+                  const b = positions.get(e.target)
+                  if (!a || !b) return null
+                  const { d, label } = edgeGeometry(a, b)
+                  const color = EDGE_COLOR[e.kind]
+                  const dimmed = neighbourhood ? !neighbourhood.edgeIds.has(e.id) : false
+                  const flux = Math.max(0, Math.min(1, e.flux))
+                  return (
+                    <g key={e.id} opacity={dimmed ? 0.12 : 1}>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth={1.1 + 4.6 * flux}
+                        strokeDasharray={e.kind === 'phosphorylation' ? '7 5' : 'none'}
+                        strokeLinecap="round"
+                        opacity={0.35 + 0.6 * flux}
+                        markerEnd={`url(#${EDGE_MARKER[e.kind]})`}
+                        markerStart={e.kind === 'translocation' ? 'url(#mk-loc-b)' : undefined}
+                      />
+                      {showFluxLabels && !dimmed ? (
+                        <text
+                          x={label.x}
+                          y={label.y}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={color}
+                          fontFamily={FONT_MONO}
+                          fontSize={9}
+                          stroke="#07111D"
+                          strokeWidth={3}
+                          paintOrder="stroke"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          V {flux.toFixed(2)}
+                        </text>
+                      ) : null}
+                    </g>
+                  )
+                })}
+              </g>
 
-      <g>
-        {nodeIds.map((id) => {
-          const p = positions.get(id)
-          if (!p) return null
-          const upper = id.toUpperCase()
-          const pertVal = pertMap[upper]
-          const isPert = pertVal != null
-          const isKo = koSet.has(upper) || (isPert && pertVal <= 1e-6)
-          const current = isKo ? 0 : (nodeValues[id] ?? nodeValues[upper] ?? 0)
-          const baseline = baselineValues[id] ?? baselineValues[upper] ?? current
-          const selected = selectedNode === id
-          const dimmed = neighbourhood ? !neighbourhood.ids.has(id) : false
-          const omicsTint = omicsColorFor?.(id) ?? null
+              <g>
+                {nodeIds.map((id) => {
+                  const p = positions.get(id)
+                  if (!p) return null
+                  const upper = id.toUpperCase()
+                  const pertVal = pertMap[upper]
+                  const isPert = pertVal != null
+                  const isKo = koSet.has(upper) || (isPert && pertVal <= 1e-6)
+                  const current = isKo ? 0 : (nodeValues[id] ?? nodeValues[upper] ?? 0)
+                  const baseline = baselineValues[id] ?? baselineValues[upper] ?? current
+                  const selected = selectedNode === id
+                  const dimmed = neighbourhood ? !neighbourhood.ids.has(id) : false
+                  const omicsTint = omicsColorFor?.(id) ?? null
 
-          const currentColor = isKo
-            ? COLOR.knockout
-            : isPert
-              ? COLOR.perturbed
-              : COLOR.ringCurrent
+                  const currentColor = isKo
+                    ? COLOR.knockout
+                    : isPert
+                      ? COLOR.perturbed
+                      : COLOR.ringCurrent
 
-          return (
-            <g
-              key={id}
-              data-node-id={id}
-              transform={`translate(${p.x},${p.y})`}
-              opacity={dimmed ? 0.2 : 1}
-              style={{ cursor: 'move' }}
-              onContextMenu={handleNodeContext(id)}
-              onMouseEnter={() => setHovered(id)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              <circle
-                r={RING_R}
-                fill="none"
-                stroke={selected ? COLOR.selected : COLOR.value}
-                strokeWidth={selected ? 2 : 1}
-                opacity={selected ? 1 : hovered === id ? 0.45 : 0}
-              />
-              <ActivityRings
-                baseline={baseline}
-                current={current}
-                currentColor={currentColor}
-              />
-              <circle
-                r={DISC_R}
-                fill={omicsTint ?? COLOR.disc}
-                stroke={isKo ? COLOR.knockout : isPert ? COLOR.perturbed : COLOR.discStroke}
-                strokeWidth={1}
-                strokeDasharray={isKo || isPert ? '3 2' : undefined}
-              />
-              {/* Hit target — keeps thin rings/labels comfortably clickable. */}
-              <circle r={RING_R + 6} fill="transparent" />
-              <text
-                y={0}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={COLOR.value}
-                fontFamily={FONT_MONO}
-                fontSize={11}
-                fontWeight={600}
-                style={{ pointerEvents: 'none' }}
-              >
-                {isKo ? 'KO' : current.toFixed(2)}
-              </text>
-              <text
-                y={36}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={selected || hovered === id ? COLOR.symbolActive : COLOR.symbol}
-                fontFamily={FONT_SANS}
-                fontSize={11.5}
-                fontWeight={600}
-                style={{ pointerEvents: 'none' }}
-              >
-                {id}
-              </text>
-              {subtitleFor(id) ? (
-                <text
-                  y={51}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill={COLOR.subtitle}
-                  fontFamily={FONT_MONO}
-                  fontSize={9}
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {subtitleFor(id)}
-                </text>
-              ) : null}
-            </g>
-          )
-        })}
-      </g>
-      </g>
-    </svg>
+                  const activityLabel = isKo
+                    ? 'KO'
+                    : showNodeNumbers
+                      ? current.toFixed(2)
+                      : current >= 0.55
+                        ? 'high'
+                        : current >= 0.3
+                          ? 'mid'
+                          : 'low'
 
-    <div
-      className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-md border border-vcl-border bg-obsidian/90 backdrop-blur-sm"
-      style={{ pointerEvents: 'auto' }}
-    >
-      <button
-        type="button"
-        title="Zoom in"
-        onClick={() => zoomBy(1.25)}
-        className="h-6 w-6 font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+                  return (
+                    <g
+                      key={id}
+                      data-node-id={id}
+                      transform={`translate(${p.x},${p.y})`}
+                      opacity={dimmed ? 0.2 : 1}
+                      style={{ cursor: 'move' }}
+                      onContextMenu={handleNodeContext(id)}
+                      onMouseEnter={() => setHovered(id)}
+                      onMouseLeave={() => setHovered(null)}
+                    >
+                      <circle
+                        r={RING_R}
+                        fill="none"
+                        stroke={selected ? COLOR.selected : COLOR.value}
+                        strokeWidth={selected ? 2 : 1}
+                        opacity={selected ? 1 : hovered === id ? 0.45 : 0}
+                      />
+                      <ActivityRings
+                        baseline={baseline}
+                        current={current}
+                        currentColor={currentColor}
+                      />
+                      <circle
+                        r={DISC_R}
+                        fill={omicsTint ?? COLOR.disc}
+                        stroke={isKo ? COLOR.knockout : isPert ? COLOR.perturbed : COLOR.discStroke}
+                        strokeWidth={1}
+                        strokeDasharray={isKo || isPert ? '3 2' : undefined}
+                      />
+                      <circle r={RING_R + 6} fill="transparent" />
+                      <text
+                        y={0}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={COLOR.value}
+                        fontFamily={FONT_MONO}
+                        fontSize={showNodeNumbers ? 11 : 9}
+                        fontWeight={600}
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        {activityLabel}
+                      </text>
+                      <text
+                        y={36}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={selected || hovered === id ? COLOR.symbolActive : COLOR.symbol}
+                        fontFamily={FONT_SANS}
+                        fontSize={11.5}
+                        fontWeight={600}
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        {id}
+                      </text>
+                      {(lod === 'detail' || Boolean(subtitleFor(id))) && subtitleFor(id) ? (
+                        <text
+                          y={51}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={COLOR.subtitle}
+                          fontFamily={FONT_MONO}
+                          fontSize={9}
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {subtitleFor(id)}
+                        </text>
+                      ) : null}
+                    </g>
+                  )
+                })}
+              </g>
+            </>
+          )}
+        </g>
+      </svg>
+
+      {hoverDetail && hoverPos && lod === 'detail' ? (
+        <div
+          className="pointer-events-none absolute z-20 max-w-[220px] rounded-lg border border-cyan-flux/35 bg-obsidian/95 px-2.5 py-2 shadow-lg backdrop-blur-sm"
+          style={{
+            left: Math.min(size.w - 230, Math.max(8, hoverPos.x * view.k + view.x + 28)),
+            top: Math.min(size.h - 140, Math.max(8, hoverPos.y * view.k + view.y - 20)),
+          }}
+        >
+          <div className="font-mono text-[11px] font-bold text-cyan-flux">{hovered}</div>
+          <p className="mt-1 font-mono text-[10px] leading-relaxed text-vcl-soft">
+            dy/dt ≈ −y/τ + ΣFin − ΣFout
+          </p>
+          <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 font-mono text-[10px] text-vcl-muted">
+            <dt>y(t)</dt>
+            <dd className="text-vcl-text">{hoverDetail.y.toFixed(3)}</dd>
+            <dt>y₀</dt>
+            <dd className="text-vcl-text">{hoverDetail.y0.toFixed(3)}</dd>
+            <dt>Δy</dt>
+            <dd className={hoverDetail.deltaY >= 0 ? 'text-emerald-300' : 'text-red-300'}>
+              {hoverDetail.deltaY >= 0 ? '+' : ''}
+              {hoverDetail.deltaY.toFixed(3)}
+            </dd>
+            <dt>τ</dt>
+            <dd className="text-vcl-text">{hoverDetail.tauMin.toFixed(0)} min</dd>
+            <dt>F in</dt>
+            <dd className="text-vcl-text">{hoverDetail.inboundFlux.toFixed(3)}</dd>
+            <dt>F out</dt>
+            <dd className="text-vcl-text">{hoverDetail.outboundFlux.toFixed(3)}</dd>
+          </dl>
+        </div>
+      ) : null}
+
+      <div className="absolute bottom-2 left-2 z-10 rounded-md border border-vcl-border bg-obsidian/90 px-2 py-1 font-mono text-[9.5px] text-vcl-muted backdrop-blur-sm">
+        {lod === 'modules'
+          ? 'Pathways · click bubble or zoom in'
+          : lod === 'detail'
+            ? 'Node detail · hover for ODE / flux'
+            : 'Proteins · zoom out for pathways · zoom in for math'}
+      </div>
+
+      <div
+        className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-md border border-vcl-border bg-obsidian/90 backdrop-blur-sm"
+        style={{ pointerEvents: 'auto' }}
       >
-        +
-      </button>
-      <button
-        type="button"
-        title="Zoom out"
-        onClick={() => zoomBy(1 / 1.25)}
-        className="h-6 w-6 border-t border-vcl-border font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
-      >
-        −
-      </button>
-      <button
-        type="button"
-        title="Reset view and node positions"
-        onClick={resetView}
-        className="h-6 w-6 border-t border-vcl-border font-mono text-[9px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
-      >
-        ⟳
-      </button>
-    </div>
+        <button
+          type="button"
+          title="Zoom in"
+          onClick={() => zoomBy(1.25)}
+          className="h-6 w-6 font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          title="Zoom out"
+          onClick={() => zoomBy(1 / 1.25)}
+          className="h-6 w-6 border-t border-vcl-border font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          title="Reset view and node positions"
+          onClick={resetView}
+          className="h-6 w-6 border-t border-vcl-border font-mono text-[9px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+        >
+          ⟳
+        </button>
+      </div>
     </div>
   )
 }

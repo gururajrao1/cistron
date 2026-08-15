@@ -7,7 +7,7 @@ import { lerpAtTime } from '../api/client'
 import { useLab } from '../lab/LabContext'
 import { resolveOmicsProvenance } from '../api/types'
 import { TrajectoryChart } from './studio/TrajectoryChart'
-import { NetworkGraphSvg, type GraphEdgeView } from './studio/NetworkGraphSvg'
+import { NetworkGraphSvg, type GraphEdgeView, type NodeLodDetail } from './studio/NetworkGraphSvg'
 import { classifyEdgeKind } from '../engine/edgeClassification'
 
 /** Hard cap — never hand the stage a huge graph. */
@@ -296,6 +296,33 @@ export function StudioCanvas({
     }
   }, [omicsActive, omicsLfcByNode])
 
+  const nodeDetailFor = useMemo(() => {
+    if (!displayGraph) return undefined
+    return (id: string): NodeLodDetail | null => {
+      const node = displayGraph.nodes[id] ?? displayGraph.nodes[id.toUpperCase()]
+      const y = nodeY[id] ?? nodeY[id.toUpperCase()] ?? 0
+      const y0 =
+        node?.initial_concentration ??
+        baselineNodeY[id] ??
+        baselineNodeY[id.toUpperCase()] ??
+        y
+      let inbound = 0
+      let outbound = 0
+      for (const e of edgeViews) {
+        if (e.target === id) inbound += e.flux
+        if (e.source === id) outbound += e.flux
+      }
+      return {
+        y,
+        y0,
+        deltaY: y - y0,
+        tauMin: Number(node?.tau_min ?? 20),
+        inboundFlux: inbound,
+        outboundFlux: outbound,
+      }
+    }
+  }, [displayGraph, nodeY, baselineNodeY, edgeViews])
+
   const maxFlux = useMemo(
     () => (Object.values(edgeF).length ? Math.max(...Object.values(edgeF)) : 0),
     [edgeF],
@@ -312,6 +339,7 @@ export function StudioCanvas({
           baselineValues={baselineNodeY}
           subtitleFor={subtitleFor}
           omicsColorFor={omicsColorFor}
+          nodeDetailFor={nodeDetailFor}
           perturbations={perturbations}
           knockouts={knockouts}
           selectedNode={selectedNode}

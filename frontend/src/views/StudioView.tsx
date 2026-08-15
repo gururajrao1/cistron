@@ -131,7 +131,8 @@ export function StudioView() {
         </div>
       ) : (
         <div className="flex h-[28px] shrink-0 items-center border-b border-vcl-border px-2.5 font-mono text-[10px] text-vcl-dim">
-          Biologist view · phenotype & wet-lab cards (switch to Lab Researcher for charts / mesh)
+          Biologist view · pathway bubbles on the map · zoom in for proteins (Lab Researcher for charts /
+          mesh)
         </div>
       )}
 
@@ -158,14 +159,6 @@ export function StudioView() {
             perturbations={lab.perturbations ?? {}}
             selectedNode={lab.selectedNode}
           />
-        ) : mode === 'biologist' ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <p className="max-w-md text-sm text-vcl-soft">
-              Visual summaries above answer timing, energy, acid load, and nuclear localization.
-              Switch to <span className="text-cyan-flux">Lab Researcher</span> for trajectory charts
-              and the spatial mesh.
-            </p>
-          </div>
         ) : (
           <StudioCanvas
             preset={lab.profileId || 'hypoxia'}

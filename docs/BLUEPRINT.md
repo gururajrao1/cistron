@@ -34,9 +34,19 @@ Raw tables and FBA vectors sit behind **Show numbers**. Chart shaded bands are *
 
 | Mode | Default visibility |
 | --- | --- |
-| **Biologist** | Phenotype + wet-lab cards + gauges; hide charts/mesh/raw matrices |
+| **Biologist** | Phenotype + wet-lab cards + gauges; pathway bubbles on map; hide charts/mesh/raw matrices |
 | **Lab Researcher** (default) | Cards + trajectories + spatial mesh + drug controls |
 | **Systems Math** | Researcher + raw tables / FBA vectors opened by default |
+
+### Semantic zoom (network graph)
+
+Shneiderman-style LOD on the Studio topology map:
+
+1. **Zoomed out** — pathway program bubbles (Hypoxia/HIF, Glycolysis, Growth, …) with green/red health glow
+2. **Mid zoom** — protein nodes + activation/inhibition edges (IPA-style semantic colors)
+3. **Max zoom** — hover reveals live y(t), y₀, τ, inbound/outbound flux and a dy/dt sketch
+
+Click a pathway bubble to zoom into its proteins. Biologist mode opens at the pathway LOD by default.
 
 Trajectory charts use green / amber / red **phenotype zones** (Healthy · Transient stress · Pathogenic) with muted Y-axis ticks. Hover gauges for exact floats.
 
