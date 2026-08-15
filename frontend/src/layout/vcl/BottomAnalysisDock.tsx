@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { clsx } from 'clsx'
 import { TrajectoryChart } from '../../components/studio/TrajectoryChart'
+import { InsightStrip } from '../../components/studio/InsightStrip'
 import { useLab } from '../../lab/LabContext'
 import { FOCUS_SERIES, payloadNodeSeries, sampleCompartmentsAt } from '../../api/types'
 import {
@@ -8,6 +9,12 @@ import {
   simulateMetabolicBridge,
   solveMiniFbaLite,
 } from '../../engine/metabolicBridge'
+import {
+  buildCompareInsight,
+  buildFluxInsight,
+  buildOrganelleInsight,
+  buildTrajectoryInsight,
+} from '../../engine/insightRules'
 
 type BottomTab = 'trajectory' | 'compare' | 'organelle' | 'flux'
 
@@ -43,8 +50,21 @@ function OrganelleTab() {
     return Array.from(new Set(['HIF1A', ...focus, ...fromGraph])).slice(0, 10)
   }, [lab.profileId, lab.nodes])
 
-  return (
-    <div className="h-full overflow-auto p-2">
+  const insight = useMemo(
+    () =>
+      buildOrganelleInsight({
+        active: lab.payload,
+        untreated: lab.untreatedRun,
+        treated: lab.treatedRun,
+        scrubT: lab.scrubT,
+        profileId: lab.profileId,
+        focus: species,
+      }),
+    [lab.payload, lab.untreatedRun, lab.treatedRun, lab.scrubT, lab.profileId, species],
+  )
+
+  const table = (
+    <div className="h-full overflow-auto">
       <table className="w-full border-collapse text-left font-mono text-[10.5px]">
         <thead>
           <tr className="text-[10px] uppercase tracking-[0.1em] text-vcl-dim">
@@ -98,6 +118,12 @@ function OrganelleTab() {
       </p>
     </div>
   )
+
+  return (
+    <div className="h-full overflow-hidden p-2">
+      <InsightStrip insight={insight}>{table}</InsightStrip>
+    </div>
+  )
 }
 
 function FluxTab() {
@@ -111,7 +137,23 @@ function FluxTab() {
     }
   }, [lab.payload])
 
+  const baselineBridge = useMemo(() => {
+    const src = lab.untreatedRun
+    if (!src) return null
+    try {
+      return simulateMetabolicBridge(src)
+    } catch {
+      return null
+    }
+  }, [lab.untreatedRun])
+
   const point = bridge ? metabolicAtTime(bridge, lab.scrubT) : null
+  const baselinePoint = baselineBridge
+    ? metabolicAtTime(baselineBridge, lab.scrubT)
+    : bridge
+      ? metabolicAtTime(bridge, 0)
+      : null
+
   const fba = useMemo(() => {
     try {
       return solveMiniFbaLite(lab.payload, { t: lab.scrubT })
@@ -119,10 +161,35 @@ function FluxTab() {
       return null
     }
   }, [lab.payload, lab.scrubT])
+
   const atp = point?.atpYield ?? 0
   const lac = point?.lactateExport ?? 0
   const nad = point?.nadRatio ?? 1
   const ocr = Math.max(0, Math.min(100, (nad / (nad + 1)) * 100))
+
+  const insight = useMemo(
+    () =>
+      buildFluxInsight({
+        active: lab.payload,
+        untreated: lab.untreatedRun,
+        treated: lab.treatedRun,
+        scrubT: lab.scrubT,
+        profileId: lab.profileId,
+        metabolic: point,
+        metabolicBaseline: baselinePoint,
+        fba,
+      }),
+    [
+      lab.payload,
+      lab.untreatedRun,
+      lab.treatedRun,
+      lab.scrubT,
+      lab.profileId,
+      point,
+      baselinePoint,
+      fba,
+    ],
+  )
 
   const rows = point
     ? Object.entries(point.fluxes)
@@ -130,8 +197,28 @@ function FluxTab() {
         .slice(0, 8)
     : []
 
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+  const phenotype = (
+    <div className="grid shrink-0 grid-cols-3 gap-2 px-0.5 pb-1">
+      {[
+        { label: 'ATP yield', value: atp.toFixed(3), tone: 'text-emerald-active' },
+        { label: 'Lactate', value: `${lac.toFixed(2)} a.u.`, tone: 'text-amber-kinase' },
+        { label: 'OCR proxy', value: `${ocr.toFixed(0)}%`, tone: 'text-cyan-flux' },
+      ].map((k) => (
+        <div
+          key={k.label}
+          className="rounded-md border border-vcl-border bg-vcl-surface px-2.5 py-2"
+        >
+          <div className="lab-meta">{k.label}</div>
+          <div className={clsx('mt-1 font-mono text-[13px] font-semibold', k.tone)}>
+            {bridge ? k.value : '—'}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  const advanced = (
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       <p className="shrink-0 text-[10px] leading-relaxed text-vcl-dim">
         Illustrative metabolic bridge + mini FBA-lite (not genome-scale COBRA).{' '}
         {fba ? (
@@ -140,23 +227,7 @@ function FluxTab() {
           </span>
         ) : null}
       </p>
-      <div className="grid shrink-0 grid-cols-3 gap-2">
-        {[
-          { label: 'ATP yield', value: atp.toFixed(3), tone: 'text-emerald-active' },
-          { label: 'Lactate', value: `${lac.toFixed(2)} mmol/L`, tone: 'text-amber-kinase' },
-          { label: 'OCR proxy', value: `${ocr.toFixed(0)}%`, tone: 'text-cyan-flux' },
-        ].map((k) => (
-          <div
-            key={k.label}
-            className="rounded-md border border-vcl-border bg-vcl-surface px-2.5 py-2"
-          >
-            <div className="lab-meta">{k.label}</div>
-            <div className={clsx('mt-1 font-mono text-[13px] font-semibold', k.tone)}>
-              {bridge ? k.value : '—'}
-            </div>
-          </div>
-        ))}
-      </div>
+      {phenotype}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full border-collapse text-left font-mono text-[10.5px]">
           <thead>
@@ -185,6 +256,12 @@ function FluxTab() {
       </div>
     </div>
   )
+
+  return (
+    <div className="h-full overflow-hidden p-2">
+      <InsightStrip insight={insight}>{advanced}</InsightStrip>
+    </div>
+  )
 }
 
 function CompareTab() {
@@ -199,15 +276,24 @@ function CompareTab() {
   const treated = lab.treatedRun
   const hasBoth = Boolean(untreated && treated)
 
+  const insight = useMemo(
+    () =>
+      buildCompareInsight({
+        active: lab.payload,
+        untreated,
+        treated,
+        scrubT: lab.scrubT,
+        profileId: lab.profileId,
+        focus,
+      }),
+    [lab.payload, untreated, treated, lab.scrubT, lab.profileId, focus],
+  )
+
   return (
-    <div className="h-full overflow-auto p-2">
-      {!hasBoth ? (
-        <p className="px-2 py-4 text-[11px] text-vcl-muted">
-          Apply a knockout or titration, then re-run — baseline (untreated) vs treated trajectories
-          will appear here as Δy at each scrub time.
-        </p>
-      ) : (
-        <>
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+      <InsightStrip insight={insight} />
+      {!hasBoth ? null : (
+        <div className="min-h-0 flex-1 overflow-auto">
           <p className="mb-2 px-1 font-mono text-[10px] text-vcl-dim">
             Scenario A/B · untreated vs treated at t = {lab.scrubT.toFixed(0)} min
           </p>
@@ -268,7 +354,7 @@ function CompareTab() {
               })}
             </tbody>
           </table>
-          <div className="mt-2 px-1">
+          <div className="mt-2 h-[120px] px-1">
             <TrajectoryChart
               untreatedRun={untreated}
               treatedRun={treated}
@@ -278,8 +364,41 @@ function CompareTab() {
               compact
             />
           </div>
-        </>
+        </div>
       )}
+    </div>
+  )
+}
+
+function TrajectoryTab({ focus }: { focus: string[] }) {
+  const lab = useLab()
+  const insight = useMemo(
+    () =>
+      buildTrajectoryInsight({
+        active: lab.payload,
+        untreated: lab.untreatedRun,
+        treated: lab.treatedRun,
+        scrubT: lab.scrubT,
+        profileId: lab.profileId,
+        focus,
+      }),
+    [lab.payload, lab.untreatedRun, lab.treatedRun, lab.scrubT, lab.profileId, focus],
+  )
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+      <InsightStrip insight={insight} />
+      <div className="min-h-0 flex-1">
+        <TrajectoryChart
+          untreatedRun={lab.untreatedRun}
+          treatedRun={lab.treatedRun}
+          focus={focus}
+          scrubT={lab.scrubT}
+          loading={lab.busy}
+          compact
+          bands={insight.bands}
+        />
+      </div>
     </div>
   )
 }
@@ -343,18 +462,7 @@ export function BottomAnalysisDock() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === 'trajectory' ? (
-          <div className="h-full p-1">
-            <TrajectoryChart
-              untreatedRun={lab.untreatedRun}
-              treatedRun={lab.treatedRun}
-              focus={focus}
-              scrubT={lab.scrubT}
-              loading={lab.busy}
-              compact
-            />
-          </div>
-        ) : null}
+        {tab === 'trajectory' ? <TrajectoryTab focus={focus} /> : null}
         {tab === 'compare' ? <CompareTab /> : null}
         {tab === 'organelle' ? <OrganelleTab /> : null}
         {tab === 'flux' ? <FluxTab /> : null}

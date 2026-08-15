@@ -18,6 +18,17 @@ No Celery/Redis, no React Flow rewrite, no fake RAG.
 | Hill-cube stiff integrator | **Done** — default `LSODA`, nonnegative clamp, dense `t_eval` |
 | Server 2-compartment HIF1A translocation | **Done** — `cistron/engine/compartments.py` → payload.`compartments` |
 | Single-source scrubber payload | **Done** — `time_steps` + `trajectories`/`nodes` + `compartments` |
+| Wet-lab Insight Layer (Studio dock) | **Done** — rule/template translation of Δ + lab next steps (not an LLM) |
+
+## Wet-lab Insight Layer
+
+Studio bottom tabs (Trajectory / Organelle / Flux / Compare) lead with:
+
+1. A plain-English **headline** (timing, nuclear localization, metabolic phenotype)
+2. **Δ badges** vs t₀ or untreated baseline
+3. One **lab next step** (when to sample, fractionation, OCR/ECAR)
+
+Raw tables and FBA vectors sit behind **Show numbers**. Chart shaded bands are **illustrative activity zones**, not clinical cutoffs. Translation is deterministic client rules over the server SoT scrubber — not a trained model inventing kinetics.
 
 ## Free-safe substitutes (shipped)
 
