@@ -72,7 +72,7 @@ Trajectory charts use green / amber / red **phenotype zones** (Healthy · Transi
 
 ## Hosting note
 
-Render Free may soft-fail the Vite build (`scripts/render-build.sh`). Check `GET /api/v1/health` → `database_handles.spa_built`.
+Render Free builds the Vite app in `scripts/render-build.sh`. A failed Studio build **aborts** the deploy (never ship API-only). Check `GET /api/v1/health` → `database_handles.spa_built` should be `true`.
 
 ## References (methods)
 

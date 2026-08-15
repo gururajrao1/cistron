@@ -30,7 +30,7 @@ import { ProvenanceBadge } from './ProvenanceBadge'
 import { useLab } from '../lab/LabContext'
 import { useNavigate } from 'react-router-dom'
 import { StatDisclosure } from './studio/StatDisclosure'
-import { RawMathOnly, useViewMode } from '../layout/viewModeGates'
+import { RawMathOnly } from '../layout/viewModeGates'
 
 /** Map scrubber minutes → discrete trajectory keyframe index. */
 function frameIndexAt(payload: ScrubberPayload | null, scrubT: number): number {

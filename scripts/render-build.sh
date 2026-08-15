@@ -27,7 +27,7 @@ export PATH="${NODE_DIR}/bin:${PATH}"
 ui_status=$?
 set -e
 if [[ $ui_status -ne 0 ]]; then
-  echo "WARNING: Studio build failed (exit ${ui_status}); API-only deploy continues."
-else
-  echo "==> Studio build OK"
+  echo "ERROR: Studio build failed (exit ${ui_status}). Aborting deploy so we never ship API-only (spa_built=false)."
+  exit "$ui_status"
 fi
+echo "==> Studio build OK"

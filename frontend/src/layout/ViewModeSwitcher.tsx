@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import type { ViewMode } from '../../lab/viewMode'
+import type { ViewMode } from '../lab/viewMode'
 
 const MODES: Array<{
   id: ViewMode
