@@ -54,8 +54,8 @@ function lodFromZoom(k: number): SemanticLod {
 }
 
 function initialZoomForMode(mode: ViewMode): number {
-  // Biologists land on the protein network (readable map); zoom out for pathways.
-  // Systems starts slightly closer for math hover.
+  // Biologists land on pathway bubbles; Systems starts slightly closer for math.
+  if (mode === 'biologist') return 0.55
   if (mode === 'systems') return 1.15
   return 1
 }

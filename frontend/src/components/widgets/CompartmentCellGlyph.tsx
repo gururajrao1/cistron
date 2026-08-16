@@ -29,7 +29,7 @@ export function CompartmentCellGlyph({
         <span>{label}</span>
         <span className="text-cyan-flux">{(nucF * 100).toFixed(0)}% nuc</span>
       </div>
-      <svg viewBox="0 0 100 72" className="mx-auto h-12 w-full max-w-[120px]" aria-hidden>
+      <svg viewBox="0 0 100 72" className="mx-auto h-16 w-full max-w-[140px]" aria-hidden>
         {/* Cell body */}
         <ellipse
           cx="50"
