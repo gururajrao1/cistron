@@ -29,20 +29,20 @@ export function PhenotypeSummaryCard({ summary, showGauges = true, className }: 
   return (
     <div
       className={clsx(
-        'rounded-lg border border-cyan-flux/25 bg-cyan-950/15 px-3 py-2.5',
+        'overflow-hidden rounded-xl border border-cyan-flux/25 bg-cyan-950/15 px-3.5 py-3',
         className,
       )}
     >
-      <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan-flux">
+      <div className="mb-2.5 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan-flux">
         <Activity className="h-3.5 w-3.5" />
         Phenotype summary
       </div>
-      <ol className="mb-3 space-y-1.5">
+      <ol className="mb-3 space-y-2">
         {summary.sentences.map((s, i) => (
           <li
             key={i}
             className={clsx(
-              'rounded-md border px-2.5 py-1.5 text-[12px] leading-snug',
+              'rounded-md border px-2.5 py-2 text-[12px] leading-relaxed',
               TONE[s.tone],
             )}
           >
@@ -51,13 +51,13 @@ export function PhenotypeSummaryCard({ summary, showGauges = true, className }: 
         ))}
       </ol>
       {showGauges ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 overflow-hidden sm:grid-cols-2 xl:grid-cols-4">
           <BatteryGauge percentage={summary.atpPercent} />
           <AcidMeter level={summary.lactateLevel} />
           {summary.blissScore != null ? (
             <SynergyDial score={summary.blissScore} />
           ) : (
-            <div className="flex items-center justify-center rounded-md border border-dashed border-vcl-border px-2 text-[10px] text-vcl-dim">
+            <div className="flex min-h-[3.25rem] items-center justify-center rounded-md border border-dashed border-vcl-border px-2 text-[10px] text-vcl-dim">
               Synergy dial after Dual Screen / SL pairs
             </div>
           )}

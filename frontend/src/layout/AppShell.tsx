@@ -114,8 +114,8 @@ export function AppShell() {
     location.pathname === '/biophysics' ||
     location.pathname.startsWith('/biophysics/')
 
-  const [bottomH, setBottomH] = useState(258)
-  const [dockW, setDockW] = useState(344)
+  const [bottomH, setBottomH] = useState(220)
+  const [dockW, setDockW] = useState(320)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   useEffect(() => {
@@ -194,46 +194,45 @@ export function AppShell() {
         </div>
 
         {isStudio ? (
-          <>
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              className="group relative z-10 flex w-[5px] shrink-0 cursor-ew-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
-              onPointerDown={rightDrag.onPointerDown}
-              onPointerMove={rightDrag.onPointerMove}
-              onPointerUp={rightDrag.onPointerUp}
-            >
-              <span className="h-[34px] w-px rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
-            </div>
-            <aside
-              className="flex shrink-0 flex-col overflow-hidden border-l border-cyan-flux/20 bg-[#041820]/95 backdrop-blur-sm"
-              style={{ width: dockW }}
-            >
-              <RightInspectorDock />
-            </aside>
-          </>
-        ) : null}
+            <>
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                className="group relative z-10 flex w-[5px] shrink-0 cursor-ew-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
+                onPointerDown={rightDrag.onPointerDown}
+                onPointerMove={rightDrag.onPointerMove}
+                onPointerUp={rightDrag.onPointerUp}
+              >
+                <span className="h-[34px] w-px rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
+              </div>
+              <aside
+                className="flex shrink-0 flex-col overflow-hidden border-l border-cyan-flux/20 bg-[#041820]/95 backdrop-blur-sm"
+                style={{ width: dockW }}
+              >
+                {lab.selectedNode ? (
+                  <NodeBiophysicsInspector
+                    nodeId={lab.selectedNode}
+                    graph={lab.graph}
+                    payload={lab.payload}
+                    vector={lab.prioritization?.node_vectors?.[lab.selectedNode]}
+                    xai={lab.xai}
+                    onClose={() => lab.setSelectedNode(null)}
+                    onKnockout={(node) => {
+                      lab.setSelectedNode(null)
+                      lab.setNodePerturbation(node, 0)
+                    }}
+                    onClamp={(node) => {
+                      lab.setSelectedNode(null)
+                      lab.setNodePerturbation(node, 1)
+                    }}
+                  />
+                ) : (
+                  <RightInspectorDock />
+                )}
+              </aside>
+            </>
+          ) : null}
       </div>
-
-      {lab.selectedNode ? (
-        <NodeBiophysicsInspector
-          nodeId={lab.selectedNode}
-          graph={lab.graph}
-          payload={lab.payload}
-          vector={lab.prioritization?.node_vectors?.[lab.selectedNode]}
-          xai={lab.xai}
-          onClose={() => lab.setSelectedNode(null)}
-          onKnockout={(node) => {
-            lab.setSelectedNode(null)
-            // Shared path with CRISPR KO / shift-click — respects Pathways dynamic topology.
-            lab.setNodePerturbation(node, 0)
-          }}
-          onClamp={(node) => {
-            lab.setSelectedNode(null)
-            lab.setNodePerturbation(node, 1)
-          }}
-        />
-      ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {isStudio ? <FirstRunChecklist /> : null}

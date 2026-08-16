@@ -395,7 +395,7 @@ export function NetworkGraphSvg({
         n += 1
       }
       if (!n) continue
-      const r = Math.min(78, Math.max(42, 28 + Math.sqrt(mod.members.length) * 16))
+      const r = Math.min(92, Math.max(56, 36 + Math.sqrt(mod.members.length) * 18))
       map.set(mod.id, { x: sx / n, y: sy / n, r })
     }
     return map
@@ -718,9 +718,9 @@ export function NetworkGraphSvg({
                     onMouseLeave={() => setHoveredModule(null)}
                   >
                     <circle
-                      r={c.r + 10}
+                      r={c.r + 14}
                       fill={glow}
-                      opacity={active ? 0.28 : 0.14}
+                      opacity={active ? 0.22 : 0.1}
                       filter="url(#module-glow)"
                       style={{ pointerEvents: 'none' }}
                     />
@@ -728,36 +728,26 @@ export function NetworkGraphSvg({
                       r={c.r}
                       fill="#0B1522"
                       stroke={glow}
-                      strokeWidth={active ? 3 : 2}
-                      opacity={0.95}
+                      strokeWidth={active ? 3 : 2.25}
+                      opacity={0.97}
                     />
                     <text
-                      y={-6}
+                      y={-4}
                       textAnchor="middle"
                       fill="#E6EDF5"
                       fontFamily={FONT_SANS}
-                      fontSize={14}
+                      fontSize={15}
                       fontWeight={700}
                       style={{ pointerEvents: 'none' }}
                     >
                       {mod.label}
                     </text>
                     <text
-                      y={12}
-                      textAnchor="middle"
-                      fill="#94A3B8"
-                      fontFamily={FONT_MONO}
-                      fontSize={10}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      {mod.gloss}
-                    </text>
-                    <text
-                      y={c.r - 14}
+                      y={16}
                       textAnchor="middle"
                       fill={glow}
                       fontFamily={FONT_MONO}
-                      fontSize={10}
+                      fontSize={11}
                       fontWeight={600}
                       style={{ pointerEvents: 'none' }}
                     >
@@ -953,12 +943,17 @@ export function NetworkGraphSvg({
         </div>
       ) : null}
 
-      <div className="absolute bottom-2 left-2 z-10 rounded-md border border-vcl-border bg-obsidian/90 px-2 py-1 font-mono text-[9.5px] text-vcl-muted backdrop-blur-sm">
+      <div className="absolute left-3 top-3 z-10 max-w-[220px] rounded-md border border-vcl-border bg-obsidian/92 px-2.5 py-1.5 font-mono text-[10px] leading-snug text-vcl-muted backdrop-blur-sm">
         {lod === 'modules'
-          ? 'Pathways · click bubble or zoom in'
+          ? 'Pathways · click a bubble or zoom in'
           : lod === 'detail'
             ? 'Node detail · hover for ODE / flux'
             : 'Proteins · zoom out for pathways · zoom in for math'}
+        {lod !== 'modules' ? (
+          <span className="mt-0.5 block text-[9px] text-vcl-dim">
+            Shift-click KO · scroll zoom · drag pan
+          </span>
+        ) : null}
       </div>
 
       <div

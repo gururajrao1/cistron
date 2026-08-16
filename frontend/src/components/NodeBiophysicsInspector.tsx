@@ -269,12 +269,14 @@ export function NodeBiophysicsInspector({
   ]
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-slate-800/80 bg-obsidian-panel/95 shadow-2xl backdrop-blur-xl">
-      <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 px-4 py-3">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-transparent">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-vcl-border px-3 py-2.5">
         <div className="min-w-0">
           <MetaLabel className="text-emerald-400/80">Node Biophysics Inspector</MetaLabel>
           <div className="mt-1 flex items-center gap-2">
-            <h2 className="text-lg font-extrabold tracking-tight text-slate-50">{activeNode}</h2>
+            <h2 className="truncate text-base font-extrabold tracking-tight text-slate-50">
+              {activeNode}
+            </h2>
             <GeneBadge name={activeNode} tone="emerald" />
           </div>
           {meta?.full_name ? (
@@ -288,14 +290,14 @@ export function NodeBiophysicsInspector({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-slate-700/80 p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          className="shrink-0 rounded-lg border border-slate-700/80 p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
           aria-label="Close inspector"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
         <GlassCard
           title="What is this protein?"
           hint="MyGene · UniProt grounded · optional HF LLM polish"

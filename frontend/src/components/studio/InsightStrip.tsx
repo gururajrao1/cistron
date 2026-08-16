@@ -59,14 +59,14 @@ export function InsightStrip({
   }, [defaultShowNumbers])
 
   return (
-    <div className={clsx('flex h-full min-h-0 flex-col gap-2 overflow-hidden', className)}>
-      <div className="shrink-0 rounded-lg border border-cyan-flux/25 bg-cyan-950/20 px-2.5 py-2">
-        <div className="mb-1 flex items-start gap-1.5">
+    <div className={clsx('flex h-full min-h-0 flex-col gap-3 overflow-hidden', className)}>
+      <div className="shrink-0 rounded-lg border border-cyan-flux/25 bg-cyan-950/20 px-3 py-2.5">
+        <div className="mb-1.5 flex items-start gap-2">
           <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-flux" />
-          <p className="text-[12px] leading-snug text-vcl-text">{insight.headline}</p>
+          <p className="text-[12px] leading-relaxed text-vcl-text">{insight.headline}</p>
         </div>
         {insight.deltas.length ? (
-          <div className="mb-1.5 flex flex-wrap gap-1.5 pl-5">
+          <div className="mb-2 flex flex-wrap gap-1.5 pl-5">
             {insight.deltas.map((d) => (
               <DeltaBadge key={`${d.label}-${d.pct}`} d={d} />
             ))}

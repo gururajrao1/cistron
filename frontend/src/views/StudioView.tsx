@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { GitBranch, Grid3x3, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, GitBranch, Grid3x3, Loader2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { StudioCanvas } from '../components/StudioCanvas'
 import { SpatialGridCanvas } from '../components/studio/SpatialGridCanvas'
@@ -16,6 +16,7 @@ type StudioMeshMode = 'topology' | 'spatial'
 export function StudioView() {
   const lab = useLab()
   const [meshMode, setMeshMode] = useState<StudioMeshMode>('topology')
+  const [protocolOpen, setProtocolOpen] = useState(false)
   const mode = lab.viewMode
 
   const toggleKnockout = useCallback(
@@ -77,7 +78,7 @@ export function StudioView() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {showMeshTools ? (
-        <div className="flex h-[34px] shrink-0 items-center gap-2 border-b border-vcl-border bg-obsidian-panel/90 px-2.5 backdrop-blur-sm">
+        <div className="flex h-[34px] shrink-0 items-center gap-2 border-b border-vcl-border bg-obsidian-panel/90 px-3 backdrop-blur-sm">
           <div className="inline-flex h-7 items-center rounded-md border border-vcl-border bg-obsidian p-0.5">
             <button
               type="button"
@@ -130,15 +131,36 @@ export function StudioView() {
           )}
         </div>
       ) : (
-        <div className="flex h-[28px] shrink-0 items-center border-b border-vcl-border px-2.5 font-mono text-[10px] text-vcl-dim">
-          Biologist view · pathway bubbles on the map · zoom in for proteins (Lab Researcher for charts /
-          mesh)
+        <div className="flex h-8 shrink-0 items-center border-b border-vcl-border px-3 font-mono text-[10px] text-vcl-dim">
+          Biologist · pathway map · zoom in for proteins
         </div>
       )}
 
-      <div className="shrink-0 space-y-2 overflow-auto border-b border-vcl-border bg-obsidian/40 p-2 max-h-[42%] min-h-0">
+      {/* Compact overview band — capped height so the map keeps the stage */}
+      <div className="shrink-0 space-y-2.5 overflow-y-auto border-b border-vcl-border/80 bg-obsidian/30 px-3 py-3 max-h-[min(240px,34vh)]">
         <PhenotypeSummaryCard summary={phenotype} showGauges />
-        <WetLabProtocolCard protocol={protocol} />
+        <div className="rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60">
+          <button
+            type="button"
+            onClick={() => setProtocolOpen((v) => !v)}
+            className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
+          >
+            {protocolOpen ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+            Wet-lab protocol
+            <span className="ml-auto font-sans text-[10px] font-normal normal-case tracking-normal text-vcl-dim">
+              {protocolOpen ? 'Hide' : 'Show timing & assays'}
+            </span>
+          </button>
+          {protocolOpen ? (
+            <div className="border-t border-amber-kinase/20 px-1 pb-2">
+              <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">

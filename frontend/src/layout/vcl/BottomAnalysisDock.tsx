@@ -120,7 +120,7 @@ function OrganelleTab() {
   )
 
   return (
-    <div className="h-full overflow-hidden p-2">
+    <div className="h-full overflow-hidden">
       <InsightStrip insight={insight} defaultShowNumbers={lab.viewMode === 'systems'}>
         {table}
       </InsightStrip>
@@ -260,7 +260,7 @@ function FluxTab() {
   )
 
   return (
-    <div className="h-full overflow-hidden p-2">
+    <div className="h-full overflow-hidden">
       <InsightStrip insight={insight} defaultShowNumbers={lab.viewMode === 'systems'}>
         {advanced}
       </InsightStrip>
@@ -294,7 +294,7 @@ function CompareTab() {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <InsightStrip insight={insight} defaultShowNumbers={lab.viewMode === 'systems'}>
         {hasBoth ? (
         <div className="min-h-0 flex-1 overflow-auto">
@@ -395,7 +395,7 @@ function TrajectoryTab({ focus }: { focus: string[] }) {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <InsightStrip insight={insight} />
       {mode !== 'biologist' ? (
         <div className="min-h-0 flex-1">
@@ -441,14 +441,14 @@ export function BottomAnalysisDock() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-1 border-b border-vcl-border px-2">
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-vcl-border px-3">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
             className={clsx(
-              'h-full border-b-2 px-2.5 font-mono text-[10.5px] font-semibold transition',
+              'h-full border-b-2 px-3 font-mono text-[10.5px] font-semibold transition',
               tab === t.id
                 ? 'border-emerald-active text-vcl-text'
                 : 'border-transparent text-vcl-muted hover:text-vcl-text',
@@ -458,7 +458,7 @@ export function BottomAnalysisDock() {
           </button>
         ))}
 
-        <div className="ml-auto flex items-center gap-2 pl-2">
+        <div className="ml-auto flex items-center gap-2.5 border-l border-vcl-border pl-3">
           <span className="font-mono text-[10px] text-vcl-dim">t₀</span>
           <input
             type="range"
@@ -468,7 +468,7 @@ export function BottomAnalysisDock() {
             value={lab.scrubT}
             disabled={!lab.payload}
             onChange={(e) => lab.setScrubT(Number(e.target.value))}
-            className="w-[170px] accent-emerald-active disabled:opacity-40"
+            className="w-[150px] accent-emerald-active disabled:opacity-40"
           />
           <span className="font-mono text-[10px] text-vcl-dim">t₆₀</span>
           <span className="min-w-[3.5rem] text-right font-mono text-[11px] font-semibold text-emerald-active">
@@ -477,7 +477,7 @@ export function BottomAnalysisDock() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden p-3">
         {tab === 'trajectory' ? <TrajectoryTab focus={focus} /> : null}
         {tab === 'compare' ? <CompareTab /> : null}
         {tab === 'organelle' ? <OrganelleTab /> : null}

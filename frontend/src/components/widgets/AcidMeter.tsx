@@ -14,7 +14,7 @@ export function AcidMeter({ level, label = 'Lactate / acid load', className }: P
   const tip = `${label}: ${v.toFixed(3)} (${pct.toFixed(0)}% of scale)`
 
   return (
-    <div className={clsx('flex flex-col gap-1', className)} title={tip}>
+    <div className={clsx('flex flex-col gap-1.5 overflow-hidden', className)} title={tip}>
       <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-wider text-vcl-dim">
         <span>{label}</span>
         <span className="text-vcl-muted">{v.toFixed(2)}</span>
@@ -32,7 +32,7 @@ export function AcidMeter({ level, label = 'Lactate / acid load', className }: P
           style={{ left: `${pct}%` }}
         />
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-vcl-text shadow-[0_0_6px_rgba(255,255,255,0.5)]"
+          className="absolute top-0 bottom-0 w-0.5 bg-vcl-text"
           style={{ left: `calc(${pct}% - 1px)` }}
         />
       </div>
