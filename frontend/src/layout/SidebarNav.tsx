@@ -21,11 +21,12 @@ type NavGroup = {
 }
 
 export const PRIMARY_NAV: NavItem[] = [
-  { id: 'studio', path: '/studio', label: 'Simulation Studio', shortLabel: 'Studio', code: 'ST', shortcut: '1', hint: 'Map + phenotype' },
+  { id: 'studio', path: '/studio', label: 'Simulation Studio', shortLabel: 'Studio', code: 'ST', shortcut: '1', hint: 'Pathway map' },
   { id: 'pathways', path: '/pathways', label: 'Disease Pathways', shortLabel: 'Pathways', code: 'PW', shortcut: '2', hint: 'Pick condition graph' },
   { id: 'explorer', path: '/explorer', label: 'Network Builder', shortLabel: 'Explorer', code: 'EX', shortcut: '3', hint: 'Edit topology' },
   { id: 'xai', path: '/xai', label: 'Perturbation Sensitivity', shortLabel: 'XAI', code: 'XA', shortcut: '4', hint: 'Drivers & Sobol' },
   { id: 'pharmacology', path: '/pharmacology', label: 'Pharmacology Lab', shortLabel: 'Pharma', code: 'PH', shortcut: '5', hint: 'Dose · KO · clamp' },
+  { id: 'phenotype', path: '/phenotype', label: 'Phenotype Readout', shortLabel: 'Phenotype', code: 'PT', hint: 'Summary · wet-lab' },
   { id: 'briefs', path: '/briefs', label: 'Research Briefs', shortLabel: 'Briefs', code: 'BR', shortcut: '6', hint: 'Narratives & export' },
   { id: 'combinations', path: '/combinations', label: 'Combination Therapy', shortLabel: 'Combos', code: 'CB', shortcut: '7', hint: 'Bliss / Loewe' },
   { id: 'omics', path: '/omics', label: 'VCF & Multi-Omics', shortLabel: 'Omics', code: 'OM', shortcut: '8', hint: 'RNA-seq → y₀' },
@@ -55,7 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'evidence',
     label: 'Evidence',
     items: PRIMARY_NAV.filter((n) =>
-      ['omics', 'briefs', 'biophysics'].includes(n.id),
+      ['phenotype', 'omics', 'briefs', 'biophysics'].includes(n.id),
     ),
   },
 ]

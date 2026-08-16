@@ -10,6 +10,7 @@ import { CombinationsView } from './views/CombinationsView'
 import { OmicsView } from './views/OmicsView'
 import { StructureView } from './views/StructureView'
 import { PathwaysView } from './views/PathwaysView'
+import { PhenotypeView } from './views/PhenotypeView'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="xai" element={<XaiView />} />
             <Route path="pharmacology" element={<PharmacologyView />} />
             <Route path="briefs" element={<BriefsView />} />
+            <Route path="phenotype" element={<PhenotypeView />} />
             <Route path="omics" element={<OmicsView />} />
             <Route path="combinations" element={<CombinationsView />} />
             <Route path="combos" element={<CombinationsView />} />

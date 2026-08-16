@@ -1,32 +1,23 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ChevronDown,
-  ChevronRight,
-  GitBranch,
-  Grid3x3,
-  Loader2,
-} from 'lucide-react'
+import { GitBranch, Grid3x3, Loader2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { StudioCanvas } from '../components/StudioCanvas'
 import { SpatialGridCanvas } from '../components/studio/SpatialGridCanvas'
-import { PhenotypeSummaryCard } from '../components/studio/PhenotypeSummaryCard'
-import { WetLabProtocolCard } from '../components/studio/WetLabProtocolCard'
 import { useLab } from '../lab/LabContext'
-import {
-  buildPhenotypeSummary,
-  buildWetLabProtocol,
-} from '../engine/phenotypeSummary'
 import { useStudioChrome } from '../layout/StudioChromeContext'
 
 type StudioMeshMode = 'topology' | 'spatial'
 
+/**
+ * Simulation Studio — pathway map only.
+ * Phenotype / protocol live on /phenotype; heavy tools on sidebar routes.
+ */
 export function StudioView() {
   const lab = useLab()
   const navigate = useNavigate()
   const { bottomOpen } = useStudioChrome()
   const [meshMode, setMeshMode] = useState<StudioMeshMode>('topology')
-  const [protocolOpen, setProtocolOpen] = useState(false)
   const mode = lab.viewMode
 
   const toggleKnockout = useCallback(
@@ -57,29 +48,6 @@ export function StudioView() {
     if (pertCount > 0) bits.push(`${pertCount} perturbations`)
     return bits.join(' · ')
   }, [nodeCount, edgeCount, lab.scrubT, pertCount])
-
-  const phenotype = useMemo(
-    () =>
-      buildPhenotypeSummary({
-        active: lab.payload,
-        untreated: lab.untreatedRun,
-        scrubT: lab.scrubT,
-        profileId: lab.profileId,
-        topo: lab.topologicalAnalysis,
-      }),
-    [
-      lab.payload,
-      lab.untreatedRun,
-      lab.scrubT,
-      lab.profileId,
-      lab.topologicalAnalysis,
-    ],
-  )
-
-  const protocol = useMemo(
-    () => buildWetLabProtocol(phenotype, lab.profileId),
-    [phenotype, lab.profileId],
-  )
 
   const showMeshTools = mode !== 'biologist'
   const showCanvas = mode !== 'biologist' || Boolean(lab.payload)
@@ -126,6 +94,13 @@ export function StudioView() {
           <div className="ml-auto flex items-center gap-2 font-mono text-[10px] text-vcl-dim">
             <button
               type="button"
+              className="rounded border border-cyan-flux/40 bg-cyan-950/30 px-1.5 py-0.5 text-cyan-flux hover:bg-cyan-950/50"
+              onClick={() => navigate('/phenotype')}
+            >
+              PT · phenotype
+            </button>
+            <button
+              type="button"
               className="rounded border border-vcl-border px-1.5 py-0.5 hover:text-cyan-flux"
               onClick={() => navigate('/pharmacology')}
             >
@@ -150,39 +125,24 @@ export function StudioView() {
       ) : (
         <div className="flex h-8 shrink-0 items-center gap-2 border-b border-vcl-border px-3 font-mono text-[10px] text-vcl-dim">
           <span>Studio · map first</span>
-          <button
-            type="button"
-            className="ml-auto rounded border border-vcl-border px-1.5 py-0.5 text-cyan-flux/90 hover:bg-vcl-surface"
-            onClick={() => navigate('/pathways')}
-          >
-            PW · change disease
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              className="rounded border border-cyan-flux/40 bg-cyan-950/30 px-1.5 py-0.5 text-cyan-flux/90 hover:bg-cyan-950/50"
+              onClick={() => navigate('/phenotype')}
+            >
+              PT · phenotype
+            </button>
+            <button
+              type="button"
+              className="rounded border border-vcl-border px-1.5 py-0.5 text-cyan-flux/90 hover:bg-vcl-surface"
+              onClick={() => navigate('/pathways')}
+            >
+              PW · change disease
+            </button>
+          </div>
         </div>
       )}
-
-      {/* Compact phenotype band — gauges live in Metabolic Flux (FBA) dock */}
-      <div className="shrink-0 space-y-1.5 border-b border-vcl-border/80 bg-obsidian/25 px-3 py-2">
-        <PhenotypeSummaryCard summary={phenotype} />
-        <div className="rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60">
-          <button
-            type="button"
-            onClick={() => setProtocolOpen((v) => !v)}
-            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
-          >
-            {protocolOpen ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-            Wet-lab protocol
-          </button>
-          {protocolOpen ? (
-            <div className="max-h-[min(160px,22vh)] overflow-y-auto border-t border-amber-kinase/20 px-1 pb-2">
-              <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
-            </div>
-          ) : null}
-        </div>
-      </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {showBootSpinner ? (
@@ -221,7 +181,6 @@ export function StudioView() {
           />
         )}
 
-        {/* Scrubber on the map when Analysis dock is closed */}
         {!bottomOpen ? (
           <div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-vcl-border bg-obsidian/92 px-3 py-1.5 shadow-lg backdrop-blur-md">
             <span className="font-mono text-[9px] text-vcl-dim">t₀</span>
