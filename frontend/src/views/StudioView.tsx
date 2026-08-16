@@ -17,10 +17,6 @@ import {
   buildPhenotypeSummary,
   buildWetLabProtocol,
 } from '../engine/phenotypeSummary'
-import {
-  loadPhenotypeOpen,
-  persistPhenotypeOpen,
-} from '../layout/studioChrome'
 import { useStudioChrome } from '../layout/StudioChromeContext'
 
 type StudioMeshMode = 'topology' | 'spatial'
@@ -31,7 +27,6 @@ export function StudioView() {
   const { bottomOpen } = useStudioChrome()
   const [meshMode, setMeshMode] = useState<StudioMeshMode>('topology')
   const [protocolOpen, setProtocolOpen] = useState(false)
-  const [phenotypeOpen, setPhenotypeOpen] = useState(loadPhenotypeOpen)
   const mode = lab.viewMode
 
   const toggleKnockout = useCallback(
@@ -89,12 +84,6 @@ export function StudioView() {
   const showMeshTools = mode !== 'biologist'
   const showCanvas = mode !== 'biologist' || Boolean(lab.payload)
   const showSpatial = mode !== 'biologist' && meshMode === 'spatial'
-  const headline = phenotype.sentences[0]?.text ?? 'Run a simulation to see phenotype.'
-
-  const setPheno = (open: boolean) => {
-    setPhenotypeOpen(open)
-    persistPhenotypeOpen(open)
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -171,52 +160,28 @@ export function StudioView() {
         </div>
       )}
 
-      {/* Compact phenotype: one line by default — expand for gauges */}
-      <div className="shrink-0 border-b border-vcl-border/80 bg-obsidian/25">
-        <button
-          type="button"
-          onClick={() => setPheno(!phenotypeOpen)}
-          className="flex w-full items-start gap-2 px-3 py-2 text-left"
-        >
-          {phenotypeOpen ? (
-            <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-flux" />
-          ) : (
-            <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-flux" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-cyan-flux">
-              Phenotype
+      {/* Compact phenotype band — gauges live in Metabolic Flux (FBA) dock */}
+      <div className="shrink-0 space-y-1.5 border-b border-vcl-border/80 bg-obsidian/25 px-3 py-2">
+        <PhenotypeSummaryCard summary={phenotype} />
+        <div className="rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60">
+          <button
+            type="button"
+            onClick={() => setProtocolOpen((v) => !v)}
+            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
+          >
+            {protocolOpen ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            Wet-lab protocol
+          </button>
+          {protocolOpen ? (
+            <div className="max-h-[min(160px,22vh)] overflow-y-auto border-t border-amber-kinase/20 px-1 pb-2">
+              <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
             </div>
-            <p className="truncate text-[12px] leading-snug text-vcl-soft">{headline}</p>
-          </div>
-          <span className="shrink-0 font-mono text-[9px] text-vcl-dim">
-            {phenotypeOpen ? 'Hide' : 'Details'}
-          </span>
-        </button>
-        {phenotypeOpen ? (
-          <div className="max-h-[min(220px,32vh)] space-y-2 overflow-y-auto border-t border-vcl-border/60 px-3 py-2.5">
-            <PhenotypeSummaryCard summary={phenotype} showGauges />
-            <div className="rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60">
-              <button
-                type="button"
-                onClick={() => setProtocolOpen((v) => !v)}
-                className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
-              >
-                {protocolOpen ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
-                Wet-lab protocol
-              </button>
-              {protocolOpen ? (
-                <div className="border-t border-amber-kinase/20 px-1 pb-2">
-                  <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">

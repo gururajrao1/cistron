@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { clsx } from 'clsx'
 import { TrajectoryChart } from '../../components/studio/TrajectoryChart'
 import { InsightStrip } from '../../components/studio/InsightStrip'
+import { AcidMeter, BatteryGauge } from '../../components/widgets'
 import { useLab } from '../../lab/LabContext'
 import { FOCUS_SERIES, payloadNodeSeries, sampleCompartmentsAt } from '../../api/types'
 import {
@@ -9,6 +10,7 @@ import {
   simulateMetabolicBridge,
   solveMiniFbaLite,
 } from '../../engine/metabolicBridge'
+import { buildPhenotypeSummary } from '../../engine/phenotypeSummary'
 import {
   buildCompareInsight,
   buildFluxInsight,
@@ -199,6 +201,24 @@ function FluxTab() {
         .slice(0, 8)
     : []
 
+  const phenotypeGauges = useMemo(
+    () =>
+      buildPhenotypeSummary({
+        active: lab.payload,
+        untreated: lab.untreatedRun,
+        scrubT: lab.scrubT,
+        profileId: lab.profileId,
+        topo: lab.topologicalAnalysis,
+      }),
+    [
+      lab.payload,
+      lab.untreatedRun,
+      lab.scrubT,
+      lab.profileId,
+      lab.topologicalAnalysis,
+    ],
+  )
+
   const phenotype = (
     <div className="grid shrink-0 grid-cols-3 gap-2 px-0.5 pb-1">
       {[
@@ -219,6 +239,13 @@ function FluxTab() {
     </div>
   )
 
+  const gauges = (
+    <div className="grid shrink-0 grid-cols-1 gap-3 border-b border-vcl-border/70 pb-2 sm:grid-cols-2">
+      <BatteryGauge percentage={phenotypeGauges.atpPercent} />
+      <AcidMeter level={phenotypeGauges.lactateLevel} />
+    </div>
+  )
+
   const advanced = (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       <p className="shrink-0 text-[10px] leading-relaxed text-vcl-dim">
@@ -229,6 +256,7 @@ function FluxTab() {
           </span>
         ) : null}
       </p>
+      {gauges}
       {phenotype}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full border-collapse text-left font-mono text-[10.5px]">

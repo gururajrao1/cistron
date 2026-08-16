@@ -1,12 +1,6 @@
 import { clsx } from 'clsx'
 import { Activity } from 'lucide-react'
 import type { PhenotypeSummary } from '../../engine/phenotypeSummary'
-import {
-  AcidMeter,
-  BatteryGauge,
-  CompartmentCellGlyph,
-  SynergyDial,
-} from '../widgets'
 
 const TONE: Record<PhenotypeSummary['sentences'][0]['tone'], string> = {
   good: 'border-emerald-active/35 bg-emerald-active/10 text-emerald-active',
@@ -17,53 +11,45 @@ const TONE: Record<PhenotypeSummary['sentences'][0]['tone'], string> = {
 
 type Props = {
   summary: PhenotypeSummary
-  /** Show visual gauges (Biologist + Researcher). */
-  showGauges?: boolean
   className?: string
 }
 
 /**
- * Executive phenotype summary — 3 plain-English sentences + optional gauges.
+ * Compact phenotype strip — three condensed sentences in one horizontal band.
+ * ATP / lactate gauges live in the Metabolic Flux (FBA) dock, not here.
  */
-export function PhenotypeSummaryCard({ summary, showGauges = true, className }: Props) {
+export function PhenotypeSummaryCard({ summary, className }: Props) {
   return (
     <div
       className={clsx(
-        'overflow-hidden rounded-xl border border-cyan-flux/25 bg-cyan-950/15 px-3.5 py-3',
+        'overflow-hidden rounded-xl border border-cyan-flux/25 bg-cyan-950/15 px-4 py-2',
         className,
       )}
     >
-      <div className="mb-2.5 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan-flux">
-        <Activity className="h-3.5 w-3.5" />
+      <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-cyan-flux">
+        <Activity className="h-3 w-3" />
         Phenotype summary
       </div>
-      <ol className="mb-3 space-y-2">
+      <ol
+        className={clsx(
+          'grid grid-cols-3 gap-2',
+          'sm:flex sm:flex-row sm:items-center sm:justify-between sm:gap-4',
+        )}
+      >
         {summary.sentences.map((s, i) => (
           <li
             key={i}
             className={clsx(
-              'rounded-md border px-2.5 py-2 text-[12px] leading-relaxed',
+              'min-w-0 rounded-md border px-2 py-1.5 text-[11px] leading-snug',
+              'line-clamp-3 sm:line-clamp-2 sm:flex-1',
               TONE[s.tone],
             )}
+            title={s.text}
           >
             {s.text}
           </li>
         ))}
       </ol>
-      {showGauges ? (
-        <div className="grid gap-4 overflow-hidden sm:grid-cols-2 xl:grid-cols-4">
-          <BatteryGauge percentage={summary.atpPercent} />
-          <AcidMeter level={summary.lactateLevel} />
-          {summary.blissScore != null ? (
-            <SynergyDial score={summary.blissScore} />
-          ) : (
-            <div className="flex min-h-[3.25rem] items-center justify-center rounded-md border border-dashed border-vcl-border px-2 text-[10px] text-vcl-dim">
-              Synergy dial after Dual Screen / SL pairs
-            </div>
-          )}
-          <CompartmentCellGlyph cyto={summary.cyto} nuc={summary.nuc} />
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react'
+import dagre from 'dagre'
 import type { PresetDetail } from '../../api/types'
 import type { EdgeKind } from '../../engine/edgeClassification'
 import {
@@ -35,6 +36,11 @@ const FALLBACK_H = 560
 /** Layout keeps a compact cluster rather than filling the pane edge-to-edge. */
 const COL_GAP_MAX = 190
 const ROW_GAP_MAX = 128
+/** Bounding box for dagre — disc + symbol + subtitle clearance (not visual CSS). */
+const LAYOUT_NODE_W = 108
+const LAYOUT_NODE_H = 96
+const LAYOUT_NODESEP = 78
+const LAYOUT_RANKSEP = 148
 
 /** Viewport zoom bounds. */
 const MIN_ZOOM = 0.35
@@ -152,8 +158,8 @@ type DragState =
     }
 
 /**
- * Longest-path depth → left-to-right columns. Cycles are bounded by a visit
- * budget so feedback loops can never spin here.
+ * Hierarchical L→R layout via dagre so nodes never share a spawn point.
+ * Only positions change — node/edge SVG styling is untouched.
  */
 function buildLayout(
   nodeIds: string[],
@@ -161,72 +167,130 @@ function buildLayout(
   width: number,
   height: number,
 ) {
-  const succ = new Map<string, string[]>()
-  const indeg = new Map<string, number>()
+  if (!nodeIds.length) return new Map<string, Point>()
+
+  const g = new dagre.graphlib.Graph()
+  g.setDefaultEdgeLabel(() => ({}))
+  g.setGraph({
+    rankdir: 'LR',
+    align: 'UL',
+    nodesep: LAYOUT_NODESEP,
+    ranksep: LAYOUT_RANKSEP,
+    edgesep: 28,
+    marginx: 40,
+    marginy: 40,
+  })
+
   for (const id of nodeIds) {
-    succ.set(id, [])
-    indeg.set(id, 0)
+    g.setNode(id, { width: LAYOUT_NODE_W, height: LAYOUT_NODE_H })
   }
+
+  const seen = new Set<string>()
   for (const e of edges) {
-    if (!succ.has(e.source) || !indeg.has(e.target)) continue
-    succ.get(e.source)!.push(e.target)
-    indeg.set(e.target, (indeg.get(e.target) ?? 0) + 1)
+    if (!g.hasNode(e.source) || !g.hasNode(e.target)) continue
+    if (e.source === e.target) continue
+    const key = `${e.source}->${e.target}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    g.setEdge(e.source, e.target)
   }
 
-  const roots = nodeIds.filter((id) => (indeg.get(id) ?? 0) === 0)
-  const depth = new Map<string, number>()
-  const queue = roots.length ? [...roots] : [...nodeIds]
-  for (const id of queue) depth.set(id, 0)
+  dagre.layout(g)
 
-  const depthCap = Math.max(4, Math.min(nodeIds.length, 12))
-  const budget = nodeIds.length * nodeIds.length + 16
-  let steps = 0
-  let qi = 0
-  while (qi < queue.length && steps++ < budget) {
-    const u = queue[qi++]!
-    const d = depth.get(u) ?? 0
-    if (d >= depthCap) continue
-    for (const v of succ.get(u) ?? []) {
-      const nd = d + 1
-      if (!depth.has(v) || nd > (depth.get(v) ?? 0)) {
-        depth.set(v, Math.min(nd, depthCap))
-        queue.push(v)
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const id of nodeIds) {
+    const n = g.node(id)
+    if (!n || typeof n.x !== 'number' || typeof n.y !== 'number') continue
+    minX = Math.min(minX, n.x)
+    minY = Math.min(minY, n.y)
+    maxX = Math.max(maxX, n.x)
+    maxY = Math.max(maxY, n.y)
+  }
+
+  if (!Number.isFinite(minX)) {
+    // Fallback: alphabetical grid if dagre produced nothing
+    return buildFallbackGrid(nodeIds, width, height)
+  }
+
+  const graphW = Math.max(1, maxX - minX)
+  const graphH = Math.max(1, maxY - minY)
+  const padX = LAYOUT_NODE_W / 2 + 24
+  const padY = LAYOUT_NODE_H / 2 + 28
+  const scale = Math.min(
+    1,
+    (width - padX * 2) / graphW,
+    (height - padY * 2) / graphH,
+  )
+  const offsetX = (width - graphW * scale) / 2 - minX * scale
+  const offsetY = (height - graphH * scale) / 2 - minY * scale
+
+  const positions = new Map<string, Point>()
+  for (const id of nodeIds) {
+    const n = g.node(id)
+    if (!n || typeof n.x !== 'number' || typeof n.y !== 'number') {
+      positions.set(id, { x: width / 2, y: height / 2 })
+      continue
+    }
+    positions.set(id, {
+      x: n.x * scale + offsetX,
+      y: n.y * scale + offsetY,
+    })
+  }
+
+  // Soft collision resolve — nudge any pair closer than the node bbox.
+  const minDistX = LAYOUT_NODE_W * 0.85
+  const minDistY = LAYOUT_NODE_H * 0.85
+  for (let pass = 0; pass < 4; pass++) {
+    for (let i = 0; i < nodeIds.length; i++) {
+      for (let j = i + 1; j < nodeIds.length; j++) {
+        const a = positions.get(nodeIds[i]!)!
+        const b = positions.get(nodeIds[j]!)!
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const overlapX = minDistX - Math.abs(dx)
+        const overlapY = minDistY - Math.abs(dy)
+        if (overlapX > 0 && overlapY > 0) {
+          const push = Math.min(overlapX, overlapY) / 2 + 2
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            const s = dx >= 0 ? 1 : -1
+            a.x -= s * push
+            b.x += s * push
+          } else {
+            const s = dy >= 0 ? 1 : -1
+            a.y -= s * push
+            b.y += s * push
+          }
+        }
       }
     }
   }
 
-  const columns = new Map<number, string[]>()
-  for (const id of nodeIds) {
-    const d = depth.get(id) ?? 0
-    if (!columns.has(d)) columns.set(d, [])
-    columns.get(d)!.push(id)
-  }
+  return positions
+}
 
-  const colKeys = [...columns.keys()].sort((a, b) => a - b)
-  // Leave room for the widest labels and the subtitle that sits below a disc.
-  const marginX = Math.min(110, Math.max(70, width * 0.1))
-  const marginY = Math.min(90, Math.max(62, height * 0.16))
-  const usableW = Math.max(1, width - marginX * 2)
-  const usableH = Math.max(1, height - marginY * 2)
-
-  // Cap the gaps and centre the cluster: stretching nodes edge-to-edge on a
-  // wide pane leaves a sparse graph looking scattered.
-  const colGap =
-    colKeys.length > 1 ? Math.min(COL_GAP_MAX, usableW / (colKeys.length - 1)) : 0
-  const clusterW = colGap * (colKeys.length - 1)
-  const startX = (width - clusterW) / 2
-
+/** Sparse grid when the graph has no edges / dagre cannot rank. */
+function buildFallbackGrid(nodeIds: string[], width: number, height: number) {
   const positions = new Map<string, Point>()
-  colKeys.forEach((key, ci) => {
-    const ids = columns.get(key)!.slice().sort()
-    const x = colKeys.length > 1 ? startX + ci * colGap : width / 2
-    const rowGap = ids.length > 1 ? Math.min(ROW_GAP_MAX, usableH / (ids.length - 1)) : 0
-    const clusterH = rowGap * (ids.length - 1)
-    const startY = (height - clusterH) / 2
-    ids.forEach((id, ri) => {
-      positions.set(id, { x, y: ids.length > 1 ? startY + ri * rowGap : height / 2 })
+  const cols = Math.max(1, Math.ceil(Math.sqrt(nodeIds.length)))
+  const rows = Math.max(1, Math.ceil(nodeIds.length / cols))
+  const gapX = Math.min(COL_GAP_MAX, Math.max(LAYOUT_NODE_W + 24, width / (cols + 1)))
+  const gapY = Math.min(ROW_GAP_MAX, Math.max(LAYOUT_NODE_H + 16, height / (rows + 1)))
+  const startX = (width - gapX * (cols - 1)) / 2
+  const startY = (height - gapY * (rows - 1)) / 2
+  nodeIds
+    .slice()
+    .sort()
+    .forEach((id, i) => {
+      const c = i % cols
+      const r = Math.floor(i / cols)
+      positions.set(id, {
+        x: cols === 1 ? width / 2 : startX + c * gapX,
+        y: rows === 1 ? height / 2 : startY + r * gapY,
+      })
     })
-  })
   return positions
 }
 
@@ -321,6 +385,7 @@ export function NetworkGraphSvg({
   const viewMode = useViewMode()
   const [hovered, setHovered] = useState<string | null>(null)
   const [hoveredModule, setHoveredModule] = useState<string | null>(null)
+  const [hintOpen, setHintOpen] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: FALLBACK_W, h: FALLBACK_H })
 
@@ -943,28 +1008,46 @@ export function NetworkGraphSvg({
         </div>
       ) : null}
 
-      <div className="absolute left-3 top-3 z-10 max-w-[220px] rounded-md border border-vcl-border bg-obsidian/92 px-2.5 py-1.5 font-mono text-[10px] leading-snug text-vcl-muted backdrop-blur-sm">
-        {lod === 'modules'
-          ? 'Pathways · click a bubble or zoom in'
-          : lod === 'detail'
-            ? 'Node detail · hover for ODE / flux'
-            : 'Proteins · zoom out for pathways · zoom in for math'}
-        {lod !== 'modules' ? (
-          <span className="mt-0.5 block text-[9px] text-vcl-dim">
-            Shift-click KO · scroll zoom · drag pan
-          </span>
-        ) : null}
-      </div>
-
       <div
-        className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-md border border-vcl-border bg-obsidian/90 backdrop-blur-sm"
+        className="absolute right-2 top-2 z-10 flex flex-col overflow-visible rounded-md border border-vcl-border bg-obsidian/90 backdrop-blur-sm"
         style={{ pointerEvents: 'auto' }}
       >
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Network map help"
+            title="Map controls"
+            onMouseEnter={() => setHintOpen(true)}
+            onMouseLeave={() => setHintOpen(false)}
+            onFocus={() => setHintOpen(true)}
+            onBlur={() => setHintOpen(false)}
+            className="flex h-6 w-6 items-center justify-center font-mono text-[11px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+          >
+            ?
+          </button>
+          {hintOpen ? (
+            <div
+              role="tooltip"
+              className="absolute right-full top-0 z-30 mr-2 w-52 rounded-md border border-vcl-border bg-obsidian/95 px-2.5 py-1.5 font-mono text-[10px] leading-snug text-vcl-muted shadow-lg backdrop-blur-sm"
+            >
+              {lod === 'modules'
+                ? 'Pathways · click a bubble or zoom in'
+                : lod === 'detail'
+                  ? 'Node detail · hover for ODE / flux'
+                  : 'Proteins · zoom out for pathways · zoom in for math'}
+              {lod !== 'modules' ? (
+                <span className="mt-0.5 block text-[9px] text-vcl-dim">
+                  Shift-click KO · scroll zoom · drag pan
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <button
           type="button"
           title="Zoom in"
           onClick={() => zoomBy(1.25)}
-          className="h-6 w-6 font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
+          className="h-6 w-6 border-t border-vcl-border font-mono text-[12px] leading-none text-vcl-muted hover:bg-vcl-surface hover:text-vcl-text"
         >
           +
         </button>
