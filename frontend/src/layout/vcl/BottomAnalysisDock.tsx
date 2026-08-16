@@ -421,8 +421,15 @@ function TrajectoryTab({ focus }: { focus: string[] }) {
 
 /**
  * Persistent bottom analysis dock — Time-Series / Compare / Organelle / Metabolic tabs + scrub.
+ * Biologist mode can pass scrubOnly to keep a thin timeline without duplicating phenotype insights.
  */
-export function BottomAnalysisDock() {
+export function BottomAnalysisDock({
+  scrubOnly = false,
+  onExpand,
+}: {
+  scrubOnly?: boolean
+  onExpand?: () => void
+} = {}) {
   const lab = useLab()
   const [tab, setTab] = useState<BottomTab>('trajectory')
 
@@ -438,6 +445,46 @@ export function BottomAnalysisDock() {
     { id: 'organelle', label: 'Organelle Translocation' },
     { id: 'flux', label: 'Metabolic Flux (FBA)' },
   ]
+
+  const scrubber = (
+    <div className="ml-auto flex items-center gap-2.5">
+      <span className="font-mono text-[10px] text-vcl-dim">t₀</span>
+      <input
+        type="range"
+        min={0}
+        max={60}
+        step={1}
+        value={lab.scrubT}
+        disabled={!lab.payload}
+        onChange={(e) => lab.setScrubT(Number(e.target.value))}
+        className="w-[160px] accent-emerald-active disabled:opacity-40 sm:w-[200px]"
+      />
+      <span className="font-mono text-[10px] text-vcl-dim">t₆₀</span>
+      <span className="min-w-[3.5rem] text-right font-mono text-[11px] font-semibold text-emerald-active">
+        {lab.scrubT.toFixed(0)} min
+      </span>
+    </div>
+  )
+
+  if (scrubOnly) {
+    return (
+      <div className="flex h-full min-h-0 items-center gap-3 px-3">
+        <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-vcl-dim">
+          Timeline
+        </span>
+        {scrubber}
+        {onExpand ? (
+          <button
+            type="button"
+            onClick={onExpand}
+            className="shrink-0 rounded-md border border-vcl-border bg-vcl-surface px-2 py-1 font-mono text-[10px] font-semibold text-vcl-soft hover:border-cyan-flux/40 hover:text-vcl-text"
+          >
+            Open analysis
+          </button>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -457,24 +504,7 @@ export function BottomAnalysisDock() {
             {t.label}
           </button>
         ))}
-
-        <div className="ml-auto flex items-center gap-2.5 border-l border-vcl-border pl-3">
-          <span className="font-mono text-[10px] text-vcl-dim">t₀</span>
-          <input
-            type="range"
-            min={0}
-            max={60}
-            step={1}
-            value={lab.scrubT}
-            disabled={!lab.payload}
-            onChange={(e) => lab.setScrubT(Number(e.target.value))}
-            className="w-[150px] accent-emerald-active disabled:opacity-40"
-          />
-          <span className="font-mono text-[10px] text-vcl-dim">t₆₀</span>
-          <span className="min-w-[3.5rem] text-right font-mono text-[11px] font-semibold text-emerald-active">
-            {lab.scrubT.toFixed(0)} min
-          </span>
-        </div>
+        <div className="border-l border-vcl-border pl-3">{scrubber}</div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden p-3">

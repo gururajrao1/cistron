@@ -117,6 +117,18 @@ export function AppShell() {
   const [bottomH, setBottomH] = useState(220)
   const [dockW, setDockW] = useState(320)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  /** Biologist keeps analysis collapsed so the map owns the stage. */
+  const [analysisOpen, setAnalysisOpen] = useState(false)
+
+  const isBiologist = lab.viewMode === 'biologist'
+  const showBottomAnalysis = isStudio && (!isBiologist || analysisOpen)
+  const bottomStripH = isBiologist && !analysisOpen ? 44 : bottomH
+  const showRightRail = isStudio && (!isBiologist || Boolean(lab.selectedNode))
+
+  useEffect(() => {
+    // Reset collapsed analysis when leaving Biologist.
+    if (!isBiologist) setAnalysisOpen(false)
+  }, [isBiologist])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -173,27 +185,50 @@ export function AppShell() {
 
           {isStudio ? (
             <>
-              <div
-                role="separator"
-                aria-orientation="horizontal"
-                className="group relative z-10 flex h-[5px] shrink-0 cursor-ns-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
-                onPointerDown={bottomDrag.onPointerDown}
-                onPointerMove={bottomDrag.onPointerMove}
-                onPointerUp={bottomDrag.onPointerUp}
-              >
-                <span className="h-px w-[34px] rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
-              </div>
+              {showBottomAnalysis ? (
+                <div
+                  role="separator"
+                  aria-orientation="horizontal"
+                  className="group relative z-10 flex h-[5px] shrink-0 cursor-ns-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
+                  onPointerDown={bottomDrag.onPointerDown}
+                  onPointerMove={bottomDrag.onPointerMove}
+                  onPointerUp={bottomDrag.onPointerUp}
+                >
+                  <span className="h-px w-[34px] rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
+                </div>
+              ) : null}
               <div
                 className="shrink-0 overflow-hidden border-t border-cyan-flux/20 bg-[#041820]/95"
-                style={{ height: bottomH }}
+                style={{ height: bottomStripH }}
               >
-                <BottomAnalysisDock />
+                <BottomAnalysisDock
+                  scrubOnly={isBiologist && !analysisOpen}
+                  onExpand={
+                    isBiologist
+                      ? () => {
+                          setAnalysisOpen(true)
+                          setBottomH(220)
+                        }
+                      : undefined
+                  }
+                />
               </div>
+              {isBiologist && analysisOpen ? (
+                <div className="flex h-7 shrink-0 items-center justify-center border-t border-vcl-border bg-obsidian/80">
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisOpen(false)}
+                    className="font-mono text-[10px] text-vcl-dim hover:text-vcl-text"
+                  >
+                    Collapse analysis · keep timeline only
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : null}
         </div>
 
-        {isStudio ? (
+        {showRightRail ? (
             <>
               <div
                 role="separator"

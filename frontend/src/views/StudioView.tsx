@@ -131,36 +131,61 @@ export function StudioView() {
           )}
         </div>
       ) : (
-        <div className="flex h-8 shrink-0 items-center border-b border-vcl-border px-3 font-mono text-[10px] text-vcl-dim">
-          Biologist · pathway map · zoom in for proteins
+        <div className="flex h-8 shrink-0 items-center gap-3 border-b border-vcl-border px-3 font-mono text-[10px] text-vcl-dim">
+          <span>Biologist · protein map · zoom out for pathways</span>
+          <span className="ml-auto text-vcl-dim/80">Click a node for details</span>
         </div>
       )}
 
-      {/* Compact overview band — capped height so the map keeps the stage */}
-      <div className="shrink-0 space-y-2.5 overflow-y-auto border-b border-vcl-border/80 bg-obsidian/30 px-3 py-3 max-h-[min(240px,34vh)]">
-        <PhenotypeSummaryCard summary={phenotype} showGauges />
-        <div className="rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60">
+      {/* Compact overview — map stays the hero */}
+      <div
+        className={clsx(
+          'shrink-0 overflow-y-auto border-b border-vcl-border/80 bg-obsidian/25 px-3 py-2.5',
+          mode === 'biologist' ? 'max-h-[min(168px,28vh)]' : 'max-h-[min(240px,34vh)] space-y-2.5',
+        )}
+      >
+        <PhenotypeSummaryCard
+          summary={phenotype}
+          showGauges
+          compact={mode === 'biologist'}
+        />
+        {mode !== 'biologist' || protocolOpen ? (
+          <div
+            className={clsx(
+              'rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60',
+              mode === 'biologist' && 'mt-2',
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setProtocolOpen((v) => !v)}
+              className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
+            >
+              {protocolOpen ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+              Wet-lab protocol
+              <span className="ml-auto font-sans text-[10px] font-normal normal-case tracking-normal text-vcl-dim">
+                {protocolOpen ? 'Hide' : 'Show'}
+              </span>
+            </button>
+            {protocolOpen ? (
+              <div className="border-t border-amber-kinase/20 px-1 pb-2">
+                <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
+              </div>
+            ) : null}
+          </div>
+        ) : (
           <button
             type="button"
-            onClick={() => setProtocolOpen((v) => !v)}
-            className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
+            onClick={() => setProtocolOpen(true)}
+            className="mt-1.5 font-mono text-[10px] text-amber-kinase/80 hover:text-amber-kinase"
           >
-            {protocolOpen ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-            Wet-lab protocol
-            <span className="ml-auto font-sans text-[10px] font-normal normal-case tracking-normal text-vcl-dim">
-              {protocolOpen ? 'Hide' : 'Show timing & assays'}
-            </span>
+            + Wet-lab protocol
           </button>
-          {protocolOpen ? (
-            <div className="border-t border-amber-kinase/20 px-1 pb-2">
-              <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
-            </div>
-          ) : null}
-        </div>
+        )}
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
