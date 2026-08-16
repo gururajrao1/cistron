@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, GitBranch, Grid3x3, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+  Grid3x3,
+  Loader2,
+} from 'lucide-react'
 import { clsx } from 'clsx'
 import { StudioCanvas } from '../components/StudioCanvas'
 import { SpatialGridCanvas } from '../components/studio/SpatialGridCanvas'
@@ -10,13 +17,21 @@ import {
   buildPhenotypeSummary,
   buildWetLabProtocol,
 } from '../engine/phenotypeSummary'
+import {
+  loadPhenotypeOpen,
+  persistPhenotypeOpen,
+} from '../layout/studioChrome'
+import { useStudioChrome } from '../layout/StudioChromeContext'
 
 type StudioMeshMode = 'topology' | 'spatial'
 
 export function StudioView() {
   const lab = useLab()
+  const navigate = useNavigate()
+  const { bottomOpen } = useStudioChrome()
   const [meshMode, setMeshMode] = useState<StudioMeshMode>('topology')
   const [protocolOpen, setProtocolOpen] = useState(false)
+  const [phenotypeOpen, setPhenotypeOpen] = useState(loadPhenotypeOpen)
   const mode = lab.viewMode
 
   const toggleKnockout = useCallback(
@@ -74,6 +89,12 @@ export function StudioView() {
   const showMeshTools = mode !== 'biologist'
   const showCanvas = mode !== 'biologist' || Boolean(lab.payload)
   const showSpatial = mode !== 'biologist' && meshMode === 'spatial'
+  const headline = phenotype.sentences[0]?.text ?? 'Run a simulation to see phenotype.'
+
+  const setPheno = (open: boolean) => {
+    setPhenotypeOpen(open)
+    persistPhenotypeOpen(open)
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -91,7 +112,7 @@ export function StudioView() {
               )}
             >
               <GitBranch className="h-3 w-3" />
-              Network Graph Topology
+              Network
             </button>
             <button
               type="button"
@@ -104,88 +125,98 @@ export function StudioView() {
               )}
             >
               <Grid3x3 className="h-3 w-3" />
-              Spatial Microenvironment Mesh
+              Spatial
             </button>
           </div>
-
           <span className="hidden font-mono text-[10.5px] text-vcl-dim md:inline">{meta}</span>
           {pertCount > 0 ? (
             <span className="hidden font-mono text-[10px] text-amber-kinase lg:inline">
               {pertCount} KO/dose
             </span>
           ) : null}
-
-          {mode === 'systems' ? (
-            <span className="ml-auto hidden font-mono text-[10px] text-violet-300/80 xl:inline">
-              Systems Math · raw graph + ODE canvas
-            </span>
-          ) : (
-            <div className="ml-auto hidden items-center gap-3 font-mono text-[10px] text-vcl-dim xl:flex">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-0.5 w-3 bg-emerald-active" /> activation
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-0.5 w-3 bg-coral-action" /> inhibition / KO
-              </span>
-            </div>
-          )}
+          <div className="ml-auto flex items-center gap-2 font-mono text-[10px] text-vcl-dim">
+            <button
+              type="button"
+              className="rounded border border-vcl-border px-1.5 py-0.5 hover:text-cyan-flux"
+              onClick={() => navigate('/pharmacology')}
+            >
+              PH · dose
+            </button>
+            <button
+              type="button"
+              className="rounded border border-vcl-border px-1.5 py-0.5 hover:text-cyan-flux"
+              onClick={() => navigate('/xai')}
+            >
+              XA · drivers
+            </button>
+            <button
+              type="button"
+              className="rounded border border-vcl-border px-1.5 py-0.5 hover:text-cyan-flux"
+              onClick={() => navigate('/combinations')}
+            >
+              CB · combos
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="flex h-8 shrink-0 items-center gap-3 border-b border-vcl-border px-3 font-mono text-[10px] text-vcl-dim">
-          <span>Biologist · protein map · zoom out for pathways</span>
-          <span className="ml-auto text-vcl-dim/80">Click a node for details</span>
+        <div className="flex h-8 shrink-0 items-center gap-2 border-b border-vcl-border px-3 font-mono text-[10px] text-vcl-dim">
+          <span>Studio · map first</span>
+          <button
+            type="button"
+            className="ml-auto rounded border border-vcl-border px-1.5 py-0.5 text-cyan-flux/90 hover:bg-vcl-surface"
+            onClick={() => navigate('/pathways')}
+          >
+            PW · change disease
+          </button>
         </div>
       )}
 
-      {/* Compact overview — map stays the hero */}
-      <div
-        className={clsx(
-          'shrink-0 overflow-y-auto border-b border-vcl-border/80 bg-obsidian/25 px-3 py-2.5',
-          mode === 'biologist' ? 'max-h-[min(168px,28vh)]' : 'max-h-[min(240px,34vh)] space-y-2.5',
-        )}
-      >
-        <PhenotypeSummaryCard
-          summary={phenotype}
-          showGauges
-          compact={mode === 'biologist'}
-        />
-        {mode !== 'biologist' || protocolOpen ? (
-          <div
-            className={clsx(
-              'rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60',
-              mode === 'biologist' && 'mt-2',
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => setProtocolOpen((v) => !v)}
-              className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
-            >
-              {protocolOpen ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5" />
-              )}
-              Wet-lab protocol
-              <span className="ml-auto font-sans text-[10px] font-normal normal-case tracking-normal text-vcl-dim">
-                {protocolOpen ? 'Hide' : 'Show'}
-              </span>
-            </button>
-            {protocolOpen ? (
-              <div className="border-t border-amber-kinase/20 px-1 pb-2">
-                <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
-              </div>
-            ) : null}
+      {/* Compact phenotype: one line by default — expand for gauges */}
+      <div className="shrink-0 border-b border-vcl-border/80 bg-obsidian/25">
+        <button
+          type="button"
+          onClick={() => setPheno(!phenotypeOpen)}
+          className="flex w-full items-start gap-2 px-3 py-2 text-left"
+        >
+          {phenotypeOpen ? (
+            <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-flux" />
+          ) : (
+            <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-flux" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-cyan-flux">
+              Phenotype
+            </div>
+            <p className="truncate text-[12px] leading-snug text-vcl-soft">{headline}</p>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setProtocolOpen(true)}
-            className="mt-1.5 font-mono text-[10px] text-amber-kinase/80 hover:text-amber-kinase"
-          >
-            + Wet-lab protocol
-          </button>
-        )}
+          <span className="shrink-0 font-mono text-[9px] text-vcl-dim">
+            {phenotypeOpen ? 'Hide' : 'Details'}
+          </span>
+        </button>
+        {phenotypeOpen ? (
+          <div className="max-h-[min(220px,32vh)] space-y-2 overflow-y-auto border-t border-vcl-border/60 px-3 py-2.5">
+            <PhenotypeSummaryCard summary={phenotype} showGauges />
+            <div className="rounded-lg border border-amber-kinase/25 bg-[#1a1408]/60">
+              <button
+                type="button"
+                onClick={() => setProtocolOpen((v) => !v)}
+                className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-kinase"
+              >
+                {protocolOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+                Wet-lab protocol
+              </button>
+              {protocolOpen ? (
+                <div className="border-t border-amber-kinase/20 px-1 pb-2">
+                  <WetLabProtocolCard protocol={protocol} className="!border-0 !bg-transparent" />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -196,7 +227,7 @@ export function StudioView() {
           </div>
         ) : !showCanvas ? (
           <div className="flex h-full items-center justify-center px-6 text-center text-sm text-vcl-muted">
-            Run a simulation to populate phenotype gauges and wet-lab timing.
+            Run a simulation to populate the pathway map.
           </div>
         ) : showSpatial ? (
           <SpatialGridCanvas
@@ -224,6 +255,27 @@ export function StudioView() {
             stageOnly
           />
         )}
+
+        {/* Scrubber on the map when Analysis dock is closed */}
+        {!bottomOpen ? (
+          <div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-vcl-border bg-obsidian/92 px-3 py-1.5 shadow-lg backdrop-blur-md">
+            <span className="font-mono text-[9px] text-vcl-dim">t₀</span>
+            <input
+              type="range"
+              min={0}
+              max={60}
+              step={1}
+              value={lab.scrubT}
+              disabled={!lab.payload}
+              onChange={(e) => lab.setScrubT(Number(e.target.value))}
+              className="w-[160px] accent-emerald-active disabled:opacity-40 sm:w-[220px]"
+            />
+            <span className="font-mono text-[9px] text-vcl-dim">t₆₀</span>
+            <span className="min-w-[2.75rem] text-right font-mono text-[11px] font-semibold text-emerald-active">
+              {lab.scrubT.toFixed(0)}m
+            </span>
+          </div>
+        ) : null}
       </div>
     </div>
   )

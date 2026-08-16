@@ -9,7 +9,9 @@ import {
   type ReactNode,
 } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import { SidebarNav } from './SidebarNav'
+import { PanelBottom, PanelRight } from 'lucide-react'
+import { clsx } from 'clsx'
+import { SidebarNav, useSidebarExpanded } from './SidebarNav'
 import { Header } from '../components/studio/Header'
 import { NodeBiophysicsInspector } from '../components/NodeBiophysicsInspector'
 import { BottomAnalysisDock } from './vcl/BottomAnalysisDock'
@@ -17,6 +19,7 @@ import { RightInspectorDock } from './vcl/RightInspectorDock'
 import { CommandPalette } from './vcl/CommandPalette'
 import { FirstRunChecklist } from '../components/studio/FirstRunChecklist'
 import { useLab } from '../lab/LabContext'
+import { StudioChromeProvider, useStudioChrome } from './StudioChromeContext'
 
 /** Catch canvas/runtime errors so Studio never blanks the whole shell. */
 class StudioErrorBoundary extends Component<
@@ -101,34 +104,36 @@ function useDragResize(
 }
 
 /**
- * Cistron VCL IDE shell — Systems Biology IDE mockup geometry:
- * full-bleed 46px header → rail | stage(+bottom dock) | right inspector.
+ * Cistron VCL IDE shell — Benchling-style: destinations in the rail,
+ * Studio stage stays map-first; docks are opt-in.
  */
 export function AppShell() {
+  return (
+    <StudioChromeProvider>
+      <AppShellInner />
+    </StudioChromeProvider>
+  )
+}
+
+function AppShellInner() {
   const location = useLocation()
   const lab = useLab()
   const isStudio = location.pathname === '/studio' || location.pathname === '/'
-  /** Full-bleed fill stages (no page scroll / empty bottom strip). */
   const fillStage =
     isStudio ||
     location.pathname === '/biophysics' ||
     location.pathname.startsWith('/biophysics/')
 
-  const [bottomH, setBottomH] = useState(220)
+  const [sidebarExpanded, setSidebarExpanded] = useSidebarExpanded()
+  const [bottomH, setBottomH] = useState(240)
   const [dockW, setDockW] = useState(320)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  /** Biologist keeps analysis collapsed so the map owns the stage. */
-  const [analysisOpen, setAnalysisOpen] = useState(false)
+  const { bottomOpen, setBottomOpen, rightPinned, toggleBottom, toggleRight } =
+    useStudioChrome()
 
-  const isBiologist = lab.viewMode === 'biologist'
-  const showBottomAnalysis = isStudio && (!isBiologist || analysisOpen)
-  const bottomStripH = isBiologist && !analysisOpen ? 44 : bottomH
-  const showRightRail = isStudio && (!isBiologist || Boolean(lab.selectedNode))
-
-  useEffect(() => {
-    // Reset collapsed analysis when leaving Biologist.
-    if (!isBiologist) setAnalysisOpen(false)
-  }, [isBiologist])
+  const mode = lab.viewMode
+  const showRight = isStudio && (Boolean(lab.selectedNode) || rightPinned)
+  const showBottomPanel = isStudio && bottomOpen
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -141,7 +146,13 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const bottomDrag = useDragResize('ns', bottomH, setBottomH, 46, 620, true)
+  useEffect(() => {
+    if (mode === 'biologist') {
+      setBottomOpen(false)
+    }
+  }, [mode, setBottomOpen])
+
+  const bottomDrag = useDragResize('ns', bottomH, setBottomH, 120, 620, true)
   const rightDrag = useDragResize('ew', dockW, setDockW, 248, 560, true)
 
   return (
@@ -149,10 +160,48 @@ export function AppShell() {
       <Header onOpenPalette={() => setPaletteOpen(true)} />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <SidebarNav collapsed onToggle={() => undefined} />
+        <SidebarNav expanded={sidebarExpanded} onExpandedChange={setSidebarExpanded} />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          {/* Studio fills the stage; other routes must scroll or the bottom clips. */}
+          {isStudio ? (
+            <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-vcl-border bg-obsidian-panel/80 px-2.5">
+              <span className="mr-1 hidden font-mono text-[10px] text-vcl-dim sm:inline">
+                Stage chrome
+              </span>
+              <button
+                type="button"
+                onClick={toggleBottom}
+                className={clsx(
+                  'inline-flex h-6 items-center gap-1 rounded-md border px-2 font-mono text-[10px] font-semibold transition',
+                  showBottomPanel
+                    ? 'border-cyan-flux/40 bg-[#0a2834] text-cyan-flux'
+                    : 'border-vcl-border text-vcl-muted hover:text-vcl-text',
+                )}
+                title="Trajectory · Organelle · Flux analysis dock"
+              >
+                <PanelBottom className="h-3 w-3" />
+                Analysis
+              </button>
+              <button
+                type="button"
+                onClick={toggleRight}
+                className={clsx(
+                  'inline-flex h-6 items-center gap-1 rounded-md border px-2 font-mono text-[10px] font-semibold transition',
+                  rightPinned || lab.selectedNode
+                    ? 'border-cyan-flux/40 bg-[#0a2834] text-cyan-flux'
+                    : 'border-vcl-border text-vcl-muted hover:text-vcl-text',
+                )}
+                title="Targets · Brief · Omics (or select a node)"
+              >
+                <PanelRight className="h-3 w-3" />
+                Inspect
+              </button>
+              <span className="ml-auto truncate font-mono text-[9.5px] text-vcl-dim">
+                Heavy tools live in the left modules (XA · PH · CB · OM · 3D)
+              </span>
+            </div>
+          ) : null}
+
           <main
             className={
               fillStage
@@ -183,90 +232,67 @@ export function AppShell() {
             )}
           </main>
 
-          {isStudio ? (
+          {isStudio && showBottomPanel ? (
             <>
-              {showBottomAnalysis ? (
-                <div
-                  role="separator"
-                  aria-orientation="horizontal"
-                  className="group relative z-10 flex h-[5px] shrink-0 cursor-ns-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
-                  onPointerDown={bottomDrag.onPointerDown}
-                  onPointerMove={bottomDrag.onPointerMove}
-                  onPointerUp={bottomDrag.onPointerUp}
-                >
-                  <span className="h-px w-[34px] rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
-                </div>
-              ) : null}
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                className="group relative z-10 flex h-[5px] shrink-0 cursor-ns-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
+                onPointerDown={bottomDrag.onPointerDown}
+                onPointerMove={bottomDrag.onPointerMove}
+                onPointerUp={bottomDrag.onPointerUp}
+              >
+                <span className="h-px w-[34px] rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70" />
+              </div>
               <div
                 className="shrink-0 overflow-hidden border-t border-cyan-flux/20 bg-[#041820]/95"
-                style={{ height: bottomStripH }}
+                style={{ height: bottomH }}
               >
-                <BottomAnalysisDock
-                  scrubOnly={isBiologist && !analysisOpen}
-                  onExpand={
-                    isBiologist
-                      ? () => {
-                          setAnalysisOpen(true)
-                          setBottomH(220)
-                        }
-                      : undefined
-                  }
-                />
+                <BottomAnalysisDock />
               </div>
-              {isBiologist && analysisOpen ? (
-                <div className="flex h-7 shrink-0 items-center justify-center border-t border-vcl-border bg-obsidian/80">
-                  <button
-                    type="button"
-                    onClick={() => setAnalysisOpen(false)}
-                    className="font-mono text-[10px] text-vcl-dim hover:text-vcl-text"
-                  >
-                    Collapse analysis · keep timeline only
-                  </button>
-                </div>
-              ) : null}
             </>
           ) : null}
         </div>
 
-        {showRightRail ? (
-            <>
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                className="group relative z-10 flex w-[5px] shrink-0 cursor-ew-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
-                onPointerDown={rightDrag.onPointerDown}
-                onPointerMove={rightDrag.onPointerMove}
-                onPointerUp={rightDrag.onPointerUp}
-              >
-                <span className="h-[34px] w-px rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70 group-hover:shadow-[0_0_8px_rgba(45,212,191,0.45)]" />
-              </div>
-              <aside
-                className="flex shrink-0 flex-col overflow-hidden border-l border-cyan-flux/20 bg-[#041820]/95 backdrop-blur-sm"
-                style={{ width: dockW }}
-              >
-                {lab.selectedNode ? (
-                  <NodeBiophysicsInspector
-                    nodeId={lab.selectedNode}
-                    graph={lab.graph}
-                    payload={lab.payload}
-                    vector={lab.prioritization?.node_vectors?.[lab.selectedNode]}
-                    xai={lab.xai}
-                    onClose={() => lab.setSelectedNode(null)}
-                    onKnockout={(node) => {
-                      lab.setSelectedNode(null)
-                      lab.setNodePerturbation(node, 0)
-                    }}
-                    onClamp={(node) => {
-                      lab.setSelectedNode(null)
-                      lab.setNodePerturbation(node, 1)
-                    }}
-                  />
-                ) : (
-                  <RightInspectorDock />
-                )}
-              </aside>
-            </>
-          ) : null}
+        {showRight ? (
+          <>
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              className="group relative z-10 flex w-[5px] shrink-0 cursor-ew-resize items-center justify-center bg-obsidian-panel hover:bg-vcl-raised"
+              onPointerDown={rightDrag.onPointerDown}
+              onPointerMove={rightDrag.onPointerMove}
+              onPointerUp={rightDrag.onPointerUp}
+            >
+              <span className="h-[34px] w-px rounded bg-vcl-border-strong transition group-hover:bg-cyan-flux/70" />
+            </div>
+            <aside
+              className="flex shrink-0 flex-col overflow-hidden border-l border-cyan-flux/20 bg-[#041820]/95 backdrop-blur-sm"
+              style={{ width: dockW }}
+            >
+              {lab.selectedNode ? (
+                <NodeBiophysicsInspector
+                  nodeId={lab.selectedNode}
+                  graph={lab.graph}
+                  payload={lab.payload}
+                  vector={lab.prioritization?.node_vectors?.[lab.selectedNode]}
+                  xai={lab.xai}
+                  onClose={() => lab.setSelectedNode(null)}
+                  onKnockout={(node) => {
+                    lab.setSelectedNode(null)
+                    lab.setNodePerturbation(node, 0)
+                  }}
+                  onClamp={(node) => {
+                    lab.setSelectedNode(null)
+                    lab.setNodePerturbation(node, 1)
+                  }}
+                />
+              ) : (
+                <RightInspectorDock />
+              )}
+            </aside>
+          </>
+        ) : null}
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

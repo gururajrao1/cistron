@@ -39,7 +39,18 @@ Raw tables and FBA vectors sit behind **Show numbers**. Chart shaded bands are *
 | **Lab Researcher** (default) | Cards + trajectories + spatial mesh + drug controls |
 | **Systems Math** | Researcher + raw tables / FBA vectors opened by default |
 
-### Semantic zoom (network graph)
+### Studio chrome (Benchling-style)
+
+Studio is **map-first**. Heavy tools stay on left modules (XA / PH / CB / OM / 3D).
+
+| Control | Default |
+| --- | --- |
+| Left sidebar | Expandable grouped destinations (Simulate · Build · Analyze · Evidence) |
+| Phenotype | One-line summary; expand for gauges |
+| Analysis dock | Off until **Analysis** is toggled |
+| Inspect rail | Off until a node is selected or **Inspect** is pinned |
+| Time scrubber | Floating on the map when Analysis is closed |
+
 
 Shneiderman-style LOD on the Studio topology map:
 
