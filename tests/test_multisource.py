@@ -105,3 +105,16 @@ def test_search_with_selected_sources() -> None:
         src = client.get("/api/v1/sources")
         assert src.status_code == 200
         assert len(src.json()) >= 6
+
+
+def test_search_provenance_echoes_default_sources() -> None:
+    with TestClient(create_app()) as client:
+        r = client.post(
+            "/api/v1/search-and-simulate",
+            json={
+                "condition_query": "Hypoxia-induced angiogenesis",
+                "use_omnipath": False,
+            },
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["metadata"]["provenance"]["selected_sources"] == ["local"]

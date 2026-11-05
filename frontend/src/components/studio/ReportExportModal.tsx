@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Download,
+  FileJson,
   FileText,
   Image as ImageIcon,
   Loader2,
@@ -15,6 +16,7 @@ import {
   downloadPublicationPdf,
   type ReportBundle,
 } from '../../services/reportExporter'
+import { buildReproducibilitySpec, downloadSpecJson } from '../../utils/scientificReport'
 
 /**
  * 1-click Automated Scientific Report — PDF + Markdown from live LabContext.
@@ -222,6 +224,23 @@ export function ReportExportModal({
           >
             <FileText className="h-3.5 w-3.5" />
             Markdown
+          </button>
+          <button
+            type="button"
+            disabled={busy || !lab.graph}
+            onClick={() => {
+              try {
+                const spec = buildReproducibilitySpec(lab)
+                downloadSpecJson(spec, spec.scenario.sim_id ?? 'cistron')
+                setStatus('Reproducibility spec downloaded.')
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Spec export failed')
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-vcl-border bg-vcl-raised px-3 py-2 text-[12px] font-semibold text-vcl-text hover:bg-vcl-raised/70 disabled:opacity-40"
+          >
+            <FileJson className="h-3.5 w-3.5" />
+            Spec JSON
           </button>
         </footer>
       </div>

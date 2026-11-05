@@ -606,6 +606,7 @@ class SynergyResult:
             "bliss_score": self.bliss_score,
             "loewe_ci": self.loewe_ci,
             "interpretation": self.interpretation,
+            "agreement_badge": synergy_agreement_badge(self.bliss_score, self.loewe_ci),
             "doses": dict(self.doses),
         }
 
@@ -647,6 +648,54 @@ def interpret_synergy(bliss_score: float, loewe_ci: Optional[float]) -> str:
     if bliss_score < -0.05:
         return "antagonism"
     return "additive"
+
+
+def synergy_agreement_badge(
+    bliss_score: float,
+    loewe_ci: Optional[float],
+) -> Dict[str, Any]:
+    """
+    Bliss/Loewe agreement badge for a two-drug combination.
+
+    Bands reuse :func:`interpret_synergy` thresholds (Bliss +/-0.05,
+    Loewe CI 0.9/1.1). ``agree`` is true only when both metrics make the
+    same call and the joint interpretation matches.
+    """
+    interpretation = interpret_synergy(bliss_score, loewe_ci)
+    bliss_band = (
+        "synergy"
+        if bliss_score > 0.05
+        else "antagonism"
+        if bliss_score < -0.05
+        else "additive"
+    )
+    if loewe_ci is None:
+        return {
+            "badge": f"Bliss-only ({interpretation}, no Loewe CI)",
+            "agree": False,
+            "bliss_band": bliss_band,
+            "loewe_band": "unknown",
+            "interpretation": interpretation,
+        }
+    loewe_band = (
+        "synergy" if loewe_ci < 0.9 else "antagonism" if loewe_ci > 1.1 else "additive"
+    )
+    agree = bliss_band == loewe_band == interpretation
+    if agree:
+        label = {
+            "synergy": "Strong synergy — Bliss and Loewe agree",
+            "antagonism": "Strong antagonism — Bliss and Loewe agree",
+            "additive": "Additive — Bliss and Loewe agree",
+        }[interpretation]
+    else:
+        label = f"Mixed signal — Bliss {bliss_band} vs Loewe {loewe_band}"
+    return {
+        "badge": label,
+        "agree": agree,
+        "bliss_band": bliss_band,
+        "loewe_band": loewe_band,
+        "interpretation": interpretation,
+    }
 
 
 class CombinationSynergyCalculator:

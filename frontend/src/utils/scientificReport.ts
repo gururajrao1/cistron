@@ -76,6 +76,87 @@ export async function captureTopologyCanvas(): Promise<string | null> {
 }
 
 /** Assemble manuscript sections from live LabContext. */
+export const HONESTY_CHECKLIST = [
+  'Research sandbox — not a clinical decision system.',
+  'Flux-attention prioritization is not a trained GAT.',
+  'Parameter-force charts are not KernelSHAP.',
+  'Auto-generated reports are not peer-reviewed manuscripts.',
+  'Unmatched disease queries fail with HTTP 422 — no silent hypoxia fallback.',
+  'Spatial reaction-diffusion mesh + BBB module are illustrative, not PhysiCell agents.',
+]
+
+export type ReproducibilitySpec = {
+  app: string
+  exported_at: string
+  scenario: {
+    query: string
+    profile_id: string | null
+    sim_id: string | null
+  }
+  graph: {
+    nodes: string[]
+    edges: Array<{ source: string; target: string; sign: number | null; mechanism: string | null }>
+    provenance: Record<string, unknown>
+  } | null
+  perturbations: Record<string, number>
+  solver: Record<string, unknown> | null
+  model_context: Record<string, unknown> | null
+  confounder_flags: string[]
+  honesty_checklist: string[]
+  brief: string | null
+}
+
+/** Machine-readable reproducibility spec (graph + params + solver + honesty list). */
+export function buildReproducibilitySpec(lab: LabContextValue): ReproducibilitySpec {
+  const meta = (lab.payload?.metadata ?? {}) as Record<string, unknown>
+  const edges = Array.isArray(lab.graph?.edges)
+    ? lab.graph.edges.map((e) => ({
+        source: String((e as { source?: unknown }).source ?? ''),
+        target: String((e as { target?: unknown }).target ?? ''),
+        sign: typeof (e as { sign?: unknown }).sign === 'number' ? (e as { sign: number }).sign : null,
+        mechanism:
+          typeof (e as { mechanism?: unknown }).mechanism === 'string'
+            ? (e as { mechanism: string }).mechanism
+            : null,
+      }))
+    : []
+  return {
+    app: 'cistron-vcl-studio',
+    exported_at: new Date().toISOString(),
+    scenario: {
+      query: lab.controls.conditionQuery,
+      profile_id: lab.profileId,
+      sim_id: lab.lastSimId ?? lab.payload?.simulation_id ?? null,
+    },
+    graph: lab.graph
+      ? {
+          nodes: Object.keys(lab.graph.nodes ?? {}),
+          edges,
+          provenance: (lab.graph.provenance ?? {}) as Record<string, unknown>,
+        }
+      : null,
+    perturbations: { ...(lab.perturbations ?? {}) },
+    solver:
+      meta.solver && typeof meta.solver === 'object'
+        ? (meta.solver as Record<string, unknown>)
+        : null,
+    model_context:
+      meta.model_context && typeof meta.model_context === 'object'
+        ? (meta.model_context as Record<string, unknown>)
+        : null,
+    confounder_flags: Array.isArray(meta.confounder_flags)
+      ? meta.confounder_flags.map((f) => String(f))
+      : [],
+    honesty_checklist: [...HONESTY_CHECKLIST],
+    brief: lab.reason?.brief ?? null,
+  }
+}
+
+/** Download the reproducibility spec as JSON. */
+export function downloadSpecJson(spec: ReproducibilitySpec, filenameBase: string): void {
+  downloadText(`${filenameBase}_spec.json`, JSON.stringify(spec, null, 2), 'application/json')
+}
+
 export function buildScientificReport(
   lab: LabContextValue,
   opts?: { topologyPng?: string | null },
@@ -86,6 +167,29 @@ export function buildScientificReport(
   const nNodes = lab.graph ? Object.keys(lab.graph.nodes).length : 0
   const nEdges = lab.graph?.edges.length ?? 0
   const graphProv = (lab.graph?.provenance ?? {}) as Record<string, unknown>
+  const simMeta = (lab.payload?.metadata ?? {}) as Record<string, unknown>
+  const solverMeta =
+    simMeta.solver && typeof simMeta.solver === 'object'
+      ? (simMeta.solver as Record<string, unknown>)
+      : null
+  const solverLine = solverMeta
+    ? `Solver: ${String(solverMeta.method ?? 'LSODA')} (rtol=${String(solverMeta.rtol ?? 1e-5)}, atol=${String(solverMeta.atol ?? 1e-7)}, hill_n=${String(solverMeta.hill_n ?? 3)}, EC50=${String(solverMeta.ec50 ?? 0.5)}, t_end=${String(solverMeta.t_end ?? 60)} min).`
+    : 'Solver: LSODA defaults (payload metadata unavailable).'
+  const contextMeta =
+    simMeta.model_context && typeof simMeta.model_context === 'object'
+      ? (simMeta.model_context as Record<string, unknown>)
+      : null
+  const contextBits = contextMeta
+    ? ['cell_line', 'tissue', 'passage', 'batch_note']
+        .map((k) => {
+          const v = contextMeta[k]
+          return v != null && String(v).trim() ? `${k}=${String(v).trim()}` : null
+        })
+        .filter((s): s is string => s != null)
+    : []
+  const flagList = Array.isArray(simMeta.confounder_flags)
+    ? simMeta.confounder_flags.map((f) => String(f))
+    : []
   const pathwayId =
     typeof graphProv.pathway_id === 'string' ? graphProv.pathway_id : null
   const pathwayName =
@@ -250,11 +354,23 @@ export function buildScientificReport(
       : null,
     `Graph source: ${String(graphProv.source ?? graphProv.profile_id ?? 'lab')}.`,
     `Simulation latency: ${lab.latencyMs != null ? `${lab.latencyMs.toFixed(1)} ms` : '-'}.`,
+    solverLine,
+    contextBits.length ? `Model context: ${contextBits.join(' / ')}.` : null,
+    flagList.length ? `Confounders: ${flagList.join('; ')}.` : null,
     scientist ? `\nAI Scientist:\n${scientist}` : null,
     causal ? `\nCausal BioReasoner:\n${causal}` : null,
   ]
     .filter(Boolean)
     .join('\n')
+
+  const checklistBody = [
+    solverLine,
+    contextBits.length ? `Model context: ${contextBits.join(' / ')}.` : 'Model context: not recorded.',
+    flagList.length ? `Confounders: ${flagList.join('; ')}.` : 'Confounders: none flagged.',
+    '',
+    'Honesty checklist (modelling limits):',
+    ...HONESTY_CHECKLIST.map((c) => `- ${c}`),
+  ].join('\n')
 
   const sections: ReportSection[] = [
     { heading: 'Abstract', body: abstractParts || 'Insufficient live lab state.', twoColumn: true },
@@ -266,6 +382,7 @@ export function buildScientificReport(
     { heading: 'Biophysical Trajectory Analysis', body: trajBody },
     { heading: 'Target Identification', body: targetBody },
     { heading: 'Provenance', body: provenanceBody, twoColumn: true },
+    { heading: 'Reproducibility & honesty checklist', body: checklistBody },
   ]
 
   const md = [
@@ -278,6 +395,8 @@ export function buildScientificReport(
     `| Scenario | ${scenario} |`,
     `| Provenance | \`${provenance}\` |`,
     `| Simulation | \`${simId}\` |`,
+    `| Solver | ${solverLine} |`,
+    contextBits.length ? `| Context | ${contextBits.join(' / ')} |` : null,
     `| Network | ${nNodes} nodes / ${nEdges} edges |`,
     `| Exported | ${new Date().toISOString()} |`,
     pathwayId ? `| Reactome | ${pathwayId}${pathwayName ? ` (${pathwayName})` : ''} |` : null,

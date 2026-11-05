@@ -83,6 +83,36 @@ function viability(
   return n ? s / n : 0
 }
 
+export type AgreementBadge = {
+  badge: string
+  agree: boolean
+}
+
+/**
+ * Bliss/Loewe agreement badge for the client dual-KO screen.
+ *
+ * NOTE: this screen's Bliss excess is S = EA + EB − EAB (positive → synergy),
+ * the sign-flipped companion of the backend dose-response Bliss score
+ * (EAB − expected). Same agreement idea, screen-local bands.
+ */
+export function agreementBadge(
+  blissSynergy: number,
+  loeweExcess: number,
+  synergyThreshold = 0.08,
+): AgreementBadge {
+  const blissSyn = blissSynergy >= synergyThreshold
+  const blissAnt = blissSynergy < 0
+  const loeweSyn = loeweExcess > 0
+  const loeweAnt = loeweExcess < 0
+  if (blissSyn && loeweSyn)
+    return { badge: 'Strong synergy — Bliss and Loewe agree', agree: true }
+  if (blissAnt && loeweAnt)
+    return { badge: 'Antagonism — both metrics agree', agree: true }
+  if (!blissSyn && !blissAnt && !loeweSyn && !loeweAnt)
+    return { badge: 'Additive — Bliss and Loewe agree', agree: true }
+  return { badge: 'Mixed signal — Bliss vs Loewe disagree', agree: false }
+}
+
 function effect(vTreat: number, vBase: number): number {
   if (vBase < 1e-9) return 0
   return Math.max(0, Math.min(1.5, 1 - vTreat / vBase))

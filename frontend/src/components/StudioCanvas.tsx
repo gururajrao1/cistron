@@ -202,6 +202,14 @@ export function StudioCanvas({
 }) {
   const { activeOmicsProfile, untreatedRun, treatedRun } = useLab()
 
+  const solverMeta = payload?.metadata?.solver as
+    | { method?: unknown; rtol?: unknown }
+    | undefined
+  const solverNote =
+    solverMeta && typeof solverMeta === 'object'
+      ? ` · ${typeof solverMeta.method === 'string' ? solverMeta.method : 'LSODA'} rtol=${typeof solverMeta.rtol === 'number' ? solverMeta.rtol : 1e-5}`
+      : ''
+
   const omicsLfcByNode = useMemo(() => {
     const map: Record<string, number> = {}
     if (!activeOmicsProfile?.features) return map
@@ -405,7 +413,7 @@ export function StudioCanvas({
             <div className="mb-2 flex justify-between text-[0.7rem] tracking-wide text-slate-500">
               <span>t₀ · basal</span>
               <span className="font-semibold text-emerald-300/90">
-                Timeline · {scrubT.toFixed(0)} min
+                Timeline · {scrubT.toFixed(0)} min{solverNote}
               </span>
               <span>t₆₀ · steady</span>
             </div>

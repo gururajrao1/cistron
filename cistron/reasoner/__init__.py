@@ -10,6 +10,8 @@ from cistron.reasoner.bioreasoner import (
     build_distance_graph,
     extract_causal_paths,
     extract_causal_paths_timed,
+    format_confounder_line,
+    format_solver_line,
     generate_discovery_brief_prompt,
     synthesize_deterministic_brief,
 )
@@ -24,6 +26,8 @@ __all__ = [
     "build_distance_graph",
     "extract_causal_paths",
     "extract_causal_paths_timed",
+    "format_confounder_line",
+    "format_solver_line",
     "generate_discovery_brief_prompt",
     "synthesize_deterministic_brief",
 ]

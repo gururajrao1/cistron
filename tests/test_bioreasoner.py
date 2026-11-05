@@ -14,6 +14,8 @@ from cistron.reasoner.bioreasoner import (
     extract_causal_paths,
     extract_causal_paths_timed,
     generate_discovery_brief_prompt,
+    format_confounder_line,
+    format_solver_line,
     synthesize_deterministic_brief,
 )
 from cistron.serialization.scrubber import scrub_simulation
@@ -33,6 +35,44 @@ def test_attention_distance_mapping() -> None:
     assert attention_to_distance(1.0) == pytest.approx(attention_to_distance(1.0))
     assert attention_to_distance(1.0) < attention_to_distance(0.1)
     assert attention_to_distance(0.0) > attention_to_distance(0.5)
+
+
+def test_format_confounder_line() -> None:
+    assert format_confounder_line(None, None) == ""
+    assert format_confounder_line({}, []) == ""
+    line = format_confounder_line(
+        {"cell_line": "HUVEC", "tissue": "endothelium", "batch_note": "b1"},
+        ["KO+clamp on HIF1A"],
+    )
+    assert "HUVEC / endothelium" in line
+    assert "batch: b1" in line
+    assert "Confounders: KO+clamp on HIF1A" in line
+
+
+def test_format_solver_line_empty() -> None:
+    assert format_solver_line(None) == ""
+    assert format_solver_line({}) == ""
+
+
+def test_brief_appends_solver_line(hypoxia_o2_zero) -> None:
+    graph, payload, prio = hypoxia_o2_zero
+    ctx = build_causal_context(
+        graph, payload, source_node="O2", target_node="VEGFA", prioritization=prio
+    )
+    assert ctx.metadata.get("solver") is None
+    assert "Solver:" not in synthesize_deterministic_brief(ctx)
+    ctx.metadata["solver"] = {
+        "method": "LSODA",
+        "rtol": 1e-5,
+        "atol": 1e-7,
+        "hill_n": 3.0,
+        "ec50": 0.5,
+        "max_step": 1.0,
+        "t_end": 60.0,
+        "dense_output_points": 61,
+    }
+    solved = synthesize_deterministic_brief(ctx)
+    assert "Solver: LSODA" in solved and "rtol=1e-05" in solved
 
 
 def test_dijkstra_extracts_hypoxia_cascade(hypoxia_o2_zero) -> None:

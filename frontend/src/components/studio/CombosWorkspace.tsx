@@ -14,6 +14,7 @@ import {
   runDualKnockoutScreen,
   type ComboPairResult,
   type DualKnockoutScreenResult,
+  agreementBadge,
 } from '../../engine/comboScreen'
 
 /**
@@ -234,6 +235,9 @@ export function CombosWorkspace() {
                 <div className="lab-mono text-[11px] text-slate-400">
                   Bliss S={selected.blissSynergy.toFixed(3)} · Loewe Δ=
                   {selected.loeweExcess.toFixed(3)}
+                  <span className="ml-2 rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5">
+                    {agreementBadge(selected.blissSynergy, selected.loeweExcess).badge}
+                  </span>
                 </div>
                 <div className="lab-mono text-[10px] text-slate-500">
                   V_base={selected.viabilityBaseline.toFixed(3)} · V_A=

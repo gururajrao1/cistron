@@ -24,6 +24,8 @@ from cistron import (
     ToxicologyMonitor,
     build_cancer_phenotype,
     effect_from_mechanism,
+    SynergyResult,
+    synergy_agreement_badge,
 )
 
 
@@ -189,6 +191,36 @@ def test_dose_response_ic50_and_bliss() -> None:
     assert 0.0 <= syn.effect_a <= 1.0
     assert 0.0 <= syn.effect_ab <= 1.0
     assert syn.interpretation in {"synergy", "antagonism", "additive"}
+
+
+def test_synergy_agreement_badge_bands() -> None:
+    agree = synergy_agreement_badge(0.2, 0.7)
+    assert agree["agree"] is True
+    assert agree["bliss_band"] == "synergy" and agree["loewe_band"] == "synergy"
+    assert "agree" in agree["badge"].lower()
+
+    mixed = synergy_agreement_badge(0.2, 1.0)
+    assert mixed["agree"] is False
+    assert mixed["bliss_band"] == "synergy" and mixed["loewe_band"] == "additive"
+
+    bliss_only = synergy_agreement_badge(0.2, None)
+    assert bliss_only["agree"] is False
+    assert bliss_only["loewe_band"] == "unknown"
+
+    antagonism = synergy_agreement_badge(-0.2, 1.5)
+    assert antagonism["agree"] is True
+    assert antagonism["interpretation"] == "antagonism"
+
+    scored = SynergyResult(
+        effect_a=0.5,
+        effect_b=0.5,
+        effect_ab=0.9,
+        bliss_expected=0.75,
+        bliss_score=0.15,
+        loewe_ci=0.7,
+        interpretation="synergy",
+    ).as_dict()
+    assert scored["agreement_badge"]["agree"] is True
 
 
 def test_toxicology_flags_threshold_breach() -> None:

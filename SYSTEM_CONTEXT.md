@@ -2,7 +2,7 @@
 
 ## Layout
 
-Flat package `cistron/` (not `src/`). Version **0.12.0**.
+Flat package `cistron/` (not `src/`). Version **0.21.0** (pyproject/__init__ are truth; this file was stale at 0.12.0).
 
 ## Phases
 

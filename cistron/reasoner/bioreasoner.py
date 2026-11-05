@@ -307,6 +307,84 @@ def _perturbed_nodes(
     return sorted(s for s in perturbed if s in graph.nodes or s in prioritization.node_vectors)
 
 
+def _payload_solver(payload: ScrubberPayload) -> Optional[Dict[str, Any]]:
+    """Solver reproducibility block from scrubber payload metadata (if present)."""
+    meta: Any = getattr(payload, "metadata", None)
+    if isinstance(payload, Mapping):
+        meta = payload.get("metadata")
+    if not isinstance(meta, Mapping):
+        return None
+    solver = meta.get("solver")
+    return dict(solver) if isinstance(solver, Mapping) else None
+
+
+def format_solver_line(solver: Optional[Mapping[str, Any]]) -> str:
+    """One-line solver reproducibility note for discovery briefs ('' when unknown)."""
+    if not isinstance(solver, Mapping) or not solver:
+        return ""
+
+    def _num(value: Any, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    method = str(solver.get("method", "LSODA"))
+    rtol = _num(solver.get("rtol"), 1e-5)
+    atol = _num(solver.get("atol"), 1e-7)
+    hill_n = _num(solver.get("hill_n"), 3.0)
+    ec50 = _num(solver.get("ec50"), 0.5)
+    max_step = _num(solver.get("max_step"), 1.0)
+    t_end = _num(solver.get("t_end"), 60.0)
+    try:
+        grid_n = int(solver.get("dense_output_points", 61))
+    except (TypeError, ValueError):
+        grid_n = 61
+    return (
+        f" Solver: {method} (rtol={rtol:g}, atol={atol:g}, hill_n={hill_n:g}, "
+        f"EC50={ec50:g}, max_step={max_step:g}, t_end={t_end:g} min, grid={grid_n})."
+    )
+
+
+def _payload_confounder(payload: ScrubberPayload) -> Tuple[Optional[Dict[str, Any]], List[str]]:
+    """Experimental context + masking flags from scrubber payload metadata."""
+    meta: Any = getattr(payload, "metadata", None)
+    if isinstance(payload, Mapping):
+        meta = payload.get("metadata")
+    if not isinstance(meta, Mapping):
+        return None, []
+    context = meta.get("model_context")
+    flags = meta.get("confounder_flags")
+    ctx = dict(context) if isinstance(context, Mapping) else None
+    fl = [str(f) for f in flags] if isinstance(flags, (list, tuple)) else []
+    return ctx, fl
+
+
+def format_confounder_line(
+    context: Optional[Mapping[str, Any]],
+    flags: Optional[Sequence[str]],
+) -> str:
+    """One-line experimental-context + masking note for briefs ('' when none)."""
+    bits: List[str] = []
+    if isinstance(context, Mapping):
+        parts = [
+            str(context.get(k))
+            for k in ("cell_line", "tissue", "passage")
+            if context.get(k)
+        ]
+        if parts:
+            bits.append("Context: " + " / ".join(parts))
+        batch = context.get("batch_note")
+        if batch:
+            bits.append(f"batch: {batch}")
+    clean = [str(f) for f in (flags or []) if str(f).strip()]
+    if clean:
+        bits.append("Confounders: " + "; ".join(clean))
+    if not bits:
+        return ""
+    return " " + ". ".join(bits) + "."
+
+
 def build_causal_context(
     graph: CausalActivityGraph,
     payload: ScrubberPayload,
@@ -333,6 +411,7 @@ def build_causal_context(
     if prio.master_regulators:
         top_mr = str(prio.master_regulators[0][0])
 
+    model_context, confounder_flags = _payload_confounder(payload)
     return CausalContextPayload(
         simulation_id=payload.simulation_id,
         extracted_paths=paths,
@@ -345,6 +424,9 @@ def build_causal_context(
             "k": int(k),
             "n_paths": len(paths),
             "distance_eps": DISTANCE_EPS,
+            "solver": _payload_solver(payload),
+            "model_context": model_context,
+            "confounder_flags": confounder_flags,
         },
     )
 
@@ -427,6 +509,8 @@ def synthesize_deterministic_brief(context_payload: CausalContextPayload) -> str
         f"(cumulative attention={primary.cumulative_attention:.4f}). "
         f"{body}. "
         f"Top master regulator={mr}; perturbed nodes={pert}."
+        f"{format_solver_line(context_payload.metadata.get('solver') if isinstance(context_payload.metadata, dict) else None)}"
+        f"{format_confounder_line(context_payload.metadata.get('model_context') if isinstance(context_payload.metadata, dict) else None, context_payload.metadata.get('confounder_flags') if isinstance(context_payload.metadata, dict) else None)}"
     )
 
 

@@ -126,7 +126,27 @@ _LOCALIZATION_FALLBACK: Dict[str, Dict[str, Optional[str]]] = {
     },
 }
 
-_DYNAMIC_GRAPHS: Dict[str, CausalActivityGraph] = {}
+class _BoundedGraphCache(Dict[str, CausalActivityGraph]):
+    """Scenario-graph cache with FIFO eviction past MAX_DYNAMIC_GRAPHS."""
+
+    def __setitem__(self, key: str, value: CausalActivityGraph) -> None:
+        super().__setitem__(key, value)
+        while len(self) > MAX_DYNAMIC_GRAPHS:
+            self.pop(next(iter(self)))
+
+
+_DYNAMIC_GRAPHS: Dict[str, CausalActivityGraph] = _BoundedGraphCache()
+
+#: Bound on cached scenario graphs so a long-lived free-tier process cannot
+#: grow memory without limit. Oldest entries are evicted first (FIFO).
+MAX_DYNAMIC_GRAPHS = 128
+
+
+def _remember_graph(graph_id: str, graph: CausalActivityGraph) -> None:
+    """Canonical scenario-graph store (FIFO cap also enforced by the dict)."""
+    _DYNAMIC_GRAPHS[graph_id] = graph
+    while len(_DYNAMIC_GRAPHS) > MAX_DYNAMIC_GRAPHS:
+        _DYNAMIC_GRAPHS.pop(next(iter(_DYNAMIC_GRAPHS)))
 
 
 def _spa_dist_dir() -> Path:
@@ -244,6 +264,31 @@ def _graph_to_detail(graph: CausalActivityGraph, *, graph_id: str) -> PresetDeta
     )
 
 
+def _confounder_flags(
+    *,
+    clamps: Dict[str, float],
+    knockouts: List[str],
+    drugs: List[Any],
+) -> List[str]:
+    """Concomitant-perturbation warnings (masking risk): same-node multi-class."""
+    flags: List[str] = []
+    clamp_nodes = {str(k) for k in clamps}
+    ko_nodes = {str(k) for k in knockouts}
+    drug_targets = [str(getattr(d, "target", d)) for d in drugs]
+    for node in sorted(clamp_nodes & ko_nodes):
+        flags.append(f"KO+clamp on {node} — interpret jointly (masking risk)")
+    for target in sorted(set(drug_targets) & clamp_nodes):
+        flags.append(f"drug+clamp on {target} — interpret jointly (masking risk)")
+    for target in sorted(set(drug_targets) & ko_nodes):
+        flags.append(f"drug+KO on {target} — interpret jointly (masking risk)")
+    if len(drug_targets) > 1:
+        flags.append(
+            f"polypharmacy: {len(drug_targets)} drugs "
+            f"({', '.join(sorted(set(drug_targets)))})"
+        )
+    return flags
+
+
 def _run_engine(
     graph: CausalActivityGraph,
     *,
@@ -285,7 +330,7 @@ def _run_engine(
                     for d in known_drugs
                 ]
             )
-    meta = {"api": "search-and-simulate", **(meta_extra or {})}
+    meta = {"api": "search-and-simulate", **(meta_extra or {}), "model_context": (meta_extra or {}).get("model_context"), "confounder_flags": _confounder_flags(clamps=clamps, knockouts=knockouts, drugs=drugs), "solver": {"method": eng.config.method, "rtol": eng.config.rtol, "atol": eng.config.atol, "hill_n": eng.config.hill_n, "ec50": eng.config.ec50, "max_step": eng.config.max_step, "t_end": float(t_end), "dense_output_points": int(dense_output_points)}}
     return scrub_simulation(
         eng,
         t_end=float(t_end),
@@ -317,7 +362,7 @@ def _execute_omics_simulate_pipeline(req: OmicsSimulateRequest) -> SearchAndSimu
         )
         graph = _topology_to_causal(topo_req)
         graph_id = f"omics_topo_{profile.profile_id}"
-        _DYNAMIC_GRAPHS[graph_id] = graph
+        _remember_graph(graph_id, graph)
     if graph is None:
         raise ValueError(
             "NO_ACTIVE_GRAPH: Run Studio or Pathways first, then re-run omics on that graph."
@@ -575,6 +620,7 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
             "condition_query": req.condition_query,
             "profile_id": profile_id,
             "graph_id": graph_id,
+            "model_context": req.context.model_dump() if req.context else None,
             "resolve_ms": resolved.resolve_ms,
             "provenance": dict(resolved.provenance or {}),
         },
@@ -675,7 +721,7 @@ def _execute_search_and_simulate_pipeline(req: SearchAndSimulateRequest) -> Sear
         metadata={
             "graph_id": graph_id,
             "profile_id": profile_id,
-            "provenance": dict(resolved.provenance or {"source": "condition_resolver"}),
+            "provenance": {**dict(resolved.provenance or {"source": "condition_resolver"}), "selected_sources": [str(s).lower() for s in (req.selected_sources or [])] or ["local"]},
             "n_nodes": len(graph.nodes),
             "n_edges": len(graph.edges),
             "sim_id": _sim_id_hash(
@@ -940,7 +986,7 @@ def _register_routes(router: APIRouter) -> None:
         return HealthResponse(
             status="ok",
             service="cistron-api",
-            version="0.22.0",
+            version="0.21.0",
             timestamp=datetime.now(timezone.utc).isoformat(),
             database_handles={
                 "presets_loaded": ["hypoxia", "mapk"],
@@ -1217,7 +1263,7 @@ def _register_routes(router: APIRouter) -> None:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Cistron API", version="0.22.0")
+    app = FastAPI(title="Cistron API", version="0.21.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

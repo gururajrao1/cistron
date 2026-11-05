@@ -1,4 +1,12 @@
 {
+  "private": true,
+  "name": "cistron-root",
+  "version": "0.21.0",
+  "_note": "STUB — real Studio deps live in frontend/package.json (Dockerfile + render build frontend/). web/ is deprecated.",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3"

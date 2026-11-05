@@ -1,5 +1,6 @@
-# CISTRON Enterprise Research Studio
+# CISTRON Enterprise Research Studio (DEPRECATED — use `frontend/` VCL Studio)
 
+> DEPRECATED: `frontend/` is the served Studio (Dockerfile + render build it). This `web/` app is unreferenced and kept for history only.
 Decoupled React + TypeScript + Tailwind research console for the CISTRON
 Python backend (ODE solvers, docking, VCF, Graph ML, AI Scientist).
 

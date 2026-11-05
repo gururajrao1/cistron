@@ -12,6 +12,8 @@ export type NavItem = {
   code: string
   shortcut?: string
   hint?: string
+  /** Optional research-phase tag for future/placeholder destinations. */
+  phase?: number
 }
 
 type NavGroup = {

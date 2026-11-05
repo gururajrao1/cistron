@@ -4,6 +4,7 @@ import { clsx } from 'clsx'
 import { GlassCard } from '../GlassCard'
 import { GeneBadge, MetaLabel } from '../ui'
 import { useLab } from '../../lab/LabContext'
+import type { ModelContext } from '../../api/types'
 import { useViewMode } from '../../layout/viewModeGates'
 
 function baselineFor(
@@ -14,6 +15,67 @@ function baselineFor(
   const upper = symbol.toUpperCase()
   if (upper in omicsClamps) return omicsClamps[upper]!
   return null
+}
+
+function setContextField(
+  lab: ReturnType<typeof useLab>,
+  key: keyof ModelContext,
+  value: string,
+) {
+  const next: ModelContext = { ...(lab.controls.modelContext ?? {}) }
+  const trimmed = value.trim()
+  if (trimmed) next[key] = trimmed
+  else delete next[key]
+  lab.patchControls({ modelContext: next })
+}
+
+function ModelContextFields() {
+  const lab = useLab()
+  const ctx = lab.controls.modelContext ?? {}
+  const meta = lab.payload?.metadata as Record<string, unknown> | undefined
+  const flags = Array.isArray(meta?.confounder_flags)
+    ? meta.confounder_flags.map((f) => String(f))
+    : []
+  const fields: Array<{ key: keyof ModelContext; label: string; hint: string }> = [
+    { key: 'cell_line', label: 'Cell line', hint: 'e.g. HUVEC' },
+    { key: 'tissue', label: 'Tissue', hint: 'e.g. endothelium' },
+    { key: 'passage', label: 'Passage', hint: 'e.g. p5' },
+    { key: 'batch_note', label: 'Batch note', hint: 'e.g. lot 7' },
+  ]
+  return (
+    <div className="border-b border-vcl-border/70 px-2.5 py-2">
+      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-vcl-dim">
+        Model context
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {fields.map(({ key, label, hint }) => (
+          <label key={key} className="block">
+            <span className="mb-0.5 block text-[9.5px] text-vcl-dim">{label}</span>
+            <input
+              type="text"
+              value={ctx[key] ?? ''}
+              placeholder={hint}
+              disabled={lab.busy}
+              onChange={(e) => setContextField(lab, key, e.target.value)}
+              className="w-full rounded border border-vcl-border bg-obsidian/40 px-1.5 py-1 font-mono text-[10.5px] text-vcl-text placeholder:text-vcl-dim/60 disabled:opacity-40"
+            />
+          </label>
+        ))}
+      </div>
+      {flags.length > 0 ? (
+        <ul className="mt-1.5 space-y-0.5">
+          {flags.map((f) => (
+            <li
+              key={f}
+              className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200"
+            >
+              {f}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  )
 }
 
 export function PerturbationPanel({
@@ -47,6 +109,7 @@ export function PerturbationPanel({
 
   const rows = (
     <div className={clsx(variant === 'dock' ? 'space-y-0' : 'max-h-[320px] space-y-2 overflow-y-auto pr-0.5')}>
+      <ModelContextFields />
       {nodes.length === 0 ? (
         <p className="px-3 py-4 text-[11px] text-vcl-dim">No graph nodes yet — run a simulation.</p>
       ) : (

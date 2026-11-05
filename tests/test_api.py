@@ -44,6 +44,21 @@ def test_health(client: TestClient) -> None:
     assert elapsed < LATENCY_BUDGET_MS
 
 
+def test_brief_carries_solver_line(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/search-and-simulate",
+        json={
+            "condition_query": "Hypoxia-induced angiogenesis",
+            "use_omnipath": False,
+            "selected_sources": ["local"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "Solver: LSODA" in body["causal_brief"]["brief"]
+    assert body["scrubber_payload"]["metadata"]["solver"]["method"] == "LSODA"
+
+
 def test_search_and_simulate_hypoxia(client: TestClient) -> None:
     t0 = time.perf_counter()
     r = client.post(
@@ -156,3 +171,39 @@ def test_omics_on_active_graph(client: TestClient) -> None:
     meta = r.json()["metadata"]
     assert "HIF1A" in meta.get("omics_mapped", [])
     assert "NOTINGRAPH" in meta.get("omics_unmapped", [])
+
+
+def test_confounder_flags_and_context_echo(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/search-and-simulate",
+        json={
+            "condition_query": "Hypoxia-induced angiogenesis",
+            "use_omnipath": False,
+            "selected_sources": ["local"],
+            "custom_knockouts": ["HIF1A"],
+            "custom_clamps": {"HIF1A": 0.0},
+            "context": {"cell_line": "HUVEC", "tissue": "endothelium"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    meta = body["scrubber_payload"]["metadata"]
+    assert any("HIF1A" in f for f in meta["confounder_flags"])
+    assert meta["model_context"]["cell_line"] == "HUVEC"
+    assert "Confounders:" in body["causal_brief"]["brief"]
+    assert "HUVEC / endothelium" in body["causal_brief"]["brief"]
+
+
+def test_no_confounder_flags_by_default(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/search-and-simulate",
+        json={
+            "condition_query": "Hypoxia-induced angiogenesis",
+            "use_omnipath": False,
+            "selected_sources": ["local"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["scrubber_payload"]["metadata"]["confounder_flags"] == []
+    assert "Confounders:" not in body["causal_brief"]["brief"]

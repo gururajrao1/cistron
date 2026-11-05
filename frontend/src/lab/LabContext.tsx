@@ -128,6 +128,7 @@ function initialControls(): LabControls {
     ki: 1,
     sourceNode: 'O2',
     targetNode: 'VEGFA',
+    modelContext: {},
     // Offline-first: never boot with OmniPath/STRING live sources.
     selectedSources: ['local'],
   }
@@ -430,6 +431,10 @@ export function LabProvider({ children }: { children: ReactNode }) {
         simulation_id: `search_${Date.now().toString(36)}`,
         use_omnipath: useOmni,
         selected_sources: sources,
+        context:
+          c.modelContext && Object.keys(c.modelContext).length > 0
+            ? c.modelContext
+            : undefined,
         dense_output_points: 61,
         ...(override?.includeSyntheticLethality
           ? {

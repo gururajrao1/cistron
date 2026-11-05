@@ -254,6 +254,13 @@ export interface PreviousStateSummary {
   scientist_brief?: string | null
 }
 
+export interface ModelContext {
+  cell_line?: string
+  tissue?: string
+  passage?: string
+  batch_note?: string
+}
+
 export interface SearchAndSimulateRequest {
   condition_query: string
   custom_knockouts?: string[]
@@ -273,6 +280,7 @@ export interface SearchAndSimulateRequest {
   simulation_id?: string
   use_omnipath?: boolean
   selected_sources?: string[]
+  context?: ModelContext
   include_synthetic_lethality?: boolean
   /** Preferred Dual Screen / SL permutation targets. */
   sl_candidate_nodes?: string[]
@@ -501,6 +509,7 @@ export interface LabControls {
   sourceNode: string
   targetNode: string
   selectedSources: string[]
+  modelContext?: ModelContext
 }
 
 export const DEFAULT_SELECTED_SOURCES = [

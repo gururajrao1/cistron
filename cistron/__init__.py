@@ -153,6 +153,7 @@ from cistron.pharmacology import (
     effect_from_mechanism,
     interpret_synergy,
     loewe_combination_index,
+    synergy_agreement_badge,
 )
 from cistron.toxicology import (
     AdverseEvent,
@@ -525,6 +526,7 @@ __all__ = [
     "LocalSensitivityAnalyzer",
     "LocalSensitivityResult",
     "loewe_combination_index",
+    "synergy_agreement_badge",
     "LogicGate",
     "make_cache_key",
     "MassActionRHS",

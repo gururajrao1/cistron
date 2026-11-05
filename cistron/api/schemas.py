@@ -122,6 +122,17 @@ class PresetDetail(BaseModel):
     provenance: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ModelContext(BaseModel):
+    """Experimental context recorded with a run (not simulated)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cell_line: Optional[str] = Field(default=None, max_length=120)
+    tissue: Optional[str] = Field(default=None, max_length=120)
+    passage: Optional[str] = Field(default=None, max_length=120)
+    batch_note: Optional[str] = Field(default=None, max_length=240)
+
+
 class SearchAndSimulateRequest(BaseModel):
     """Free-text condition → resolve network → full lab pipeline."""
 
@@ -163,6 +174,11 @@ class SearchAndSimulateRequest(BaseModel):
         default_factory=list,
         description="Preferred nodes for dual-target SL permutation (e.g. selected KOs)",
     )
+    context: Optional[ModelContext] = Field(
+        default=None,
+        description="Experimental context: cell line / tissue / passage / batch (recorded, not simulated)",
+    )
+
     @model_validator(mode="after")
     def _merge_drug_aliases(self) -> "SearchAndSimulateRequest":
         if self.drug_perturbations:
@@ -276,7 +292,7 @@ class HealthResponse(BaseModel):
 
     status: str = "ok"
     service: str = "cistron-api"
-    version: str = "0.22.0"
+    version: str = "0.21.0"
     timestamp: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="UTC ISO-8601 server timestamp",
